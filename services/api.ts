@@ -2,8 +2,9 @@ import type { User, Action, Badge, RewardsConfig, BadgeConfig, Community, Quest,
 import { initialRewardsConfig, initialBadgesConfig } from '../config/rewards';
 
 // --- MOCK DATABASE ---
-// This section simulates a persistent backend database.
+// This section simulates a persistent backend database using localStorage.
 
+const DB_KEY = 'apexDMScoreDB';
 const STREAK_FREEZE_COST = 500;
 
 const initialUsers: User[] = [
@@ -68,6 +69,41 @@ const initialUserQuestProgress: { [userId: string]: UserQuestProgress[] } = {
     'user_2': [{ questId: 'q1', progress: { 'log_trade': 1 }, completed: false, claimed: false }],
 };
 
+const getInitialDatabase = () => ({
+    users: initialUsers,
+    actions: initialActions,
+    rewards: initialRewardsConfig,
+    badges: initialBadgesConfig,
+    quests: initialQuests,
+    userQuestProgress: initialUserQuestProgress,
+    nextUserId: 12,
+    nextActionId: 3,
+});
+
+const loadDatabase = () => {
+    try {
+        const savedDb = localStorage.getItem(DB_KEY);
+        if (savedDb) {
+            const parsedDb = JSON.parse(savedDb);
+            // Ensure all keys are present, falling back to initial if a key is missing from old storage
+            return { ...getInitialDatabase(), ...parsedDb };
+        }
+    } catch (error) {
+        console.error("Could not load database from localStorage, falling back to initial state.", error);
+    }
+    return getInitialDatabase();
+};
+
+let mockDatabase = loadDatabase();
+
+const persistDatabase = () => {
+    try {
+        localStorage.setItem(DB_KEY, JSON.stringify(mockDatabase));
+    } catch (error) {
+        console.error("Could not save database to localStorage", error);
+    }
+};
+
 interface WhopMember {
     whop_user_id: string;
     username: string;
@@ -86,18 +122,6 @@ const mockCommunityData: Community = {
     themeColor: 'purple',
     whop_store_id: 'store_aBcDeFg12345',
     subscriptionTier: 'silver',
-};
-
-let nextUserId = 12;
-let nextActionId = 3;
-
-const mockDatabase = {
-    users: initialUsers,
-    actions: initialActions,
-    rewards: initialRewardsConfig,
-    badges: initialBadgesConfig,
-    quests: initialQuests,
-    userQuestProgress: initialUserQuestProgress,
 };
 
 // --- API SERVICE ---
@@ -179,7 +203,7 @@ export const api = {
 
         // Create action record
         mockDatabase.actions.unshift({
-            id: `action_${nextActionId++}`,
+            id: `action_${mockDatabase.nextActionId++}`,
             userId,
             actionType,
             xpGained: reward.xp,
@@ -224,7 +248,8 @@ export const api = {
             }
         });
         mockDatabase.userQuestProgress[userId] = userProgress;
-
+        
+        persistDatabase();
         return { xpGained: reward.xp, newXp, newStreak, username: user.username };
     },
 
@@ -234,6 +259,7 @@ export const api = {
         const badgeInfo = mockDatabase.badges[badgeName];
         if (user && badgeInfo && !user.badges.some(b => b.name === badgeName)) {
             user.badges.push({ id: `badge_${Date.now()}`, name: badgeName, ...badgeInfo });
+            persistDatabase();
             return true;
         }
         return false;
@@ -243,6 +269,7 @@ export const api = {
         await delay(100);
         if (!mockDatabase.rewards[actionName]) {
             mockDatabase.rewards[actionName] = { xp, badge: null };
+            persistDatabase();
             return true;
         }
         return false;
@@ -252,6 +279,7 @@ export const api = {
         await delay(100);
         if (!mockDatabase.badges[badgeName]) {
             mockDatabase.badges[badgeName] = config;
+            persistDatabase();
             return true;
         }
         return false;
@@ -266,7 +294,7 @@ export const api = {
             const existingUser = mockDatabase.users.find(u => u.whop_user_id === member.whop_user_id);
             if (!existingUser) {
                  const newUser: User = {
-                    id: `user_${nextUserId++}`,
+                    id: `user_${mockDatabase.nextUserId++}`,
                     username: member.username,
                     avatarUrl: `https://picsum.photos/seed/${member.username}/100`,
                     xp: 0,
@@ -283,6 +311,7 @@ export const api = {
                 existingUsersCount++;
             }
         }
+        persistDatabase();
         return `Sync complete. Found ${existingUsersCount} existing members and added ${newUsersCount} new members.`;
     },
 
@@ -307,6 +336,7 @@ export const api = {
         user.xp -= STREAK_FREEZE_COST;
         user.streakFreezes += 1;
         
+        persistDatabase();
         return { success: true, message: 'Streak Freeze purchased!' };
     },
 
@@ -329,6 +359,12 @@ export const api = {
             }
         }
         
+        persistDatabase();
         return { success: true, message: `Quest complete! +${quest.xpReward} XP`};
+    },
+    
+    resetData: async (): Promise<void> => {
+        await delay(100);
+        localStorage.removeItem(DB_KEY);
     },
 };

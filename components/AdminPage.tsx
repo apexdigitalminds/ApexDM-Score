@@ -19,6 +19,7 @@ const AdminPage: React.FC = () => {
     handleAddBadge,
     handleTriggerWebhook,
     isFeatureEnabled,
+    resetAppData,
   } = useApp();
   const navigate = useNavigate();
   
@@ -338,6 +339,23 @@ const AdminPage: React.FC = () => {
                 </div>
             ))}
           </div>
+      </div>
+      
+      <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+        <h3 className="text-lg font-bold text-red-500 mb-2">Danger Zone</h3>
+        <p className="text-sm text-slate-400 mb-4">
+            Reset all application data to its initial state, including users, actions, and rewards. This action cannot be undone.
+        </p>
+        <button 
+            onClick={() => {
+                if (window.confirm('Are you sure you want to reset all data? This will reload the page.')) {
+                    resetAppData();
+                }
+            }}
+            className="w-full bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+        >
+            Reset All Data
+        </button>
       </div>
     </div>
   );

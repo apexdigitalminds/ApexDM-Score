@@ -54,6 +54,7 @@ interface AppContextType {
   isFeatureEnabled: (feature: Feature) => boolean;
   buyStreakFreeze: (userId: string) => Promise<{ success: boolean; message: string; }>;
   claimQuestReward: (userId: string, questId: string) => Promise<{ success: boolean; message: string; }>;
+  resetAppData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -189,6 +190,11 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }
         return result;
   }
+  
+  const resetAppData = async () => {
+    await api.resetData();
+    window.location.reload();
+  };
 
   const value: AppContextType = {
     isLoading,
@@ -214,6 +220,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     isFeatureEnabled,
     buyStreakFreeze,
     claimQuestReward,
+    resetAppData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
