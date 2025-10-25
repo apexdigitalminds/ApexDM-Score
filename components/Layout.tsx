@@ -1,16 +1,24 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { ChartBarIcon, UserGroupIcon, LogoIcon } from './icons';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon } from './icons';
+import { useApp } from '../App';
 
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const { selectedUser, logout } = useApp();
+    const navigate = useNavigate();
     
     const navLinkClasses = "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors";
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
@@ -26,14 +34,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             </Link>
                         </div>
                         <div className="flex items-center gap-2">
-                             <NavLink to="/dashboard" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
-                                <ChartBarIcon className="h-5 w-5" />
-                                <span className="hidden sm:inline">Dashboard</span>
-                            </NavLink>
-                             <NavLink to="/admin" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
-                                <UserGroupIcon className="h-5 w-5" />
-                                <span className="hidden sm:inline">Admin</span>
-                            </NavLink>
+                            {selectedUser ? (
+                                <>
+                                    <div className="flex items-center gap-3 mr-4">
+                                        <img src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-8 h-8 rounded-full" />
+                                        <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>
+                                    </div>
+                                    <NavLink to="/dashboard" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                        <ChartBarIcon className="h-5 w-5" />
+                                        <span className="hidden sm:inline">Dashboard</span>
+                                    </NavLink>
+                                    <NavLink to="/quests" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                        <TargetIcon className="h-5 w-5" />
+                                        <span className="hidden sm:inline">Quests</span>
+                                    </NavLink>
+                                    <NavLink to="/store" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                        <ShoppingCartIcon className="h-5 w-5" />
+                                        <span className="hidden sm:inline">XP Store</span>
+                                    </NavLink>
+                                    {selectedUser.role === 'admin' && (
+                                        <NavLink to="/admin" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                            <UserGroupIcon className="h-5 w-5" />
+                                            <span className="hidden sm:inline">Admin</span>
+                                        </NavLink>
+                                    )}
+                                    <button onClick={handleLogout} className="ml-2 px-4 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-slate-700 transition-colors">
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <Link to="/" className={`${navLinkClasses} ${inactiveClass}`}>
+                                    Home
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </nav>

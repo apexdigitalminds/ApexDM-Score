@@ -1,16 +1,13 @@
-
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../App';
-import { recordAction } from '../services/xpService';
 import type { Action, ActionType } from '../types';
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
 import Leaderboard from './Leaderboard';
-import ActionButton from './ActionButton';
 import StreakShowcase from './StreakShowcase';
 import BadgeShowcase from './BadgeShowcase';
+import { SnowflakeIcon } from './icons';
 
 const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
     return (
@@ -20,24 +17,43 @@ const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
     );
 };
 
-const DashboardPage: React.FC = () => {
-    const { db, selectedUser, allUsers, rewardsConfig, badgesConfig } = useApp();
-    const userActions = selectedUser ? db.actions.getAllForUser(selectedUser.id) : [];
+const StreakFreezeIndicator: React.FC<{ count: number }> = ({ count }) => (
+    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center h-full">
+        <div className="relative w-20 h-20 flex items-center justify-center rounded-full bg-cyan-500/10">
+            <SnowflakeIcon className="w-10 h-10 text-cyan-400" />
+        </div>
+        <p className="mt-4 text-3xl font-bold text-white">{count}</p>
+        <p className="text-sm text-slate-400">Streak Freezes</p>
+    </div>
+);
 
+const DashboardPage: React.FC = () => {
+    const { isLoading, selectedUser, allUsers, getUserActions, handleRecordAction } = useApp();
+    const [userActions, setUserActions] = useState<Action[]>([]);
     const [xpGained, setXpGained] = useState<number | null>(null);
 
-    const handleAction = (actionType: ActionType) => {
+    useEffect(() => {
+        // ProtectedRoute ensures selectedUser is not null
+        if (selectedUser) {
+            getUserActions(selectedUser.id).then(setUserActions);
+        }
+    }, [selectedUser, getUserActions]);
+
+    const handleAction = async (actionType: ActionType) => {
         if (!selectedUser) return;
-        const result = recordAction(db, selectedUser.id, actionType, rewardsConfig, badgesConfig);
+        const result = await handleRecordAction(selectedUser.id, actionType, 'manual');
         if (result) {
             setXpGained(result.xpGained);
             setTimeout(() => setXpGained(null), 2000);
         }
     };
 
-    if (!selectedUser) {
+    if (isLoading) {
         return <div className="text-center p-8">Loading user data...</div>;
     }
+    
+    // ProtectedRoute ensures selectedUser exists, so we can safely assert it.
+    const currentUser = selectedUser!;
 
     return (
         <div className="space-y-6">
@@ -55,22 +71,25 @@ const DashboardPage: React.FC = () => {
             `}</style>
 
             {/* Top Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-2">
-                    <XPProgress xp={selectedUser.xp} />
+                    <XPProgress xp={currentUser.xp} />
                 </div>
                 <div>
-                    <StreakCounter streak={selectedUser.streak} />
+                    <StreakCounter streak={currentUser.streak} />
+                </div>
+                <div>
+                    <StreakFreezeIndicator count={currentUser.streakFreezes} />
                 </div>
             </div>
 
             {/* Mid Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <BadgeDisplay badges={selectedUser.badges} />
+                    <Leaderboard users={allUsers} currentUserId={currentUser.id} />
                 </div>
                 <div>
-                    <Leaderboard users={allUsers} currentUserId={selectedUser.id} />
+                    <BadgeDisplay badges={currentUser.badges} />
                 </div>
             </div>
             

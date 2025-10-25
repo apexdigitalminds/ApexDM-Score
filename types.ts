@@ -4,8 +4,10 @@ export interface User {
   avatarUrl: string;
   xp: number;
   streak: number;
+  streakFreezes: number;
   lastActionDate: string | null;
   badges: Badge[];
+  role: 'admin' | 'member';
   whop_user_id?: string;
 }
 
@@ -49,4 +51,29 @@ export interface Community {
   logoUrl: string;
   themeColor: 'blue' | 'purple' | 'green';
   whop_store_id?: string;
+  subscriptionTier: 'bronze' | 'silver' | 'gold';
+}
+
+// --- New Quest Types ---
+
+export interface QuestTask {
+  actionType: ActionType;
+  targetCount: number;
+  description: string;
+}
+
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  tasks: QuestTask[];
+  xpReward: number;
+  badgeReward: string | null;
+}
+
+export interface UserQuestProgress {
+  questId: string;
+  progress: { [actionType: string]: number }; // e.g. { "log_trade": 3 }
+  completed: boolean;
+  claimed: boolean;
 }

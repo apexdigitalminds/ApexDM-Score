@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { LogoIcon, TrophyIcon, CrownIcon, ChartBarIcon } from './icons';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../App';
+import { LogoIcon, TrophyIcon, CrownIcon, ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon } from './icons';
 
 interface FeatureCardProps {
     icon: React.ReactNode;
@@ -21,6 +22,16 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, iconBg, title, descript
 
 
 const LandingPage: React.FC = () => {
+  const { login } = useApp();
+  const navigate = useNavigate();
+
+  const handleLogin = (role: 'admin' | 'member') => {
+    // In our mock data, user_1 is the admin and user_2 is a regular member.
+    const userId = role === 'admin' ? 'user_1' : 'user_2';
+    login(userId);
+    navigate('/dashboard');
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4 py-16">
       <div className="text-center w-full max-w-2xl mx-auto">
@@ -36,21 +47,23 @@ const LandingPage: React.FC = () => {
           Improve Retention and Engagement for your Community
         </h1>
         <p className="text-lg md:text-xl text-slate-400 max-w-xl mx-auto mb-8">
-          Reward members with XP, badges, and streaks for learning and taking action. Boost engagement and retention with powerful gamification. Build a stronger community with ApexDM Score.
+          Reward members with XP, badges, and streaks for learning and taking action. Boost engagement and retention with powerful gamification.
         </p>
-        <div className="flex justify-center items-center gap-4">
-            <Link
-              to="/dashboard"
-              className="inline-block bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <button
+              onClick={() => handleLogin('member')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
             >
-              Try Demo
-            </Link>
-             <Link
-              to="/admin"
-              className="inline-block bg-blue-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 transform hover:scale-105"
+              <UserGroupIcon className="h-6 w-6" />
+              Login as Member (Demo)
+            </button>
+             <button
+              onClick={() => handleLogin('admin')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-all"
             >
-              Admin Panel
-            </Link>
+               <ArrowTrendingUpIcon className="h-6 w-6" />
+              Login as Admin (Demo)
+            </button>
         </div>
       </div>
 
@@ -86,12 +99,12 @@ const LandingPage: React.FC = () => {
           automatically reward members for subscriptions, renewals, and community
           participation.
         </p>
-        <Link
-          to="/admin"
+        <button
+          onClick={() => handleLogin('admin')}
           className="inline-block bg-white text-purple-700 font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-200 transition-all transform hover:scale-105 shadow-lg"
         >
-          Get Started
-        </Link>
+          Explore Admin Features
+        </button>
       </div>
 
     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import MdiIcon from './MdiIcon';
 
 interface IconProps {
   className?: string;
@@ -6,6 +7,26 @@ interface IconProps {
   // FIX: Add style prop to allow passing CSS styles to icons.
   style?: React.CSSProperties;
 }
+
+// --- How to add a new Material Design Icon ---
+// 1. Go to a library site like https://pictogrammers.com/library/mdi/
+// 2. Find the icon you want to use.
+// 3. Click on the icon to open its details.
+// 4. In the "Path (for developers)" section, click to copy the SVG path data (e.g., "M12,2L2,8.5...").
+// 5. Create a new constant for the path and a new component like the examples below.
+//    const mdiNewIconPath = "PASTE_THE_PATH_HERE";
+//    export const NewIcon: React.FC<IconProps> = ({ className, style }) => (
+//        <MdiIcon path={mdiNewIconPath} className={className} style={style} />
+//    );
+// 6. (Optional) If the icon will be used in the `iconMap` for dynamic rendering, add it there.
+// -------------------------------------------
+
+export const WhopIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} style={style}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.28 14.72L6.34 12.34a.5.5 0 0 1 .71-.71l4.17 4.17 6.17-6.17a.5.5 0 0 1 .71.71l-6.53 6.53a.5.5 0 0 1-.71 0z"/>
+    </svg>
+);
+
 
 export const CometIcon: React.FC<IconProps> = ({ className, fill = 'currentColor', style }) => (
   <svg
@@ -69,16 +90,14 @@ export const StarIcon: React.FC<IconProps> = ({ className, style }) => (
   </svg>
 );
 
+const mdiChartBarPath = "M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z";
 export const ChartBarIcon: React.FC<IconProps> = ({ className, style }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className} style={style}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-    </svg>
+    <MdiIcon path={mdiChartBarPath} className={className} style={style} />
 );
 
+const mdiAccountGroupPath = "M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M15.94 13A5.32 5.32 0 0 1 18 17V19H22V17S22 13.37 18.5 13.07C17.5 13 16.56 13 15.94 13M15 4A3.39 3.39 0 0 0 13.07 4.59A5 5 0 0 1 13.07 10.41A3.39 3.39 0 0 0 15 11A3.5 3.5 0 0 0 15 4Z";
 export const UserGroupIcon: React.FC<IconProps> = ({ className, style }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className} style={style}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.962c.57-1.023-.19-2.057-1.108-2.43M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM7.288 15.042A5.25 5.25 0 0 1 12 13.5h.008a5.25 5.25 0 0 1 4.712 1.542M8.25 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75v-.008Zm4.5 0a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75v-.008Z" />
-    </svg>
+    <MdiIcon path={mdiAccountGroupPath} className={className} style={style} />
 );
 
 export const ArrowTrendingUpIcon: React.FC<IconProps> = ({ className, style }) => (
@@ -181,6 +200,33 @@ export const BookOpenIcon: React.FC<IconProps> = ({ className, style }) => (
     </svg>
 );
 
+const mdiLockPath = "M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z";
+export const LockClosedIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiLockPath} className={className} style={style} />
+);
+
+export const DiscordIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.3,3.5C18.8,3 17.2,3 15.8,3.2C15.2,3.3 14.7,3.9 14.8,4.4C15.4,6.9 15.8,9.4 15.8,11.9C15.8,12.1 15.8,12.3 15.8,12.5C15.3,12.4 14.8,12.2 14.3,12C12.8,11.5 11.4,10.9 10.2,10.2C9.8,9.9 9.3,10 9.1,10.4C8.2,12.3 7.8,14.3 7.8,16.4C7.8,18 8.4,19.5 9.4,20.7C9.7,21 10.2,21 10.5,20.7C12.2,19.5 13.6,18.1 14.9,16.4C15.2,16.1 15.1,15.6 14.7,15.4C14.3,15.2 13.8,15 13.4,14.8C13.5,14.8 13.6,14.7 13.7,14.7C14.8,15.2 15.8,15.8 16.7,16.5C17,16.8 17.5,16.7 17.8,16.3C19.2,14.4 20.2,12.2 20.3,9.8C20.3,9.7 20.3,9.6 20.3,9.5C20.6,8.1 20.7,6.8 20.7,5.4C20.7,4.6 20.5,3.9 20.3,3.5M10,13.2C10.7,13.2 11.3,12.6 11.3,11.9C11.3,11.2 10.7,10.6 10,10.6C9.3,10.6 8.7,11.2 8.7,11.9C8.7,12.6 9.3,13.2 10,13.2M14,13.2C14.7,13.2 15.3,12.6 15.3,11.9C15.3,11.2 14.7,10.6 14,10.6C13.3,10.6 12.7,11.2 12.7,11.9C12.7,12.6 13.3,13.2 14,13.2Z" />
+    </svg>
+);
+
+const mdiCartPath = "M7,18A2,2 0 0,1 9,20A2,2 0 0,1 7,22A2,2 0 0,1 5,20A2,2 0 0,1 7,18M17,18A2,2 0 0,1 19,20A2,2 0 0,1 17,22A2,2 0 0,1 15,20A2,2 0 0,1 17,18M1,2V4H3L6.6,11.6L5.2,14C5.1,14.3 5,14.6 5,15A2,2 0 0,0 7,17H19V15H7.4C7.3,14.7 7.3,14.4 7.5,14L8.1,13H15.5C16.3,13 16.9,12.6 17.2,12L21.1,5.6C21.3,5.2 21.3,4.9 21.1,4.6C21,4.2 20.6,4 20.2,4H5.2L4.3,2H1Z";
+export const ShoppingCartIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiCartPath} className={className} style={style} />
+);
+
+export const SnowflakeIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className} style={style}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m-7.5-7.5h15m-12.879 5.379 10.758-10.758m-10.758 0L17.379 17.38" />
+    </svg>
+);
+
+export const CheckCircleIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} style={style}>
+        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.06-1.06l-3.25 3.25-1.5-1.5a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.75-3.75Z" clipRule="evenodd" />
+    </svg>
+);
 
 export const iconMap: { [key: string]: React.FC<IconProps> } = {
     MagnifyingGlass: MagnifyingGlassIcon,
@@ -192,6 +238,8 @@ export const iconMap: { [key: string]: React.FC<IconProps> } = {
     Rocket: RocketIcon,
     Fire: FireIcon,
     BookOpen: BookOpenIcon,
+    ChartBar: ChartBarIcon,
+    UserGroup: UserGroupIcon,
 };
 
 export const iconMapKeys = Object.keys(iconMap);

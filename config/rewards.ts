@@ -4,7 +4,9 @@ export const initialRewardsConfig: RewardsConfig = {
   "watch_content": { "xp": 10, "badge": null },
   "complete_module": { "xp": 25, "badge": "Analyst Bronze" },
   "log_trade": { "xp": 15, "badge": null },
-  "renew_subscription": { "xp": 50, "badge": "Loyal Member" }
+  "renew_subscription": { "xp": 50, "badge": "Loyal Member" },
+  "ask_good_question": { "xp": 20, "badge": null },
+  "share_alpha": { "xp": 30, "badge": null },
 };
 
 export const initialBadgesConfig: { [key: string]: BadgeConfig } = {
