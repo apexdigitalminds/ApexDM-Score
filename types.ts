@@ -1,5 +1,6 @@
 export interface User {
-  id: string;
+  id: string; // This is the UUID from auth.users
+  communityId: string;
   username: string;
   avatarUrl: string;
   xp: number;
@@ -12,8 +13,9 @@ export interface User {
 }
 
 export interface Action {
-  id: string;
+  id: number; // Changed from string to number for BIGSERIAL
   userId: string;
+  communityId: string;
   actionType: ActionType;
   xpGained: number;
   timestamp: string;

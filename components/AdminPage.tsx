@@ -347,15 +347,14 @@ const AdminPage: React.FC = () => {
             Reset all application data to its initial state, including users, actions, and rewards. This action cannot be undone.
         </p>
         <button 
-            onClick={() => {
-                if (window.confirm('Are you sure you want to reset all data? This will reload the page.')) {
-                    resetAppData();
-                }
-            }}
-            className="w-full bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            disabled
+            className="w-full bg-red-600/50 text-white/50 font-semibold py-2 px-4 rounded-lg cursor-not-allowed"
         >
             Reset All Data
         </button>
+        <p className="text-xs text-slate-500 mt-2 text-center">
+            Data reset is disabled for live database integration. Please manage data directly in your Supabase dashboard.
+        </p>
       </div>
     </div>
   );

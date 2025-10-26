@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
     // If loading is finished and there's still no user, redirect to login.
     if (!selectedUser) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/login" replace />;
     }
     
     // If a user is selected, render the requested component.

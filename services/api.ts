@@ -1,370 +1,447 @@
-import type { User, Action, Badge, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress } from '../types';
-import { initialRewardsConfig, initialBadgesConfig } from '../config/rewards';
+import { supabase } from './supabase';
+import type { User, Action, Badge, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress, QuestTask } from '../types';
 
-// --- MOCK DATABASE ---
-// This section simulates a persistent backend database using localStorage.
-
-const DB_KEY = 'apexDMScoreDB';
-const STREAK_FREEZE_COST = 500;
-
-const initialUsers: User[] = [
-  { id: 'user_1', username: 'Alex', avatarUrl: 'https://picsum.photos/seed/alex/100', xp: 480, streak: 5, streakFreezes: 1, lastActionDate: new Date(Date.now() - 20 * 3600 * 1000).toISOString(), badges: [{id: 'b1', name: 'Analyst Bronze', ...initialBadgesConfig['Analyst Bronze']}, {id: 'b3', name: 'Streak Starter', ...initialBadgesConfig['Streak Starter']}], role: 'admin', whop_user_id: 'whop_alex_123' },
-  { id: 'user_2', username: 'Ben', avatarUrl: 'https://picsum.photos/seed/ben/100', xp: 1250, streak: 12, streakFreezes: 2, lastActionDate: new Date().toISOString(), badges: [
-      {id: 'b4', name: 'XP Novice', ...initialBadgesConfig['XP Novice']},
-      {id: 'b5', name: 'XP Adept', ...initialBadgesConfig['XP Adept']},
-      {id: 'b6', name: 'XP Veteran', ...initialBadgesConfig['XP Veteran']},
-  ], role: 'member', whop_user_id: 'whop_ben_456' },
-  { id: 'user_3', username: 'Carla', avatarUrl: 'https://picsum.photos/seed/carla/100', xp: 950, streak: 2, streakFreezes: 0, lastActionDate: new Date(Date.now() - 40 * 3600 * 1000).toISOString(), badges: [], role: 'member' },
-  { id: 'user_4', username: 'Diana', avatarUrl: 'https://picsum.photos/seed/diana/100', xp: 720, streak: 0, streakFreezes: 1, lastActionDate: new Date(Date.now() - 72 * 3600 * 1000).toISOString(), badges: [], role: 'member' },
-  { id: 'user_5', username: 'Ethan', avatarUrl: 'https://picsum.photos/seed/ethan/100', xp: 680, streak: 1, streakFreezes: 0, lastActionDate: new Date(Date.now() - 30 * 3600 * 1000).toISOString(), badges: [], role: 'member' },
-  { id: 'user_6', username: 'Fiona', avatarUrl: 'https://picsum.photos/seed/fiona/100', xp: 450, streak: 4, streakFreezes: 0, lastActionDate: new Date().toISOString(), badges: [], role: 'member' },
-  { id: 'user_7', username: 'George', avatarUrl: 'https://picsum.photos/seed/george/100', xp: 320, streak: 3, streakFreezes: 0, lastActionDate: new Date().toISOString(), badges: [], role: 'member' },
-  { id: 'user_8', username: 'Hannah', avatarUrl: 'https://picsum.photos/seed/hannah/100', xp: 210, streak: 0, streakFreezes: 0, lastActionDate: null, badges: [], role: 'member' },
-  { id: 'user_9', username: 'Ian', avatarUrl: 'https://picsum.photos/seed/ian/100', xp: 150, streak: 1, streakFreezes: 0, lastActionDate: new Date().toISOString(), badges: [], role: 'member' },
-  { id: 'user_10', username: 'Jane', avatarUrl: 'https://picsum.photos/seed/jane/100', xp: 80, streak: 1, streakFreezes: 0, lastActionDate: new Date().toISOString(), badges: [], role: 'member' },
-  { id: 'user_11', username: 'Kevin', avatarUrl: 'https://picsum.photos/seed/kevin/100', xp: 50, streak: 0, streakFreezes: 0, lastActionDate: null, badges: [], role: 'member' },
-];
-
-const initialActions: Action[] = [
-    { id: 'action_1', userId: 'user_1', actionType: 'complete_module', xpGained: 25, timestamp: new Date().toISOString(), source: 'manual' },
-    { id: 'action_2', userId: 'user_1', actionType: 'log_trade', xpGained: 15, timestamp: new Date(Date.now() - 1 * 3600 * 1000).toISOString(), source: 'manual' },
-];
-
-const initialQuests: Quest[] = [
-    { 
-        id: 'q1', 
-        title: 'Novice Trader', 
-        description: 'Get started with the basics of trading by logging your first few trades.',
-        tasks: [{ actionType: 'log_trade', targetCount: 3, description: 'Log 3 trades' }],
-        xpReward: 100,
-        badgeReward: 'Trader Novice',
-    },
-    { 
-        id: 'q2', 
-        title: 'Community Contributor', 
-        description: 'Become an active member of the community by sharing your insights.',
-        tasks: [
-            { actionType: 'ask_good_question', targetCount: 2, description: 'Ask 2 good questions' },
-            { actionType: 'share_alpha', targetCount: 1, description: 'Share 1 piece of alpha' },
-        ],
-        xpReward: 150,
-        badgeReward: 'Community Helper',
-    },
-     { 
-        id: 'q3', 
-        title: 'Learning Spree', 
-        description: 'Deepen your knowledge by completing several learning modules.',
-        tasks: [{ actionType: 'complete_module', targetCount: 3, description: 'Complete 3 modules' }],
-        xpReward: 200,
-        badgeReward: null,
-    },
-];
-
-// Add new badge configs for quest rewards
-initialBadgesConfig['Trader Novice'] = { description: 'Completed the Novice Trader quest.', icon: 'ChartBar', color: '#60a5fa' };
-initialBadgesConfig['Community Helper'] = { description: 'Completed the Community Contributor quest.', icon: 'UserGroup', color: '#34d399' };
-
-
-const initialUserQuestProgress: { [userId: string]: UserQuestProgress[] } = {
-    'user_2': [{ questId: 'q1', progress: { 'log_trade': 1 }, completed: false, claimed: false }],
-};
-
-const getInitialDatabase = () => ({
-    users: initialUsers,
-    actions: initialActions,
-    rewards: initialRewardsConfig,
-    badges: initialBadgesConfig,
-    quests: initialQuests,
-    userQuestProgress: initialUserQuestProgress,
-    nextUserId: 12,
-    nextActionId: 3,
-});
-
-const loadDatabase = () => {
-    try {
-        const savedDb = localStorage.getItem(DB_KEY);
-        if (savedDb) {
-            const parsedDb = JSON.parse(savedDb);
-            // Ensure all keys are present, falling back to initial if a key is missing from old storage
-            return { ...getInitialDatabase(), ...parsedDb };
-        }
-    } catch (error) {
-        console.error("Could not load database from localStorage, falling back to initial state.", error);
-    }
-    return getInitialDatabase();
-};
-
-let mockDatabase = loadDatabase();
-
-const persistDatabase = () => {
-    try {
-        localStorage.setItem(DB_KEY, JSON.stringify(mockDatabase));
-    } catch (error) {
-        console.error("Could not save database to localStorage", error);
-    }
-};
-
-interface WhopMember {
-    whop_user_id: string;
-    username: string;
-}
-
-const mockWhopMembers: WhopMember[] = [
-    { whop_user_id: 'whop_alex_123', username: 'Alex' }, // Existing user
+// --- MOCK WHOP/COMMUNITY DATA (for simulation) ---
+// In a real app, this would be fetched or configured elsewhere.
+const MOCK_WHOP_MEMBERS = [
+    { whop_user_id: 'whop_alex_123', username: 'Alex' }, // Should match an existing user for demo
     { whop_user_id: 'whop_zara_789', username: 'Zara' }, // New user
     { whop_user_id: 'whop_leo_101', username: 'Leo' },   // New user
 ];
+const STREAK_FREEZE_COST = 500;
 
-const mockCommunityData: Community = {
-    id: 'comm_123',
-    name: 'Apex Traders',
-    logoUrl: 'https://picsum.photos/seed/community/100',
-    themeColor: 'purple',
-    whop_store_id: 'store_aBcDeFg12345',
-    subscriptionTier: 'silver',
+// FIX: Export SignInCredentials and SignUpCredentials types for use in App.tsx.
+export interface SignInCredentials {
+    email: string;
+    password: string;
+}
+
+export interface SignUpCredentials extends SignInCredentials {
+    username: string;
+}
+
+// --- DATA TRANSFORMATION HELPERS ---
+// These helpers convert data between Supabase's snake_case and our app's camelCase.
+
+const profileFromSupabase = (data: any): User => {
+    const badges: Badge[] = (data.user_badges || [])
+        .map((join: any) => (join.badges ? badgeFromSupabase(join.badges) : null))
+        .filter((b): b is Badge => b !== null);
+    
+    return {
+        id: data.id,
+        communityId: data.community_id,
+        username: data.username,
+        avatarUrl: data.avatar_url,
+        xp: data.xp,
+        streak: data.streak,
+        streakFreezes: data.streak_freezes,
+        lastActionDate: data.last_action_date,
+        role: data.role,
+        whop_user_id: data.whop_user_id,
+        badges,
+    };
 };
 
-// --- API SERVICE ---
-// This section exports functions that simulate async API calls.
-// In a real app, these would make `fetch` requests to a backend server.
+const actionFromSupabase = (data: any): Action => ({
+    id: data.id,
+    userId: data.user_id,
+    communityId: data.community_id,
+    actionType: data.action_type,
+    xpGained: data.xp_gained,
+    timestamp: data.created_at,
+    source: data.source,
+});
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const badgeFromSupabase = (data: any): Badge => ({
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    icon: data.icon,
+    color: data.color,
+});
+
+const questFromSupabase = (data: any): Quest => ({
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    tasks: (data.quest_tasks || []).map((task: any): QuestTask => ({
+        actionType: task.action_type,
+        targetCount: task.target_count,
+        description: task.description,
+    })),
+    xpReward: data.xp_reward,
+    badgeReward: data.badge_reward_id, // Note: This is just the ID now. We'd need to join to get the name.
+});
+
+const userQuestProgressFromSupabase = (data: any): UserQuestProgress => ({
+    questId: data.quest_id,
+    progress: data.progress,
+    completed: data.is_completed,
+    claimed: data.is_claimed,
+});
+
+// Assume a single community for this app version
+let COMMUNITY_ID: string | null = null;
+const getCommunityId = async () => {
+    if (COMMUNITY_ID) return COMMUNITY_ID;
+    const { data, error } = await supabase.from('communities').select('id').limit(1).single();
+    if (error || !data) {
+        console.error("Could not fetch community ID", error.message);
+        throw new Error("A community must be configured in the database.");
+    }
+    COMMUNITY_ID = data.id;
+    return COMMUNITY_ID;
+};
+
+const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id';
 
 export const api = {
     // READ operations
     getUsers: async (): Promise<User[]> => {
-        await delay(100);
-        return [...mockDatabase.users].sort((a, b) => b.xp - a.xp);
+        // Step 1: Fetch all user profiles
+        const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select(PROFILE_COLUMNS)
+            .order('xp', { ascending: false });
+
+        if (profilesError) {
+            console.error('Error fetching users:', profilesError.message);
+            return [];
+        }
+
+        // Step 2: Fetch all user_badges and their corresponding badges
+        const { data: allUserBadges, error: allUserBadgesError } = await supabase
+            .from('user_badges')
+            .select('user_id, badges(id, name, description, icon, color)');
+        
+        if (allUserBadgesError) {
+            console.error('Error fetching all user badges:', allUserBadgesError.message);
+            // Proceed without badges if this fails
+        }
+        
+        // Step 3: Create a map for efficient lookup of badges by user_id
+        const badgesByUserId = new Map<string, any[]>();
+        if (allUserBadges) {
+            for (const userBadge of allUserBadges) {
+                if (userBadge.user_id) {
+                    if (!badgesByUserId.has(userBadge.user_id)) {
+                        badgesByUserId.set(userBadge.user_id, []);
+                    }
+                    // Only add if the nested badge data exists
+                    if (userBadge.badges) {
+                         badgesByUserId.get(userBadge.user_id)!.push({ badges: userBadge.badges });
+                    }
+                }
+            }
+        }
+
+        // Step 4: Combine profiles with their badges
+        return profilesData.map(profile => {
+            const enrichedProfile = {
+                ...profile,
+                user_badges: badgesByUserId.get(profile.id) || [],
+            };
+            return profileFromSupabase(enrichedProfile);
+        });
     },
     getUserById: async (userId: string): Promise<User | null> => {
-        await delay(150);
-        const user = mockDatabase.users.find(u => u.id === userId);
-        return user ? { ...user } : null; // Return a copy
+        // Step 1: Fetch the user profile without .single() to avoid coercion errors
+        // that can be caused by RLS policies with joins.
+        const { data: profileDataArray, error: profileError } = await supabase
+            .from('profiles')
+            .select(PROFILE_COLUMNS)
+            .eq('id', userId);
+
+        if (profileError) {
+            console.error(`Error fetching user ${userId}:`, profileError.message);
+            return null;
+        }
+
+        if (!profileDataArray || profileDataArray.length === 0) {
+            return null; // User not found, not necessarily an error.
+        }
+
+        // If RLS returns multiple rows for a single ID, log it as a potential issue
+        // but proceed with the first result to keep the app functional.
+        if (profileDataArray.length > 1) {
+            console.warn(`Data integrity warning: Multiple profiles returned for user ID ${userId}. Using the first result.`);
+        }
+
+        const profileData = profileDataArray[0];
+
+        // Step 2: Fetch the user's badges
+        const { data: badgesData, error: badgesError } = await supabase
+            .from('user_badges')
+            .select('badges(id, name, description, icon, color)')
+            .eq('user_id', userId);
+
+        if (badgesError) {
+            console.error(`Error fetching badges for user ${userId}:`, badgesError.message);
+            // Continue without badges if this query fails
+        }
+
+        // Step 3: Combine the profile and badge data
+        const enrichedProfile = {
+            ...profileData,
+            user_badges: badgesData || [],
+        };
+
+        return profileFromSupabase(enrichedProfile);
+    },
+    // FIX: Add getCurrentUserProfile method to fetch the profile for the currently authenticated user.
+    getCurrentUserProfile: async (): Promise<User | null> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return null;
+        }
+        return api.getUserById(user.id);
     },
     getUserActions: async (userId: string): Promise<Action[]> => {
-        await delay(50);
-        return mockDatabase.actions.filter(a => a.userId === userId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const { data, error } = await supabase
+            .from('actions_log')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching user actions:', error.message);
+            return [];
+        }
+        return data.map(actionFromSupabase);
     },
     getRewardsConfig: async (): Promise<RewardsConfig> => {
-        await delay(10);
-        return { ...mockDatabase.rewards };
+        const { data, error } = await supabase.from('reward_actions').select('*');
+        if (error) {
+            console.error('Error fetching rewards config:', error.message);
+            return {};
+        }
+        return data.reduce((acc, action) => {
+            acc[action.action_type] = { xp: action.xp_gained, badge: null }; // Note: Badge linking logic is separate now
+            return acc;
+        }, {} as RewardsConfig);
     },
     getBadgesConfig: async (): Promise<{ [key: string]: BadgeConfig }> => {
-        await delay(10);
-        return { ...mockDatabase.badges };
+        const { data, error } = await supabase.from('badges').select('*');
+         if (error) {
+            console.error('Error fetching badges config:', error.message);
+            return {};
+        }
+        return data.reduce((acc, badge) => {
+            acc[badge.name] = { description: badge.description, icon: badge.icon, color: badge.color };
+            return acc;
+        }, {} as { [key: string]: BadgeConfig });
     },
-    getCommunityInfo: async (): Promise<Community> => {
-        await delay(500);
-        return mockCommunityData;
+    getCommunityInfo: async (): Promise<Community | null> => {
+        const { data, error } = await supabase.from('communities').select('*').limit(1).single();
+        if (error) {
+            console.error('Error fetching community info:', error.message);
+            return null;
+        }
+        // Basic mapping, assuming schema matches type well enough
+        return {
+            id: data.id,
+            name: data.name,
+            logoUrl: data.logo_url,
+            themeColor: data.theme_color,
+            whop_store_id: data.whop_store_id,
+            subscriptionTier: data.subscription_tier
+        };
     },
     getQuests: async (): Promise<Quest[]> => {
-        await delay(200);
-        return [...mockDatabase.quests];
+        const { data, error } = await supabase.from('quests').select('*, quest_tasks(*)').eq('is_active', true);
+        if (error) {
+            console.error('Error fetching quests:', error.message);
+            return [];
+        }
+        return data.map(questFromSupabase);
     },
     getUserQuestProgress: async (userId: string): Promise<UserQuestProgress[]> => {
-        await delay(50);
-        return mockDatabase.userQuestProgress[userId] || [];
+        const { data, error } = await supabase.from('user_quest_progress').select('*').eq('user_id', userId);
+        if (error) {
+            console.error('Error fetching user quest progress:', error.message);
+            return [];
+        }
+        return data.map(userQuestProgressFromSupabase);
     },
 
     // WRITE operations
     recordAction: async (userId: string, actionType: string, source: 'manual' | 'whop' | 'discord' = 'manual') => {
-        await delay(200);
-        const user = mockDatabase.users.find(u => u.id === userId);
-        const reward = mockDatabase.rewards[actionType];
+        // IMPORTANT: This is a simplified version. The complex logic for streaks, auto-badging,
+        // and quests should be moved to a Supabase Database Function (RPC) to ensure it's
+        // secure, atomic, and reliable. Doing this on the client is not production-safe.
+        const communityId = await getCommunityId();
+
+        const { data: rewardAction } = await supabase
+            .from('reward_actions')
+            .select('xp_gained')
+            .eq('action_type', actionType)
+            .eq('community_id', communityId)
+            .single();
+
+        if (!rewardAction) {
+            console.error(`Reward action type "${actionType}" not found.`);
+            return null;
+        }
         
-        if (!user || !reward) return null;
+        // Use an RPC call to a database function to handle the logic atomically
+        const { data, error } = await supabase.rpc('increment_user_xp', {
+            p_user_id: userId,
+            p_xp_to_add: rewardAction.xp_gained
+        });
 
-        const now = new Date();
-        const lastAction = user.lastActionDate ? new Date(user.lastActionDate) : null;
-        let newStreak = user.streak;
-
-        if (lastAction) {
-            const hoursSinceLastAction = (now.getTime() - lastAction.getTime()) / (1000 * 3600);
-            if (hoursSinceLastAction > 48) {
-                if (user.streakFreezes > 0) {
-                    user.streakFreezes -= 1;
-                    // Streak is saved, but doesn't increment. We just update the date.
-                } else {
-                    newStreak = 1;
-                }
-            } else if (now.toDateString() !== lastAction.toDateString()) {
-                 newStreak += 1;
-            }
-        } else {
-            newStreak = 1;
+        if (error) {
+            console.error("Error updating user XP:", error.message);
+            return null;
         }
 
-        const newXp = user.xp + reward.xp;
-
-        // Update user
-        user.xp = newXp;
-        user.streak = newStreak;
-        user.lastActionDate = now.toISOString();
-
-        // Create action record
-        mockDatabase.actions.unshift({
-            id: `action_${mockDatabase.nextActionId++}`,
-            userId,
-            actionType,
-            xpGained: reward.xp,
-            timestamp: now.toISOString(),
-            source,
+        // 3. Log the action
+        const { error: logError } = await supabase.from('actions_log').insert({
+            user_id: userId,
+            community_id: communityId,
+            action_type: actionType,
+            xp_gained: rewardAction.xp_gained,
+            source: source,
         });
         
-        // --- Badge Logic ---
-        const badgesConfig = mockDatabase.badges;
-        const addBadge = (badgeName: string) => {
-            if (!user.badges.some(b => b.name === badgeName) && badgesConfig[badgeName]) {
-                user.badges.push({ id: `badge_${Date.now()}_${user.id}`, name: badgeName, ...badgesConfig[badgeName] });
-            }
-        };
+        if (logError) console.error("Error logging action:", logError.message);
 
-        if (reward.badge) addBadge(reward.badge);
-        if (user.streak < 3 && newStreak >= 3) addBadge('Streak Starter');
-        if (user.xp < 100 && newXp >= 100) addBadge('XP Novice');
-        if (user.xp < 500 && newXp >= 500) addBadge('XP Adept');
-        if (user.xp < 1000 && newXp >= 1000) addBadge('XP Veteran');
-        if (user.xp < 1500 && newXp >= 1500) addBadge('XP Master');
-        
-        // --- Quest Progress Logic ---
-        const userProgress = mockDatabase.userQuestProgress[userId] || [];
-        mockDatabase.quests.forEach(quest => {
-            const relevantTask = quest.tasks.find(t => t.actionType === actionType);
-            if (relevantTask) {
-                let questData = userProgress.find(p => p.questId === quest.id);
-                // If user has started this quest or it is new
-                if (questData && !questData.completed) {
-                    questData.progress[actionType] = (questData.progress[actionType] || 0) + 1;
-                } else if (!questData) {
-                    questData = { questId: quest.id, progress: { [actionType]: 1 }, completed: false, claimed: false };
-                    userProgress.push(questData);
-                }
-                
-                // Check for completion
-                const isComplete = quest.tasks.every(task => (questData.progress[task.actionType] || 0) >= task.targetCount);
-                if(isComplete) {
-                    questData.completed = true;
-                }
-            }
-        });
-        mockDatabase.userQuestProgress[userId] = userProgress;
-        
-        persistDatabase();
-        return { xpGained: reward.xp, newXp, newStreak, username: user.username };
+        // We can't easily get the username back from this simplified flow, so we return a subset.
+        // A full RPC function would handle and return all necessary data.
+        return { xpGained: rewardAction.xp_gained, username: '' };
     },
 
     awardBadge: async (userId: string, badgeName: string): Promise<boolean> => {
-        await delay(100);
-        const user = mockDatabase.users.find(u => u.id === userId);
-        const badgeInfo = mockDatabase.badges[badgeName];
-        if (user && badgeInfo && !user.badges.some(b => b.name === badgeName)) {
-            user.badges.push({ id: `badge_${Date.now()}`, name: badgeName, ...badgeInfo });
-            persistDatabase();
-            return true;
-        }
-        return false;
+        const communityId = await getCommunityId();
+        const { data: badge } = await supabase.from('badges').select('id').eq('name', badgeName).eq('community_id', communityId).single();
+        if(!badge) return false;
+
+        const { error } = await supabase.from('user_badges').insert({
+            user_id: userId,
+            badge_id: badge.id,
+            community_id: communityId,
+        });
+        return !error;
     },
 
     createReward: async (actionName: string, xp: number): Promise<boolean> => {
-        await delay(100);
-        if (!mockDatabase.rewards[actionName]) {
-            mockDatabase.rewards[actionName] = { xp, badge: null };
-            persistDatabase();
-            return true;
-        }
-        return false;
+       const communityId = await getCommunityId();
+       const { error } = await supabase.from('reward_actions').insert({
+           community_id: communityId,
+           action_type: actionName,
+           xp_gained: xp,
+       });
+       return !error;
     },
 
     createBadge: async (badgeName: string, config: BadgeConfig): Promise<boolean> => {
-        await delay(100);
-        if (!mockDatabase.badges[badgeName]) {
-            mockDatabase.badges[badgeName] = config;
-            persistDatabase();
-            return true;
-        }
-        return false;
+        const communityId = await getCommunityId();
+        const { error } = await supabase.from('badges').insert({
+            community_id: communityId,
+            name: badgeName,
+            ...config
+        });
+        return !error;
     },
     
     syncWhopMembers: async (): Promise<string> => {
-        await delay(1000);
+        // This is a MOCK implementation. A real version would require backend logic to securely
+        // call the Whop API, as API keys should not be exposed on the client.
+        const communityId = await getCommunityId();
         let newUsersCount = 0;
         let existingUsersCount = 0;
 
-        for (const member of mockWhopMembers) {
-            const existingUser = mockDatabase.users.find(u => u.whop_user_id === member.whop_user_id);
+        for (const member of MOCK_WHOP_MEMBERS) {
+            const { data: existingUser } = await supabase.from('profiles').select('id').eq('whop_user_id', member.whop_user_id).single();
             if (!existingUser) {
-                 const newUser: User = {
-                    id: `user_${mockDatabase.nextUserId++}`,
-                    username: member.username,
-                    avatarUrl: `https://picsum.photos/seed/${member.username}/100`,
-                    xp: 0,
-                    streak: 0,
-                    streakFreezes: 0,
-                    lastActionDate: null,
-                    badges: [],
-                    role: 'member', // New users default to 'member'
-                    whop_user_id: member.whop_user_id,
-                };
-                mockDatabase.users.push(newUser);
+                // In a real app, user creation would be handled by Supabase Auth.
+                // This is a placeholder for the demo.
+                console.log(`(Simulation) Would create new user: ${member.username}`);
                 newUsersCount++;
             } else {
                 existingUsersCount++;
             }
         }
-        persistDatabase();
-        return `Sync complete. Found ${existingUsersCount} existing members and added ${newUsersCount} new members.`;
+        return `Sync simulation complete. Found ${existingUsersCount} existing members and would add ${newUsersCount} new members.`;
     },
 
     triggerWebhook: async (userId: string, actionType: string): Promise<string | null> => {
+        // This simulates a webhook call by directly calling recordAction
         const result = await api.recordAction(userId, actionType, 'whop');
         if (result) {
-            return `Webhook success: Awarded ${result.xpGained} XP to ${result.username} for subscription renewal.`;
+            const { data: user } = await supabase.from('profiles').select('username').eq('id', userId).single();
+            return `Webhook success: Awarded ${result.xpGained} XP to ${user?.username} for subscription renewal.`;
         }
         return 'Webhook failed: User or action not found.';
     },
     
     buyStreakFreeze: async (userId: string): Promise<{ success: boolean; message: string; }> => {
-        await delay(500);
-        const user = mockDatabase.users.find(u => u.id === userId);
-        if (!user) {
-            return { success: false, message: 'User not found.' };
-        }
-        if (user.xp < STREAK_FREEZE_COST) {
-            return { success: false, message: 'Not enough XP!' };
-        }
+        // WARNING: This is NOT transaction-safe and is vulnerable to race conditions.
+        // This logic MUST be moved to a database function (RPC) for production.
+        const { data: user } = await supabase.from('profiles').select('xp, streak_freezes').eq('id', userId).single();
+        if (!user) return { success: false, message: 'User not found.' };
+        if (user.xp < STREAK_FREEZE_COST) return { success: false, message: 'Not enough XP!' };
 
-        user.xp -= STREAK_FREEZE_COST;
-        user.streakFreezes += 1;
+        const { error } = await supabase.from('profiles').update({
+            xp: user.xp - STREAK_FREEZE_COST,
+            streak_freezes: user.streak_freezes + 1,
+        }).eq('id', userId);
         
-        persistDatabase();
+        if (error) return { success: false, message: 'Purchase failed.' };
         return { success: true, message: 'Streak Freeze purchased!' };
     },
 
     claimQuestReward: async (userId: string, questId: string): Promise<{ success: boolean; message: string }> => {
-        await delay(500);
-        const user = mockDatabase.users.find(u => u.id === userId);
-        const quest = mockDatabase.quests.find(q => q.id === questId);
-        const progress = (mockDatabase.userQuestProgress[userId] || []).find(p => p.questId === questId);
-
-        if (!user || !quest || !progress || !progress.completed || progress.claimed) {
+        // WARNING: This logic MUST be moved to a database function (RPC) for production to prevent cheating.
+        // It's implemented here to keep the demo functional for now.
+        const { data: progress } = await supabase.from('user_quest_progress').select('*').eq('user_id', userId).eq('quest_id', questId).single();
+        if (!progress || !progress.is_completed || progress.is_claimed) {
             return { success: false, message: 'Reward cannot be claimed.' };
         }
+
+        const { data: quest } = await supabase.from('quests').select('*').eq('id', questId).single();
+        if (!quest) return { success: false, message: 'Quest not found.' };
+
+        // Mark as claimed
+        await supabase.from('user_quest_progress').update({ is_claimed: true, claimed_at: new Date().toISOString() }).match({ id: progress.id });
+
+        // Award XP
+        await supabase.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: quest.xp_reward });
         
-        progress.claimed = true;
-        user.xp += quest.xpReward;
-        if (quest.badgeReward) {
-            const badgeInfo = mockDatabase.badges[quest.badgeReward];
-            if (badgeInfo && !user.badges.some(b => b.name === quest.badgeReward)) {
-                 user.badges.push({ id: `badge_${Date.now()}`, name: quest.badgeReward, ...badgeInfo });
-            }
+        // Award Badge
+        if(quest.badge_reward_id) {
+             const communityId = await getCommunityId();
+             await supabase.from('user_badges').insert({ user_id: userId, badge_id: quest.badge_reward_id, community_id: communityId });
         }
         
-        persistDatabase();
-        return { success: true, message: `Quest complete! +${quest.xpReward} XP`};
+        return { success: true, message: `Quest complete! +${quest.xp_reward} XP`};
     },
     
     resetData: async (): Promise<void> => {
-        await delay(100);
-        localStorage.removeItem(DB_KEY);
+        console.warn("API Reset is disabled. Please manage data in the Supabase dashboard.");
+    },
+
+    // --- AUTH ---
+    // FIX: Implement missing authentication methods.
+    signInWithPassword: async (credentials: SignInCredentials) => {
+        return supabase.auth.signInWithPassword(credentials);
+    },
+    signUpNewUser: async ({ email, password, username }: SignUpCredentials) => {
+        const communityId = await getCommunityId();
+        return supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    username,
+                    avatar_url: `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(username)}`,
+                    community_id: communityId,
+                },
+            },
+        });
+    },
+    // FIX: Changed signOut to return Promise<void> to match the type in AppContextType.
+    signOut: async (): Promise<void> => {
+        await supabase.auth.signOut();
     },
 };

@@ -8,15 +8,19 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { selectedUser, logout } = useApp();
+    const { selectedUser, signOut } = useApp();
     const navigate = useNavigate();
     
     const navLinkClasses = "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors";
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await signOut();
+        // Navigate to the landing page after sign-out.
+        // The `onAuthStateChange` listener in App.tsx updates the state,
+        // ensuring the UI reflects the logged-out status.
+        // This is a smoother experience than a full page reload.
         navigate('/');
     };
 
@@ -63,9 +67,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     </button>
                                 </>
                             ) : (
-                                <Link to="/" className={`${navLinkClasses} ${inactiveClass}`}>
-                                    Home
-                                </Link>
+                                <>
+                                    <Link to="/login" className={`${navLinkClasses} ${inactiveClass}`}>
+                                        Sign In
+                                    </Link>
+                                    <Link to="/signup" className="bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                        Sign Up
+                                    </Link>
+                                </>
                             )}
                         </div>
                     </div>

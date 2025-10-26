@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../App';
 import { LogoIcon, TrophyIcon, CrownIcon, ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon } from './icons';
 
@@ -22,15 +22,8 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, iconBg, title, descript
 
 
 const LandingPage: React.FC = () => {
-  const { login } = useApp();
+  const { selectedUser } = useApp();
   const navigate = useNavigate();
-
-  const handleLogin = (role: 'admin' | 'member') => {
-    // In our mock data, user_1 is the admin and user_2 is a regular member.
-    const userId = role === 'admin' ? 'user_1' : 'user_2';
-    login(userId);
-    navigate('/dashboard');
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4 py-16">
@@ -50,20 +43,31 @@ const LandingPage: React.FC = () => {
           Reward members with XP, badges, and streaks for learning and taking action. Boost engagement and retention with powerful gamification.
         </p>
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <button
-              onClick={() => handleLogin('member')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
-            >
-              <UserGroupIcon className="h-6 w-6" />
-              Login as Member (Demo)
-            </button>
-             <button
-              onClick={() => handleLogin('admin')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-all"
-            >
-               <ArrowTrendingUpIcon className="h-6 w-6" />
-              Login as Admin (Demo)
-            </button>
+            {selectedUser ? (
+                 <button
+                    onClick={() => navigate('/dashboard')}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
+                 >
+                    Go to Dashboard
+                 </button>
+            ) : (
+                <>
+                    <Link
+                      to="/signup"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
+                    >
+                      <UserGroupIcon className="h-6 w-6" />
+                      Get Started
+                    </Link>
+                     <Link
+                      to="/login"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-all"
+                    >
+                       <ArrowTrendingUpIcon className="h-6 w-6" />
+                      Sign In
+                    </Link>
+                </>
+            )}
         </div>
       </div>
 
@@ -99,12 +103,12 @@ const LandingPage: React.FC = () => {
           automatically reward members for subscriptions, renewals, and community
           participation.
         </p>
-        <button
-          onClick={() => handleLogin('admin')}
+        <Link
+          to="/signup"
           className="inline-block bg-white text-purple-700 font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-200 transition-all transform hover:scale-105 shadow-lg"
         >
-          Explore Admin Features
-        </button>
+          Explore Features
+        </Link>
       </div>
 
     </div>

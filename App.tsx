@@ -10,8 +10,11 @@ import QuestsPage from './components/QuestsPage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
-import { api } from './services/api';
+import LoginPage from './components/LoginPage';
+import SignUpPage from './components/SignUpPage';
+import { api, SignInCredentials, SignUpCredentials } from './services/api';
 import type { User, Action, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress } from './types';
+import { supabase } from './services/supabase';
 
 // --- App Context Logic ---
 type Feature = 'discordIntegration';
@@ -39,9 +42,12 @@ interface AppContextType {
   quests: Quest[];
   userQuestProgress: UserQuestProgress[];
   
-  // Actions
-  login: (userId: string) => void;
-  logout: () => void;
+  // Auth Actions
+  signIn: (credentials: SignInCredentials) => Promise<any>;
+  signUp: (credentials: SignUpCredentials) => Promise<any>;
+  signOut: () => Promise<void>;
+
+  // Data Actions
   getUserById: (userId: string) => Promise<User | null>;
   getUserActions: (userId: string) => Promise<Action[]>;
   handleRecordAction: (userId: string, actionType: string, source?: 'manual' | 'whop' | 'discord') => Promise<any>;
@@ -62,7 +68,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [rewardsConfig, setRewardsConfig] = useState<RewardsConfig>({});
   const [badgesConfig, setBadgesConfig] = useState<{ [key: string]: BadgeConfig }>({});
   const [isWhopConnected, setIsWhopConnected] = useState(false);
@@ -70,33 +76,45 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [userQuestProgress, setUserQuestProgress] = useState<UserQuestProgress[]>([]);
 
-  const selectedUser = allUsers.find(user => user.id === selectedUserId) || null;
-
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchStaticData = useCallback(async () => {
     try {
-      const [users, rewards, badges, communityInfo, questsData] = await Promise.all([
-        api.getUsers(),
+      const [rewards, badges, communityInfo, questsData, users] = await Promise.all([
         api.getRewardsConfig(),
         api.getBadgesConfig(),
         api.getCommunityInfo(),
         api.getQuests(),
+        api.getUsers(), // Fetch users for leaderboard
       ]);
-      setAllUsers(users);
       setRewardsConfig(rewards);
       setBadgesConfig(badges);
       setCommunity(communityInfo);
       setQuests(questsData);
+      setAllUsers(users);
     } catch (error) {
-      console.error("Failed to fetch initial data:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to fetch static data:", error);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    setIsLoading(true);
+    fetchStaticData(); // Fetch non-user-specific data on initial load
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const userProfile = await api.getCurrentUserProfile();
+          setSelectedUser(userProfile);
+        } else {
+          setSelectedUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [fetchStaticData]);
   
   useEffect(() => {
     if (selectedUser) {
@@ -106,23 +124,16 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [selectedUser]);
 
-
-  const login = (userId: string) => {
-    setSelectedUserId(userId);
-  };
-
-  const logout = () => {
-    setSelectedUserId(null);
-  };
-  
   const refreshUserData = async () => {
     const users = await api.getUsers();
     setAllUsers(users);
-    if(selectedUser) {
-       const progress = await api.getUserQuestProgress(selectedUser.id);
-       setUserQuestProgress(progress);
+    if (selectedUser) {
+        const updatedProfile = await api.getUserById(selectedUser.id);
+        setSelectedUser(updatedProfile);
+        const progress = await api.getUserQuestProgress(selectedUser.id);
+        setUserQuestProgress(progress);
     }
-  }
+  };
 
   const handleRecordAction = async (userId: string, actionType: string, source: 'manual' | 'whop' | 'discord' = 'manual') => {
     const result = await api.recordAction(userId, actionType, source);
@@ -139,14 +150,14 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const formattedActionName = actionName.trim().toLowerCase().replace(/\s+/g, '_');
     if (formattedActionName) {
       await api.createReward(formattedActionName, xp);
-      await fetchData();
+      await fetchStaticData();
     }
   };
 
   const handleAddBadge = async (badgeName: string, config: BadgeConfig) => {
     if (badgeName.trim()) {
       await api.createBadge(badgeName.trim(), config);
-      await fetchData();
+      await fetchStaticData();
     }
   };
   
@@ -206,8 +217,9 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     community,
     quests,
     userQuestProgress,
-    login,
-    logout,
+    signIn: api.signInWithPassword,
+    signUp: api.signUpNewUser,
+    signOut: api.signOut,
     getUserById: api.getUserById,
     getUserActions: api.getUserActions,
     handleRecordAction,
@@ -243,6 +255,8 @@ const App: React.FC = () => {
       <AppProvider>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route 
             path="/dashboard" 
             element={<ProtectedRoute><Layout><DashboardPage /></Layout></ProtectedRoute>} 
