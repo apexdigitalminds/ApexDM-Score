@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import type { User, Action, Badge, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress, QuestTask, AnalyticsData, StoreItem } from '../types';
-import { initialRewardsConfig, initialBadgesConfig } from '../config/rewards';
 
 // --- MOCK WHOP/COMMUNITY DATA (for simulation) ---
 // In a real app, this would be fetched or configured elsewhere.
@@ -199,7 +198,7 @@ export const api = {
     },
     getUserActions: async (userId: string): Promise<Action[]> => {
         const { data, error } = await supabase
-            .from('user_actions')
+            .from('actions_log')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
@@ -212,16 +211,38 @@ export const api = {
         return data.map(actionFromSupabase);
     },
     getRewardsConfig: async (): Promise<RewardsConfig> => {
-        // Bypassing database call due to repeated schema/permission errors from user's environment.
-        // Using a stable, file-based config ensures the app can run while DB issues are sorted out.
-        console.log("Using initial rewards config from file to bypass database issues.");
-        return Promise.resolve(initialRewardsConfig);
+        const { data, error } = await supabase
+            .from('reward_actions')
+            .select('action_type, xp_gained');
+        
+        if (error) {
+            console.error('Error fetching rewards config:', error.message);
+            return {};
+        }
+
+        return data.reduce((acc, reward) => {
+            acc[reward.action_type] = { xp: reward.xp_gained, badge: null }; // The `reward_actions` table does not have a badge column
+            return acc;
+        }, {} as RewardsConfig);
     },
     getBadgesConfig: async (): Promise<{ [key: string]: BadgeConfig }> => {
-        // Bypassing database call due to potential schema/permission errors from user's environment.
-        // Using a stable, file-based config ensures the app can run while DB issues are sorted out.
-        console.log("Using initial badges config from file to bypass database issues.");
-        return Promise.resolve(initialBadgesConfig);
+        const { data, error } = await supabase
+            .from('badges')
+            .select('name, description, icon, color');
+
+        if (error) {
+            console.error('Error fetching badges config:', error.message);
+            return {};
+        }
+        
+        return data.reduce((acc, badge) => {
+            acc[badge.name] = {
+                description: badge.description,
+                icon: badge.icon,
+                color: badge.color
+            };
+            return acc;
+        }, {} as { [key: string]: BadgeConfig });
     },
     getCommunityInfo: async (): Promise<Community | null> => {
         try {
@@ -327,7 +348,7 @@ export const api = {
     },
     createReward: async (actionType: string, xp: number) => {
         const communityId = await getCommunityId();
-        const { error } = await supabase.from('rewards_actions').insert({
+        const { error } = await supabase.from('reward_actions').insert({
             community_id: communityId,
             action_type: actionType,
             xp_gained: xp,
@@ -338,14 +359,14 @@ export const api = {
     },
     updateReward: async (actionType: string, xp: number) => {
         const { error } = await supabase
-            .from('rewards_actions')
+            .from('reward_actions')
             .update({ xp_gained: xp })
             .eq('action_type', actionType);
         if (error) console.error(`Error updating reward "${actionType}":`, error.message);
     },
     deleteReward: async (actionType: string) => {
         const { error } = await supabase
-            .from('rewards_actions')
+            .from('reward_actions')
             .delete()
             .eq('action_type', actionType);
         if (error) console.error(`Error deleting reward "${actionType}":`, error.message);
