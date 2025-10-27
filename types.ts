@@ -1,3 +1,5 @@
+// import type { BadgeConfig as OriginalBadgeConfig } from './config/rewards';
+
 export interface User {
   id: string; // This is the UUID from auth.users
   communityId: string;
@@ -32,11 +34,14 @@ export interface Badge {
   color: string;
 }
 
+// FIX: This type had been removed, but is still used in BadgeShowcase.tsx. Re-adding it.
+// FIX: Redefined BadgeConfig here to break a circular dependency and fix type errors.
 export interface BadgeConfig {
   description: string;
   icon: string;
   color: string;
 }
+
 
 export interface Reward {
   xp: number;
@@ -71,6 +76,7 @@ export interface Quest {
   tasks: QuestTask[];
   xpReward: number;
   badgeReward: string | null;
+  isActive: boolean;
 }
 
 export interface UserQuestProgress {
@@ -78,4 +84,64 @@ export interface UserQuestProgress {
   progress: { [actionType: string]: number }; // e.g. { "log_trade": 3 }
   completed: boolean;
   claimed: boolean;
+}
+
+// --- New Store Types ---
+export interface StoreItem {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  icon: string;
+  isActive: boolean;
+}
+
+// --- New Analytics Types ---
+export interface AnalyticsData {
+  engagement: {
+    activeMembers7d: number;
+    activeMembers30d: number;
+    avgDailyActions: number; // Simplified to Actions Today
+    xpEarnedToday: number;
+  };
+  growth: {
+    newMembers7d: number;
+    churnedMembers14d: number; // Inactive for > 14 days
+  };
+  topPerformers: {
+    byXp: User[];
+    byStreak: User[];
+  };
+  activityBreakdown: {
+    actionType: string;
+    count: number;
+    color?: string; // Color added for chart
+  }[];
+  streakHealth: {
+    avgStreakLength: number;
+    percentWithActiveStreak: number;
+  };
+  topXpActions: {
+    actionType: string;
+    totalXp: number;
+  }[];
+  topBadges: {
+    name: string;
+    count: number;
+    icon: string;
+    color: string;
+  }[];
+  questAnalytics: {
+    questId: string;
+    title: string;
+    participationRate: number;
+    completionRate: number;
+  }[];
+  storeAnalytics: {
+    totalSpent: number;
+    items: {
+        name: string;
+        count: number;
+    }[];
+  };
 }

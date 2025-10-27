@@ -27,15 +27,15 @@ export const WhopIcon: React.FC<IconProps> = ({ className, style }) => (
     </svg>
 );
 
+const mdiStarShootingPath = "M18.09 11.77L19.56 18.1L14 14.74L8.44 18.1L9.9 11.77L5 7.5L11.47 6.96L14 1L16.53 6.96L23 7.5L18.09 11.77M2 12.43C2.19 12.43 2.38 12.37 2.55 12.26L5.75 10.15L4.18 8.79L1.45 10.59C.989 10.89 .861 11.5 1.16 12C1.36 12.27 1.68 12.43 2 12.43M1.16 21.55C1.36 21.84 1.68 22 2 22C2.19 22 2.38 21.95 2.55 21.84L6.66 19.13L7 17.76L7.31 16.31L1.45 20.16C.989 20.47 .861 21.09 1.16 21.55M1.45 15.38C.989 15.68 .861 16.3 1.16 16.76C1.36 17.06 1.68 17.21 2 17.21C2.19 17.21 2.38 17.16 2.55 17.05L7.97 13.5L8.24 12.31L7.32 11.5L1.45 15.38Z";
 
 export const CometIcon: React.FC<IconProps> = ({ className, fill = 'currentColor', style }) => (
   <svg
-    version="1.0"
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 300 219"
-    preserveAspectRatio="xMidYMid meet"
+    viewBox="0 0 24 24"
     className={className}
     style={style}
+    fill={fill}
   >
     <defs>
       <linearGradient id="legendary-streak-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -51,9 +51,23 @@ export const CometIcon: React.FC<IconProps> = ({ className, fill = 'currentColor
         <stop offset="100%" stopColor="#3B82F6" />
       </linearGradient>
     </defs>
+    <path d={mdiStarShootingPath} />
+  </svg>
+);
+
+// This is the OLD CometIcon, now for badges.
+export const ShootingStarIcon: React.FC<IconProps> = ({ className, style }) => (
+  <svg
+    version="1.0"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 300 219"
+    preserveAspectRatio="xMidYMid meet"
+    className={className}
+    style={style}
+  >
     <g
       transform="translate(0, 219) scale(0.1, -0.1)"
-      fill={fill}
+      fill="currentColor"
       stroke="none"
     >
       <path d="M1345 1968 c-21 -19 -30 -44 -50 -143 -14 -66 -27 -130 -30 -141 -3 -16 -33 -33 -116 -70 -120 -53 -149 -78 -149 -131 0 -46 22 -66 159 -142 l114 -64 -7 -128 c-9 -164 6 -198 87 -199 38 0 49 8 234 173 21 18 23 18 149 -7 159 -33 175 -32 208 0 43 44 36 77 -44 199 l-71 106 71 123 c86 152 92 199 28 232 -26 14 -46 14 -156 4 l-126 -12 -36 39 c-174 191 -164 183 -203 183 -23 0 -45 -8 -62 -22z" />
@@ -100,10 +114,25 @@ export const UserGroupIcon: React.FC<IconProps> = ({ className, style }) => (
     <MdiIcon path={mdiAccountGroupPath} className={className} style={style} />
 );
 
+const mdiAccountPath = "M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z";
+export const AccountIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiAccountPath} className={className} style={style} />
+);
+
 export const ArrowTrendingUpIcon: React.FC<IconProps> = ({ className, style }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className} style={style}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
     </svg>
+);
+
+const mdiTrendingDownPath = "M16,18L18.29,15.71L13.41,10.83L9.41,14.83L2,7.41L3.41,6L9.41,12L13.41,8L20.71,15.29L23,13V18H16Z";
+export const TrendingDownIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiTrendingDownPath} className={className} style={style} />
+);
+
+const mdiAccountPlusPath = "M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14M15,12A4,4 0 0,0 19,8A4,4 0 0,0 15,4A4,4 0 0,0 11,8A4,4 0 0,0 15,12M5,13V10H3V13H0V15H3V18H5V15H8V13H5Z";
+export const UserPlusIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiAccountPlusPath} className={className} style={style} />
 );
 
 export const LogoIcon: React.FC<IconProps> = ({ className, style }) => (
@@ -188,9 +217,24 @@ export const RocketIcon: React.FC<IconProps> = ({ className, style }) => (
     </svg>
 );
 
+const mdiSparklesPath = "M19,1L17.74,3.75L15,5L17.74,6.26L19,9L20.25,6.26L23,5L20.25,3.75M9,4L6.5,9.5L1,12L6.5,14.5L9,20L11.5,14.5L17,12L11.5,9.5M19,15L17.74,17.74L15,19L17.74,20.25L19,23L20.25,20.25L23,19L20.25,17.74";
+export const SparklesIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiSparklesPath} className={className} style={style} />
+);
+
+const mdiMedalPath = "M20,2H4V4L9.81,8.36C6.14,9.57 4.14,13.53 5.35,17.2C6.56,20.87 10.5,22.87 14.19,21.66C17.86,20.45 19.86,16.5 18.65,12.82C17.95,10.71 16.3,9.05 14.19,8.36L20,4V2M14.94,19.5L12,17.78L9.06,19.5L9.84,16.17L7.25,13.93L10.66,13.64L12,10.5L13.34,13.64L16.75,13.93L14.16,16.17L14.94,19.5Z";
+export const MedalIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiMedalPath} className={className} style={style} />
+);
+
+const mdiStarTrophyPath = "M15.2 10.7L16.6 16L12 12.2L7.4 16L8.8 10.8L4.6 7.3L10 7L12 2L14 7L19.4 7.3L15.2 10.7M14 19H13V16L12 15L11 16V19H10C8.9 19 8 19.9 8 21V22H16V21C16 19.9 15.11 19 14 19Z";
+export const StarTrophyIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiStarTrophyPath} className={className} style={style} />
+);
+
 export const FireIcon: React.FC<IconProps> = ({ className, style }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M13.5,0.67C13.5,0.67 13.43,0.91 13.32,1.14C12.44,2.83 12.1,4.22 12.38,5.83C12.67,7.44 13.5,8.14 13.5,9.5C13.5,10.86 12.28,12 11,12C9.72,12 8.5,10.86 8.5,9.5C8.5,8.27 8.94,7.74 9.38,6.81C9.82,5.88 10.1,5.14 10.04,4.22C9.97,3.3 9.5,2.67 9.5,2C9.5,0.8 6.5,2.47 6.5,6.5C6.5,10.53 9.53,13.5 13.5,13.5C17.47,13.5 20.5,10.53 20.5,6.5C20.5,2.47 17.5,0.8 17.5,2C17.5,2.67 17.03,3.3 16.96,4.22C16.9,5.14 17.18,5.88 17.62,6.81C18.06,7.74 18.5,8.27 18.5,9.5C18.5,10.86 17.28,12 16,12C14.72,12 13.5,10.86 13.5,9.5C13.5,8.14 14.33,7.44 14.62,5.83C14.9,4.22 14.56,2.83 13.68,1.14C13.57,0.91 13.5,0.67 13.5,0.67Z" />
+        <path d="M17.66 11.2C17.43 10.9 17.15 10.64 16.89 10.38C16.22 9.78 15.46 9.35 14.82 8.72C13.33 7.26 13 4.85 13.95 3C13 3.23 12.17 3.75 11.46 4.32C8.87 6.4 7.85 10.07 9.07 13.22C9.11 13.32 9.15 13.42 9.15 13.55C9.15 13.77 9 13.97 8.8 14.05C8.57 14.15 8.33 14.09 8.14 13.93C8.08 13.88 8.04 13.83 8 13.76C6.87 12.33 6.69 10.28 7.45 8.64C5.78 10 4.87 12.3 5 14.47C5.06 14.97 5.12 15.47 5.29 15.97C5.43 16.57 5.7 17.17 6 17.7C7.08 19.43 8.95 20.67 10.96 20.92C13.1 21.19 15.39 20.8 17.03 19.32C18.86 17.66 19.5 15 18.56 12.72L18.43 12.46C18.22 12 17.66 11.2 17.66 11.2M14.5 17.5C14.22 17.74 13.76 18 13.4 18.1C12.28 18.5 11.16 17.94 10.5 17.28C11.69 17 12.4 16.12 12.61 15.23C12.78 14.43 12.46 13.77 12.33 13C12.21 12.26 12.23 11.63 12.5 10.94C12.69 11.32 12.89 11.7 13.13 12C13.9 13 15.11 13.44 15.37 14.8C15.41 14.94 15.43 15.08 15.43 15.23C15.46 16.05 15.1 16.95 14.5 17.5H14.5Z" />
     </svg>
 );
 
@@ -216,6 +260,11 @@ export const ShoppingCartIcon: React.FC<IconProps> = ({ className, style }) => (
     <MdiIcon path={mdiCartPath} className={className} style={style} />
 );
 
+const mdiShoppingBagPath = "M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5Z";
+export const ShoppingBagIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiShoppingBagPath} className={className} style={style} />
+);
+
 export const SnowflakeIcon: React.FC<IconProps> = ({ className, style }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className} style={style}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m-7.5-7.5h15m-12.879 5.379 10.758-10.758m-10.758 0L17.379 17.38" />
@@ -228,18 +277,35 @@ export const CheckCircleIcon: React.FC<IconProps> = ({ className, style }) => (
     </svg>
 );
 
+export const CameraIcon: React.FC<IconProps> = ({ className, style }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} style={style}>
+        <path d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z" />
+    </svg>
+);
+
+const mdiChartPiePath = "M11,2V22C5.9,21.5 2,17.1 2,12C2,6.9 5.9,2.5 11,2M13,2V11H22C21.5,6.9 17.1,3 13,2M13,13V22C17.1,21.5 21.5,17.1 22,12H13Z";
+export const ChartPieIcon: React.FC<IconProps> = ({ className, style }) => (
+    <MdiIcon path={mdiChartPiePath} className={className} style={style} />
+);
+
 export const iconMap: { [key: string]: React.FC<IconProps> } = {
-    MagnifyingGlass: MagnifyingGlassIcon,
-    ShieldCheck: ShieldCheckIcon,
-    Crown: CrownIcon,
-    Star: StarIcon,
-    Trophy: TrophyIcon,
-    Gemstone: GemstoneIcon,
-    Rocket: RocketIcon,
-    Fire: FireIcon,
-    BookOpen: BookOpenIcon,
-    ChartBar: ChartBarIcon,
-    UserGroup: UserGroupIcon,
+  "Account": AccountIcon,
+  "Crown": CrownIcon,
+  "Gemstone": GemstoneIcon,
+  "MagnifyingGlass": MagnifyingGlassIcon,
+  "Medal": MedalIcon,
+  "Rocket": RocketIcon,
+  "ShieldCheck": ShieldCheckIcon,
+  "ShootingStar": ShootingStarIcon,
+  "Sparkles": SparklesIcon,
+  "Star": StarIcon,
+  "StarTrophy": StarTrophyIcon,
+  "Trophy": TrophyIcon,
+  "Comet": CometIcon,
+  "Fire": FireIcon,
+  "Target": TargetIcon,
+  "BookOpen": BookOpenIcon,
+  "Snowflake": SnowflakeIcon,
 };
 
 export const iconMapKeys = Object.keys(iconMap);

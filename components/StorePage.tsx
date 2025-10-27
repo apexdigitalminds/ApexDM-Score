@@ -1,29 +1,65 @@
 import React, { useState } from 'react';
 import { useApp } from '../App';
-import { SnowflakeIcon } from './icons';
+import type { StoreItem } from '../types';
+import { iconMap } from './icons';
 
-const STREAK_FREEZE_COST = 500;
+const StoreItemCard: React.FC<{
+    item: StoreItem;
+    userXP: number;
+    userFreezes?: number; // Optional for specific item display
+    onPurchase: (itemId: string) => void;
+    isPurchasing: boolean;
+}> = ({ item, userXP, onPurchase, isPurchasing }) => {
+    const canAfford = userXP >= item.cost;
+    const IconComponent = iconMap[item.icon] || iconMap['Sparkles']; // Fallback icon
+
+    return (
+        <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-br from-purple-600 to-blue-600 h-32 flex items-center justify-center">
+                <IconComponent className="w-20 h-20 text-white/80" />
+            </div>
+            <div className="p-6 flex flex-col flex-grow">
+                <h3 className="text-xl font-bold text-white mb-2">{item.name}</h3>
+                <p className="text-slate-400 text-sm mb-4 flex-grow">
+                    {item.description}
+                </p>
+                <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-slate-400">Cost:</p>
+                    <p className="text-2xl font-bold text-blue-400">{item.cost.toLocaleString()} XP</p>
+                </div>
+                <button
+                    onClick={() => onPurchase(item.id)}
+                    disabled={!canAfford || isPurchasing}
+                    className="w-full bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                    {isPurchasing ? 'Processing...' : (canAfford ? 'Buy Now' : 'Not Enough XP')}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 
 const StorePage: React.FC = () => {
-  const { selectedUser, buyStreakFreeze } = useApp();
+  const { selectedUser, storeItems, handleBuyStoreItem } = useApp();
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
   // ProtectedRoute ensures user is not null
   const user = selectedUser!;
 
-  const handlePurchase = async () => {
-    setIsPurchasing(true);
-    const result = await buyStreakFreeze(user.id);
+  const handlePurchase = async (itemId: string) => {
+    setPurchasingId(itemId);
+    const result = await handleBuyStoreItem(user.id, itemId);
     setNotification({
       type: result.success ? 'success' : 'error',
       message: result.message
     });
-    setIsPurchasing(false);
+    setPurchasingId(null);
     setTimeout(() => setNotification(null), 3000);
   };
   
-  const canAfford = user.xp >= STREAK_FREEZE_COST;
+  const activeItems = storeItems.filter(item => item.isActive);
 
   return (
     <div className="space-y-6">
@@ -36,7 +72,7 @@ const StorePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold">XP Store</h1>
-            <p className="text-slate-400">Spend your XP on powerful items.</p>
+            <p className="text-slate-400">Spend your XP on powerful items and cosmetics.</p>
         </div>
         <div className="flex gap-6 text-right">
             <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg">
@@ -49,39 +85,25 @@ const StorePage: React.FC = () => {
             </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Streak Freeze Item */}
-        <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col overflow-hidden">
-            <div className="bg-gradient-to-br from-cyan-500 to-blue-600 h-32 flex items-center justify-center">
-                <SnowflakeIcon className="w-20 h-20 text-white/80" />
+        
+        {activeItems.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeItems.map(item => (
+                    <StoreItemCard 
+                        key={item.id}
+                        item={item}
+                        userXP={user.xp}
+                        onPurchase={handlePurchase}
+                        isPurchasing={purchasingId === item.id}
+                    />
+                ))}
             </div>
-            <div className="p-6 flex flex-col flex-grow">
-                <h3 className="text-xl font-bold text-white mb-2">Streak Freeze</h3>
-                <p className="text-slate-400 text-sm mb-4 flex-grow">
-                    Protect your hard-earned streak! If you miss a day, a Streak Freeze will be used automatically to keep your streak intact.
-                </p>
-                <div className="flex justify-between items-center mb-4">
-                    <p className="text-sm text-slate-400">Cost:</p>
-                    <p className="text-2xl font-bold text-blue-400">{STREAK_FREEZE_COST} XP</p>
-                </div>
-                <button 
-                    onClick={handlePurchase}
-                    disabled={!canAfford || isPurchasing}
-                    className="w-full bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                    {isPurchasing ? 'Processing...' : (canAfford ? 'Buy Now' : 'Not Enough XP')}
-                </button>
+        ) : (
+             <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col items-center justify-center text-center p-12 h-64">
+                <p className="text-slate-500 text-lg font-bold">The store is currently empty.</p>
+                <p className="text-slate-600 text-sm">Check back later for new items!</p>
             </div>
-        </div>
-        {/* Future items can be added here */}
-         <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col items-center justify-center text-center p-6 opacity-50">
-            <p className="text-slate-500 text-lg font-bold">More items coming soon!</p>
-            <p className="text-slate-600 text-sm">Check back later for more ways to use your XP.</p>
-        </div>
-
-      </div>
-
+        )}
     </div>
   );
 };

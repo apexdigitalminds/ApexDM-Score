@@ -3,7 +3,7 @@ import type { Badge } from '../types';
 import { iconMap } from './icons';
 
 const BadgeItem: React.FC<{ badge: Badge }> = ({ badge }) => {
-    const IconComponent = iconMap[badge.icon] || iconMap.Star;
+    const IconComponent = iconMap[badge.icon] || iconMap['Star'];
 
     return (
         <div className="group relative bg-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center aspect-square transition-all hover:bg-slate-700 shadow-lg">

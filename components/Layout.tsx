@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon } from './icons';
+import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, AccountIcon, ChartPieIcon } from './icons';
 import { useApp } from '../App';
+import Avatar from './Avatar';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -40,10 +41,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex items-center gap-2">
                             {selectedUser ? (
                                 <>
-                                    <div className="flex items-center gap-3 mr-4">
-                                        <img src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-8 h-8 rounded-full" />
+                                    <NavLink 
+                                        to={`/profile/${selectedUser.id}`} 
+                                        end 
+                                        className={({isActive}) => `flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${isActive ? activeClass : inactiveClass}`}
+                                    >
+                                        <Avatar src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-8 h-8 rounded-full" />
                                         <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>
-                                    </div>
+                                    </NavLink>
                                     <NavLink to="/dashboard" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
                                         <ChartBarIcon className="h-5 w-5" />
                                         <span className="hidden sm:inline">Dashboard</span>
@@ -57,10 +62,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         <span className="hidden sm:inline">XP Store</span>
                                     </NavLink>
                                     {selectedUser.role === 'admin' && (
-                                        <NavLink to="/admin" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
-                                            <UserGroupIcon className="h-5 w-5" />
-                                            <span className="hidden sm:inline">Admin</span>
-                                        </NavLink>
+                                        <>
+                                            <NavLink to="/analytics" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                                <ChartPieIcon className="h-5 w-5" />
+                                                <span className="hidden sm:inline">Analytics</span>
+                                            </NavLink>
+                                            <NavLink to="/admin" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                                <UserGroupIcon className="h-5 w-5" />
+                                                <span className="hidden sm:inline">Admin</span>
+                                            </NavLink>
+                                        </>
                                     )}
                                     <button onClick={handleLogout} className="ml-2 px-4 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-slate-700 transition-colors">
                                         Logout

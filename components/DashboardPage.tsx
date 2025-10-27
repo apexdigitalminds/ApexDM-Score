@@ -6,7 +6,6 @@ import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
 import Leaderboard from './Leaderboard';
 import StreakShowcase from './StreakShowcase';
-import BadgeShowcase from './BadgeShowcase';
 import { SnowflakeIcon } from './icons';
 
 const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
@@ -101,7 +100,7 @@ const DashboardPage: React.FC = () => {
                         {userActions.map(action => (
                             <div key={action.id} className="flex justify-between items-center text-sm">
                                 <p className="text-slate-300">
-                                    Performed <span className="font-semibold text-white">{action.actionType.replace(/_/g, ' ')}</span>
+                                    Performed <span className="font-semibold text-white">{action.actionType ? action.actionType.replace(/_/g, ' ') : 'Unknown Action'}</span>
                                 </p>
                                 <div className="flex items-center gap-4">
                                      <span className="text-slate-400">{new Date(action.timestamp).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
@@ -120,7 +119,6 @@ const DashboardPage: React.FC = () => {
             {/* Showcase Section */}
             <div className="pt-6 space-y-6">
                 <StreakShowcase />
-                <BadgeShowcase />
             </div>
         </div>
     );

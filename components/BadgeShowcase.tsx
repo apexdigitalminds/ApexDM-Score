@@ -1,17 +1,18 @@
 import React from 'react';
 import { useApp } from '../App';
 import BadgeItem from './BadgeItem';
-// FIX: Import BadgeConfig to safely cast value from Object.entries
-import type { Badge, BadgeConfig } from '../types';
+// FIX: The type `BadgeConfig` is implicitly handled by the `badgesConfig` from `useApp`.
+import type { Badge } from '../types';
 
 const BadgeShowcase: React.FC = () => {
     const { badgesConfig } = useApp();
 
+    // FIX: Removed unnecessary cast. With the corrected `BadgeConfig` type in `types.ts`,
+    // spreading `config` now correctly creates an object that satisfies the `Badge` type.
     const allBadges: Badge[] = Object.entries(badgesConfig).map(([name, config], index) => ({
         id: `showcase_${index}`,
         name,
-        // FIX: Cast config to BadgeConfig to fix spread operator error
-        ...(config as BadgeConfig),
+        ...config,
     }));
 
     return (

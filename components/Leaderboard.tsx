@@ -3,6 +3,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { User } from '../types';
+import Avatar from './Avatar';
 
 interface LeaderboardProps {
   users: User[];
@@ -26,7 +27,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ users, currentUserId }) => {
           >
             <div className="flex items-center gap-4">
               <span className="font-bold text-slate-400 w-6 text-center">{index + 1}</span>
-              <img src={user.avatarUrl} alt={user.username} className="w-10 h-10 rounded-full" />
+              <Avatar src={user.avatarUrl} alt={user.username} className="w-10 h-10 rounded-full" />
               <span className="font-medium text-white">{user.username}</span>
             </div>
             <span className="font-bold text-blue-400">{user.xp.toLocaleString()} XP</span>

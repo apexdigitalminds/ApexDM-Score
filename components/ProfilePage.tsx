@@ -3,10 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../App';
 import type { User, Action } from '../types';
 import XPProgress from './XPProgress';
-import StreakCounter from './StreakCounter';
 import BadgeItem from './BadgeItem';
-// FIX: Import CometIcon to resolve 'Cannot find name' error.
-import { SnowflakeIcon, WhopIcon, ArrowTrendingUpIcon, CometIcon } from './icons';
+import { SnowflakeIcon, WhopIcon, ArrowTrendingUpIcon, CometIcon, CameraIcon } from './icons';
+import Avatar from './Avatar';
+import AvatarUpdateModal from './AvatarUpdateModal';
 
 const StatCard: React.FC<{ icon: React.ReactNode, value: number, label: string }> = ({ icon, value, label }) => (
     <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-4">
@@ -25,6 +25,7 @@ const ProfilePage: React.FC = () => {
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [userActions, setUserActions] = useState<Action[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         if (userId) {
@@ -36,9 +37,9 @@ const ProfilePage: React.FC = () => {
                 setProfileUser(user);
                 setUserActions(actions);
                 setIsLoading(false);
-            });
+            }).catch(() => setIsLoading(false));
         }
-    }, [userId, getUserById, getUserActions]);
+    }, [userId, getUserById, getUserActions, selectedUser]); // Re-fetch if selectedUser changes
 
     if (isLoading) {
         return <div className="text-center p-8">Loading profile...</div>;
@@ -52,13 +53,31 @@ const ProfilePage: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {isOwnProfile && (
+                <AvatarUpdateModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                />
+            )}
             {/* Profile Header */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center gap-6">
-                <img 
-                    src={profileUser.avatarUrl} 
-                    alt={profileUser.username} 
-                    className="w-24 h-24 rounded-full border-4 border-slate-700"
-                />
+                 <div className="relative group">
+                    <Avatar 
+                        src={profileUser.avatarUrl} 
+                        alt={profileUser.username} 
+                        className="w-24 h-24 rounded-full border-4 border-slate-700"
+                    />
+                    {isOwnProfile && (
+                        <button 
+                            onClick={() => setIsModalOpen(true)}
+                            className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Change profile picture"
+                        >
+                            <CameraIcon className="w-8 h-8"/>
+                        </button>
+                    )}
+                </div>
+
                 <div className="text-center sm:text-left">
                     <div className="flex items-center justify-center sm:justify-start gap-3">
                         <h1 className="text-3xl font-bold text-white">{profileUser.username}</h1>
@@ -131,7 +150,7 @@ const ProfilePage: React.FC = () => {
                                 {userActions.map(action => (
                                     <div key={action.id} className="flex justify-between items-center text-sm p-3 bg-slate-700/50 rounded-lg">
                                         <p className="text-slate-300">
-                                            <span className="font-semibold text-white capitalize">{action.actionType.replace(/_/g, ' ')}</span>
+                                            <span className="font-semibold text-white capitalize">{action.actionType ? action.actionType.replace(/_/g, ' ') : 'Unknown Action'}</span>
                                         </p>
                                         <div className="flex items-center gap-4">
                                             <span className="text-slate-400">{new Date(action.timestamp).toLocaleDateString()}</span>

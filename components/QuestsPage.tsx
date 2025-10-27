@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../App';
-import type { Quest, UserQuestProgress } from '../types';
+import type { Quest, UserQuestProgress, Badge as BadgeType } from '../types';
 import { iconMap, CheckCircleIcon, TrophyIcon } from './icons';
 import BadgeItem from './BadgeItem';
 
@@ -17,7 +17,10 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
     const isCompleted = progress?.completed || false;
     const isClaimed = progress?.claimed || false;
     
-    const badgeReward = quest.badgeReward ? badgesConfig[quest.badgeReward] : null;
+    const badgeRewardConfig = quest.badgeReward ? badgesConfig[quest.badgeReward] : null;
+    // FIX: With `BadgeConfig` correctly defined, spreading `badgeRewardConfig` now works.
+    // Added non-null assertion for `quest.badgeReward` for stricter type safety.
+    const badgeReward: BadgeType | null = badgeRewardConfig ? { id: `quest_badge_${quest.id}`, name: quest.badgeReward!, ...badgeRewardConfig} : null;
 
     return (
         <div className={`bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col overflow-hidden transition-all duration-300 ${isClaimed ? 'opacity-50' : ''}`}>
@@ -52,14 +55,16 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                 </div>
             </div>
             
-            <div className="bg-slate-700/50 mt-auto p-4 flex items-center justify-between">
+            <div className="bg-slate-700/50 mt-auto p-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 text-yellow-400">
                         <TrophyIcon className="w-5 h-5" />
                         <span className="font-bold text-lg">{quest.xpReward} XP</span>
                     </div>
-                     {badgeReward && quest.badgeReward && (
-                        <BadgeItem badge={{ id:`quest_badge_${quest.id}`, name: quest.badgeReward, ...badgeReward}}/>
+                     {badgeReward && (
+                        <div className="w-24 h-24">
+                           <BadgeItem badge={badgeReward}/>
+                        </div>
                     )}
                 </div>
                 <button
@@ -133,6 +138,7 @@ const QuestsPage: React.FC = () => {
                             <QuestCard 
                                 key={quest.id} 
                                 quest={quest} 
+                                // FIX: Corrected variable from `q` to `quest` to resolve reference error.
                                 progress={userQuestProgress.find(p => p.questId === quest.id)}
                                 onClaim={() => {}}
                                 isClaiming={false}
