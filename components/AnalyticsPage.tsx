@@ -14,7 +14,7 @@ import { UserGroupIcon, ArrowTrendingUpIcon, ChartPieIcon, UserPlusIcon, Trendin
 import { api } from '../services/api';
 
 const AnalyticsPage: React.FC = () => {
-    const { community } = useApp();
+    const { isFeatureEnabled } = useApp();
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState<'7d' | '30d'>('30d');
@@ -33,8 +33,8 @@ const AnalyticsPage: React.FC = () => {
         ? ((data.growth.churnedMembers14d / data.engagement.activeMembers30d) * 100).toFixed(1)
         : 0;
         
-    const isSilverOrHigher = community?.subscriptionTier === 'silver' || community?.subscriptionTier === 'gold';
-    const isGoldTier = community?.subscriptionTier === 'gold';
+    const showAnalytics = isFeatureEnabled('analytics');
+    const showRetention = isFeatureEnabled('retention');
 
     return (
         <div className="space-y-6">
@@ -132,20 +132,20 @@ const AnalyticsPage: React.FC = () => {
                     
                     {/* Gated Features */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {isSilverOrHigher ? <QuestAnalytics data={data.questAnalytics} /> : <FeatureLock title="Quest Funnel Analytics" description="See how many members are participating in and completing your quests to optimize engagement." requiredTier="Silver" />}
-                        {isSilverOrHigher ? <StoreAnalytics data={data.storeAnalytics} /> : <FeatureLock title="XP Store Analytics" description="Track which items are most popular in your XP store and see how much XP is being spent." requiredTier="Silver" />}
+                        {showAnalytics ? <QuestAnalytics data={data.questAnalytics} /> : <FeatureLock title="Quest Funnel Analytics" description="See how many members are participating in and completing your quests to optimize engagement." requiredTier="Core" />}
+                        {showAnalytics ? <StoreAnalytics data={data.storeAnalytics} /> : <FeatureLock title="XP Store Analytics" description="Track which items are most popular in your XP store and see how much XP is being spent." requiredTier="Core" />}
                     </div>
 
-                    {isGoldTier ? (
+                    {showRetention ? (
                         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                            <h3 className="text-lg font-bold text-white">Member Retention (Gold Plan)</h3>
+                            <h3 className="text-lg font-bold text-white">Member Retention (Pro Plan)</h3>
                             <RetentionChartPlaceholder />
                         </div>
                     ) : (
                         <FeatureLock 
                             title="Member Retention Over Time"
                             description="Visualize how member cohorts stay active over weeks and months to identify patterns and improve long-term retention."
-                            requiredTier="Gold"
+                            requiredTier="Pro"
                         >
                             <RetentionChartPlaceholder />
                         </FeatureLock>

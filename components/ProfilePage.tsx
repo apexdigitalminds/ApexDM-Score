@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../App';
-import type { User, Action } from '../types';
+import type { User, Action, UserInventoryItem, ActiveEffect } from '../types';
 import XPProgress from './XPProgress';
 import BadgeItem from './BadgeItem';
-import { SnowflakeIcon, WhopIcon, ArrowTrendingUpIcon, CometIcon, CameraIcon } from './icons';
+import { SnowflakeIcon, WhopIcon, ArrowTrendingUpIcon, CometIcon, CameraIcon, iconMap, SparklesIcon } from './icons';
 import Avatar from './Avatar';
 import AvatarUpdateModal from './AvatarUpdateModal';
 
@@ -18,28 +18,90 @@ const StatCard: React.FC<{ icon: React.ReactNode, value: number, label: string }
     </div>
 );
 
+export const Countdown: React.FC<{ expiry: string }> = ({ expiry }) => {
+    const calculateTimeLeft = () => {
+        // FIX: Add type annotation to `difference` to ensure it is treated as a number.
+        const difference: number = +new Date(expiry) - +new Date();
+        let timeLeft: { [key: string]: number } = {};
+
+        // FIX: The result of date subtraction is always a number.
+        // The `difference` variable was being incorrectly inferred as `unknown`, causing a type error in the comparison.
+        // Ensured the logic correctly handles the numeric result.
+        if (difference > 0) {
+            timeLeft = {
+                d: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                h: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                m: Math.floor((difference / 1000 / 60) % 60),
+            };
+        }
+        return timeLeft;
+    };
+
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setTimeLeft(calculateTimeLeft());
+        }, 1000 * 60); // Update every minute
+        return () => clearTimeout(timer);
+    });
+
+    const timerComponents = Object.entries(timeLeft)
+        .filter(([_, value]) => value > 0)
+        .map(([interval, value]) => `${value}${interval}`)
+        .join(' ');
+
+    return <>{timerComponents.length ? timerComponents : 'Expired'}</>;
+}
 
 const ProfilePage: React.FC = () => {
     const { userId } = useParams<{ userId: string }>();
-    const { getUserById, getUserActions, selectedUser } = useApp();
+    const { getUserById, getUserActions, getUserInventory, getActiveEffects, activateInventoryItem, selectedUser } = useApp();
     const [profileUser, setProfileUser] = useState<User | null>(null);
     const [userActions, setUserActions] = useState<Action[]>([]);
+    const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
+    const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [notification, setNotification] = useState('');
+
+    const fetchData = React.useCallback(async () => {
+        if (!userId) return;
+        setIsLoading(true);
+        try {
+            const [user, actions, inv, effects] = await Promise.all([
+                getUserById(userId),
+                getUserActions(userId),
+                getUserInventory(userId),
+                getActiveEffects(userId)
+            ]);
+            setProfileUser(user);
+            setUserActions(actions);
+            setInventory(inv);
+            setActiveEffects(effects);
+        } catch (error) {
+            console.error("Failed to fetch profile data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId, getUserById, getUserActions, getUserInventory, getActiveEffects]);
 
     useEffect(() => {
-        if (userId) {
-            setIsLoading(true);
-            Promise.all([
-                getUserById(userId),
-                getUserActions(userId)
-            ]).then(([user, actions]) => {
-                setProfileUser(user);
-                setUserActions(actions);
-                setIsLoading(false);
-            }).catch(() => setIsLoading(false));
+        fetchData();
+    }, [fetchData, selectedUser]); // Re-fetch if selectedUser changes (e.g., after avatar update)
+    
+    const showNotification = (message: string) => {
+        setNotification(message);
+        setTimeout(() => setNotification(''), 3000);
+    };
+
+    const handleActivate = async (inventoryId: string) => {
+        const result = await activateInventoryItem(inventoryId);
+        showNotification(result.message);
+        if (result.success) {
+            fetchData(); // Refresh all profile data
         }
-    }, [userId, getUserById, getUserActions, selectedUser]); // Re-fetch if selectedUser changes
+    };
 
     if (isLoading) {
         return <div className="text-center p-8">Loading profile...</div>;
@@ -53,6 +115,11 @@ const ProfilePage: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {notification && (
+                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600">
+                {notification}
+                </div>
+            )}
             {isOwnProfile && (
                 <AvatarUpdateModal 
                     isOpen={isModalOpen}
@@ -143,6 +210,48 @@ const ProfilePage: React.FC = () => {
                 {/* Right Column (XP & Activity) */}
                 <div className="lg:col-span-2 space-y-6">
                     <XPProgress xp={profileUser.xp} />
+                    
+                    {/* Inventory & Effects */}
+                     <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                        <h3 className="text-lg font-bold text-white mb-4">Inventory & Active Effects</h3>
+                        <div className="space-y-4">
+                             {activeEffects.map(effect => {
+                                const Icon = SparklesIcon; // Assuming all are XP boosts for now
+                                return (
+                                    <div key={effect.id} className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                                        <div className="flex items-center gap-3">
+                                            <Icon className="w-6 h-6 text-green-400"/>
+                                            <p className="font-semibold text-white">XP Boost Active</p>
+                                        </div>
+                                        <div className="text-sm text-slate-300">
+                                            Expires in: <span className="font-bold"><Countdown expiry={effect.expiresAt} /></span>
+                                        </div>
+                                    </div>
+                                );
+                             })}
+                            {inventory.map(invItem => {
+                                const Icon = iconMap[invItem.itemDetails.icon] || SparklesIcon;
+                                return (
+                                <div key={invItem.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <Icon className="w-6 h-6 text-purple-400"/>
+                                        <div>
+                                            <p className="font-semibold text-white">{invItem.itemDetails.name}</p>
+
+                                            <p className="text-xs text-slate-400">Purchased: {new Date(invItem.purchasedAt).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    {isOwnProfile && (
+                                         <button onClick={() => handleActivate(invItem.id)} className="text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md">Activate</button>
+                                    )}
+                                </div>
+                            )})}
+                            {inventory.length === 0 && activeEffects.length === 0 && (
+                                <p className="text-slate-500 text-center py-4">No inventory items or active effects.</p>
+                            )}
+                        </div>
+                     </div>
+
                      <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                         <h3 className="text-lg font-bold text-white mb-4">Recent Activity</h3>
                         {userActions.length > 0 ? (

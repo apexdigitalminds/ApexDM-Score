@@ -1,3 +1,4 @@
+// FIX: Removed circular dependency import.
 // import type { BadgeConfig as OriginalBadgeConfig } from './config/rewards';
 
 export interface User {
@@ -12,6 +13,7 @@ export interface User {
   badges: Badge[];
   role: 'admin' | 'member';
   whop_user_id?: string;
+  bannedUntil?: string | null;
 }
 
 export interface Action {
@@ -58,7 +60,7 @@ export interface Community {
   logoUrl: string;
   themeColor: 'blue' | 'purple' | 'green';
   whop_store_id?: string;
-  subscriptionTier: 'bronze' | 'silver' | 'gold';
+  subscriptionTier: 'starter' | 'core' | 'pro';
 }
 
 // --- New Quest Types ---
@@ -81,12 +83,12 @@ export interface Quest {
 
 export interface UserQuestProgress {
   questId: string;
-  progress: { [actionType: string]: number }; // e.g. { "log_trade": 3 }
+  progress: { [actionType: string]: number }; // e.g., { "log_trade": 3 }
   completed: boolean;
   claimed: boolean;
 }
 
-// --- New Store Types ---
+// --- New Store & Inventory Types ---
 export interface StoreItem {
   id: string;
   name: string;
@@ -94,7 +96,27 @@ export interface StoreItem {
   cost: number;
   icon: string;
   isActive: boolean;
+  itemType: 'INSTANT' | 'TIMED_EFFECT';
+  durationHours?: number | null;
+  modifier?: number | null;
 }
+
+export interface UserInventoryItem {
+  id: string; // The unique ID of this inventory instance
+  userId: string;
+  itemId: string;
+  purchasedAt: string;
+  itemDetails: StoreItem; // Nested details of the store item
+}
+
+export interface ActiveEffect {
+    id: string;
+    userId: string;
+    effectType: string; // e.g., 'XP_BOOST'
+    modifier: number;
+    expiresAt: string;
+}
+
 
 // --- New Analytics Types ---
 export interface AnalyticsData {

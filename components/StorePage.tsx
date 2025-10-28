@@ -22,6 +22,9 @@ const StoreItemCard: React.FC<{
                 <h3 className="text-xl font-bold text-white mb-2">{item.name}</h3>
                 <p className="text-slate-400 text-sm mb-4 flex-grow">
                     {item.description}
+                     {item.itemType === 'TIMED_EFFECT' && item.durationHours && (
+                        <span className="block mt-2 font-semibold text-purple-300">Lasts for {item.durationHours} hours.</span>
+                    )}
                 </p>
                 <div className="flex justify-between items-center mb-4">
                     <p className="text-sm text-slate-400">Cost:</p>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, AccountIcon, ChartPieIcon } from './icons';
+import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, AccountIcon, ChartPieIcon, SparklesIcon } from './icons';
 import { useApp } from '../App';
 import Avatar from './Avatar';
 
@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { selectedUser, signOut } = useApp();
+    const { selectedUser, signOut, isFeatureEnabled } = useApp();
     const navigate = useNavigate();
     
     const navLinkClasses = "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors";
@@ -24,6 +24,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         // This is a smoother experience than a full page reload.
         navigate('/');
     };
+
+    const showQuests = isFeatureEnabled('quests');
+    const showStore = isFeatureEnabled('store');
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
@@ -53,14 +56,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         <ChartBarIcon className="h-5 w-5" />
                                         <span className="hidden sm:inline">Dashboard</span>
                                     </NavLink>
-                                    <NavLink to="/quests" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
-                                        <TargetIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">Quests</span>
+                                    <NavLink to="/collection" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                        <SparklesIcon className="h-5 w-5" />
+                                        <span className="hidden sm:inline">Collection</span>
                                     </NavLink>
-                                    <NavLink to="/store" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
-                                        <ShoppingCartIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">XP Store</span>
-                                    </NavLink>
+                                    {showQuests && (
+                                        <NavLink to="/quests" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                            <TargetIcon className="h-5 w-5" />
+                                            <span className="hidden sm:inline">Quests</span>
+                                        </NavLink>
+                                    )}
+                                    {showStore && (
+                                        <NavLink to="/store" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>
+                                            <ShoppingCartIcon className="h-5 w-5" />
+                                            <span className="hidden sm:inline">XP Store</span>
+                                        </NavLink>
+                                    )}
                                     {selectedUser.role === 'admin' && (
                                         <>
                                             <NavLink to="/analytics" className={({isActive}) => `${navLinkClasses} ${isActive ? activeClass : inactiveClass}`}>

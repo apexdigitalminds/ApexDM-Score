@@ -1,5 +1,5 @@
 import React, { createContext, useState, ReactNode, useContext, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import DashboardPage from './components/DashboardPage';
 import AdminPage from './components/AdminPage';
@@ -8,27 +8,32 @@ import WhopConnectPage from './components/WhopConnectPage';
 import StorePage from './components/StorePage';
 import ProfilePage from './components/ProfilePage';
 import QuestsPage from './components/QuestsPage';
+import CollectionPage from './components/CollectionPage';
+import PricingPage from './components/PricingPage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import LoginPage from './components/LoginPage';
 import SignUpPage from './components/SignUpPage';
 import { api, SignInCredentials, SignUpCredentials } from './services/api';
-import type { User, Action, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress, StoreItem } from './types';
+import type { User, Action, RewardsConfig, BadgeConfig, Community, Quest, UserQuestProgress, StoreItem, UserInventoryItem, ActiveEffect } from './types';
 import { supabase } from './services/supabase';
 
 // --- App Context Logic ---
-type Feature = 'discordIntegration';
-type Tier = 'bronze' | 'silver' | 'gold';
+type Feature = 'quests' | 'store' | 'analytics' | 'retention';
+type Tier = 'starter' | 'core' | 'pro';
 
 const FEATURE_TIERS: { [key in Feature]: Tier } = {
-  discordIntegration: 'silver',
+  quests: 'core',
+  store: 'pro',
+  analytics: 'core',
+  retention: 'pro',
 };
 
 const TIER_HIERARCHY: { [key in Tier]: number } = {
-  bronze: 1,
-  silver: 2,
-  gold: 3,
+  starter: 1,
+  core: 2,
+  pro: 3,
 };
 
 interface AppContextType {
@@ -49,25 +54,26 @@ interface AppContextType {
   signIn: (credentials: SignInCredentials) => Promise<any>;
   signUp: (credentials: SignUpCredentials) => Promise<any>;
   signOut: () => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<any>;
 
   // Data Actions
   getUserById: (userId: string) => Promise<User | null>;
   getUserActions: (userId: string) => Promise<Action[]>;
   handleRecordAction: (userId: string, actionType: string, source?: 'manual' | 'whop' | 'discord') => Promise<any>;
-  handleAwardBadge: (userId: string, badgeName: string) => Promise<void>;
+  handleAwardBadge: (userId: string, badgeName: string) => Promise<{success: boolean, message: string}>;
   handleAddReward: (actionName: string, xp: number) => Promise<void>;
   handleUpdateReward: (actionType: string, xp: number) => Promise<void>;
-  handleDeleteReward: (actionType: string) => Promise<void>;
-  handleAddBadge: (badgeName: string, config: BadgeConfig) => Promise<void>;
+  handleDeleteReward: (actionType: string) => Promise<{success: boolean, message: string}>;
+  handleAddBadge: (badgeName: string, config: BadgeConfig) => Promise<{ success: boolean; message?: string; }>;
   handleUpdateBadge: (badgeName: string, config: BadgeConfig) => Promise<void>;
-  handleDeleteBadge: (badgeName: string) => Promise<void>;
-  handleCreateQuest: (questData: Omit<Quest, 'id'>) => Promise<boolean>;
-  handleUpdateQuest: (questId: string, questData: Omit<Quest, 'id'>) => Promise<boolean>;
+  handleDeleteBadge: (badgeName: string) => Promise<{success: boolean, message: string}>;
+  handleCreateQuest: (questData: Omit<Quest, 'id' | 'isActive'>) => Promise<boolean>;
+  handleUpdateQuest: (questId: string, questData: Omit<Quest, 'id' | 'isActive'>) => Promise<boolean>;
   handleDeleteQuest: (questId: string) => Promise<boolean>;
   handleToggleQuest: (questId: string, isActive: boolean) => Promise<void>;
   handleCreateStoreItem: (itemData: Omit<StoreItem, 'id'>) => Promise<boolean>;
   handleUpdateStoreItem: (itemId: string, itemData: Omit<StoreItem, 'id'>) => Promise<boolean>;
-  handleDeleteStoreItem: (itemId: string) => Promise<boolean>;
+  handleDeleteStoreItem: (itemId: string) => Promise<{success: boolean, message: string}>;
   handleToggleStoreItemActive: (itemId: string, isActive: boolean) => Promise<void>;
   updateUserProfile: (updates: { avatarUrl?: string }) => Promise<boolean>;
   connectWhop: () => Promise<void>;
@@ -77,6 +83,17 @@ interface AppContextType {
   handleBuyStoreItem: (userId: string, itemId: string) => Promise<{ success: boolean; message: string; }>;
   claimQuestReward: (userId: string, questId: string) => Promise<{ success: boolean; message: string; }>;
   resetAppData: () => Promise<void>;
+  // Inventory
+  getUserInventory: (userId: string) => Promise<UserInventoryItem[]>;
+  getActiveEffects: (userId: string) => Promise<ActiveEffect[]>;
+  activateInventoryItem: (inventoryId: string) => Promise<{ success: boolean; message: string; }>;
+  // Admin
+  adminUpdateUserStats: (userId: string, xp: number, streak: number, freezes: number) => Promise<{ success: boolean; message: string; }>;
+  adminUpdateUserRole: (userId: string, role: 'admin' | 'member') => Promise<{ success: boolean; message: string; }>;
+  adminBanUser: (userId: string, duration: number | null) => Promise<{ success: boolean; message: string; }>;
+  adminGetUserEmail: (userId: string) => Promise<string | null>;
+  getAllUserActions: (userId: string) => Promise<Action[]>;
+  adminUpdateCommunityTier: (tier: Tier) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -108,7 +125,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       setBadgesConfig(badges);
       setCommunity(communityInfo);
       setQuests(questsData);
-      setQuestsAdmin(questsAdminData);
+      setQuestsAdmin(questsData);
       setStoreItems(storeItemsData);
     } catch (error) {
       console.error("Failed to fetch static data:", error);
@@ -118,18 +135,20 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const refreshDynamicData = useCallback(async () => {
     // This function refreshes data that changes frequently (users, progress)
     // without blocking the UI with a loading spinner, suitable for background updates.
-    const [users, profile, questsData, questsAdminData, storeItemsData] = await Promise.all([
+    const [users, profile, questsData, questsAdminData, storeItemsData, communityInfo] = await Promise.all([
       api.getUsers(),
       api.getCurrentUserProfile(),
       api.getQuests(),
       api.getQuestsAdmin(),
       api.getStoreItems(),
+      api.getCommunityInfo(),
     ]);
     setAllUsers(users);
     setSelectedUser(profile);
     setQuests(questsData);
     setQuestsAdmin(questsAdminData);
     setStoreItems(storeItemsData);
+    setCommunity(communityInfo); // Also refresh community for tier changes
     if (profile) {
       const progress = await api.getUserQuestProgress(profile.id);
       setUserQuestProgress(progress);
@@ -146,6 +165,14 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         ]);
         setAllUsers(users);
         setSelectedUser(profile);
+
+        if (profile?.bannedUntil && new Date(profile.bannedUntil) > new Date()) {
+             // If user is banned, force sign out and prevent further action
+             await api.signOut();
+             // The onAuthStateChange will trigger again, setting selectedUser to null.
+             return;
+        }
+
         if (profile) {
             const progress = await api.getUserQuestProgress(profile.id);
             setUserQuestProgress(progress);
@@ -189,8 +216,15 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const handleAwardBadge = async (userId: string, badgeName: string) => {
-    await api.awardBadge(userId, badgeName);
+    const error = await api.awardBadge(userId, badgeName);
+    if (error) {
+        if (error.code === '23505') {
+            return { success: false, message: `User already has the '${badgeName}' badge.` };
+        }
+        return { success: false, message: 'An unknown error occurred.' };
+    }
     await refreshDynamicData();
+    return { success: true, message: `Awarded '${badgeName}' badge.` };
   };
 
   const handleAddReward = async (actionName: string, xp: number) => {
@@ -207,15 +241,23 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const handleDeleteReward = async (actionType: string) => {
-    await api.deleteReward(actionType);
-    await fetchStaticData();
+    const result = await api.deleteReward(actionType);
+    if (result.success) {
+        await fetchStaticData();
+    }
+    return result;
   };
 
-  const handleAddBadge = async (badgeName: string, config: BadgeConfig) => {
+  const handleAddBadge = async (badgeName: string, config: BadgeConfig): Promise<{ success: boolean; message?: string; }> => {
     if (badgeName.trim()) {
-      await api.createBadge(badgeName.trim(), config);
-      await fetchStaticData();
+      const error = await api.createBadge(badgeName.trim(), config);
+      if (!error) {
+        await fetchStaticData();
+        return { success: true };
+      }
+      return { success: false, message: error.code === '23505' ? `Badge "${badgeName}" already exists.` : 'Failed to create badge.' };
     }
+    return { success: false, message: "Badge name cannot be empty." };
   };
   
   const handleUpdateBadge = async (badgeName: string, config: BadgeConfig) => {
@@ -224,51 +266,56 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const handleDeleteBadge = async (badgeName: string) => {
-      await api.deleteBadge(badgeName);
-      await fetchStaticData();
+      const result = await api.deleteBadge(badgeName);
+      if (result.success) {
+          await fetchStaticData();
+      }
+      return result;
   };
 
-   const handleCreateQuest = async (questData: Omit<Quest, 'id'>) => {
+   const handleCreateQuest = async (questData: Omit<Quest, 'id' | 'isActive'>) => {
       const success = await api.createQuest(questData);
-      if (success) await fetchStaticData();
+      if (success) await refreshDynamicData();
       return success;
   };
 
-  const handleUpdateQuest = async (questId: string, questData: Omit<Quest, 'id'>) => {
+  const handleUpdateQuest = async (questId: string, questData: Omit<Quest, 'id' | 'isActive'>) => {
       const success = await api.updateQuest(questId, questData);
-      if (success) await fetchStaticData();
+      if (success) await refreshDynamicData();
       return success;
   };
 
   const handleDeleteQuest = async (questId: string) => {
       const success = await api.deleteQuest(questId);
-      if (success) await fetchStaticData();
+      if (success) await refreshDynamicData();
       return success;
   };
   
   const handleToggleQuest = async (questId: string, isActive: boolean) => {
       await api.updateQuestActiveStatus(questId, isActive);
-      await fetchStaticData();
+      await refreshDynamicData();
   };
 
   const handleCreateStoreItem = async (itemData: Omit<StoreItem, 'id'>) => {
     const success = await api.createStoreItem(itemData);
-    if (success) await fetchStaticData();
+    if (success) await refreshDynamicData();
     return success;
   };
   const handleUpdateStoreItem = async (itemId: string, itemData: Omit<StoreItem, 'id'>) => {
     const success = await api.updateStoreItem(itemId, itemData);
-    if (success) await fetchStaticData();
+    if (success) await refreshDynamicData();
     return success;
   };
   const handleDeleteStoreItem = async (itemId: string) => {
-    const success = await api.deleteStoreItem(itemId);
-    if (success) await fetchStaticData();
-    return success;
+    const result = await api.deleteStoreItem(itemId);
+    if (result.success) {
+      await refreshDynamicData();
+    }
+    return result;
   };
   const handleToggleStoreItemActive = async (itemId: string, isActive: boolean) => {
     await api.updateStoreItemActiveStatus(itemId, isActive);
-    await fetchStaticData();
+    await refreshDynamicData();
   };
   
   const updateUserProfile = async (updates: { avatarUrl?: string }): Promise<boolean> => {
@@ -333,6 +380,30 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     console.warn("Reset App Data is disabled.");
   };
 
+  const activateInventoryItem = async (inventoryId: string) => {
+    const result = await api.activateInventoryItem(inventoryId);
+    if(result.success) {
+      await refreshDynamicData();
+    }
+    return result;
+  };
+
+  const adminActionWrapper = async (action: Promise<{success: boolean; message: string;}>) => {
+      const result = await action;
+      if (result.success) {
+          await refreshDynamicData();
+      }
+      return result;
+  }
+  
+  const adminUpdateCommunityTier = async (tier: Tier) => {
+    const success = await api.adminUpdateCommunityTier(tier);
+    if (success) {
+        await refreshDynamicData();
+    }
+    return success;
+  }
+
   const value: AppContextType = {
     isLoading,
     allUsers,
@@ -348,6 +419,7 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     signIn: api.signInWithPassword,
     signUp: api.signUpNewUser,
     signOut: api.signOut,
+    sendPasswordResetEmail: api.sendPasswordResetEmail,
     getUserById: api.getUserById,
     getUserActions: api.getUserActions,
     handleRecordAction,
@@ -374,6 +446,17 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     handleBuyStoreItem,
     claimQuestReward,
     resetAppData,
+    // Inventory
+    getUserInventory: api.getUserInventory,
+    getActiveEffects: api.getActiveEffects,
+    activateInventoryItem,
+    // Admin
+    adminUpdateUserStats: (userId, xp, streak, freezes) => adminActionWrapper(api.adminUpdateUserStats(userId, xp, streak, freezes)),
+    adminUpdateUserRole: (userId, role) => adminActionWrapper(api.adminUpdateUserRole(userId, role)),
+    adminBanUser: (userId, duration) => adminActionWrapper(api.adminBanUser(userId, duration)),
+    adminGetUserEmail: api.adminGetUserEmail,
+    getAllUserActions: api.getAllUserActions,
+    adminUpdateCommunityTier,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -389,6 +472,14 @@ export const useApp = () => {
 
 // --- End of App Context Logic ---
 
+// Component to handle feature gating at the route level
+const FeatureGatedPage: React.FC<{ feature: Feature; children: ReactNode }> = ({ feature, children }) => {
+  const { isFeatureEnabled, isLoading } = useApp();
+  if (isLoading) return <div className="text-center p-8">Loading...</div>;
+  
+  return isFeatureEnabled(feature) ? <>{children}</> : <Navigate to="/dashboard" replace />;
+};
+
 
 const App: React.FC = () => {
   return (
@@ -402,17 +493,37 @@ const App: React.FC = () => {
             path="/dashboard" 
             element={<ProtectedRoute><Layout><DashboardPage /></Layout></ProtectedRoute>} 
           />
+           <Route 
+            path="/collection" 
+            element={<ProtectedRoute><Layout><CollectionPage /></Layout></ProtectedRoute>} 
+          />
+           <Route 
+            path="/pricing" 
+            element={<ProtectedRoute><Layout><PricingPage /></Layout></ProtectedRoute>} 
+          />
           <Route 
             path="/profile/:userId"
             element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>}
           />
            <Route 
             path="/quests" 
-            element={<ProtectedRoute><Layout><QuestsPage /></Layout></ProtectedRoute>} 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <FeatureGatedPage feature="quests"><QuestsPage /></FeatureGatedPage>
+                </Layout>
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/store" 
-            element={<ProtectedRoute><Layout><StorePage /></Layout></ProtectedRoute>} 
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <FeatureGatedPage feature="store"><StorePage /></FeatureGatedPage>
+                </Layout>
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/analytics" 
@@ -424,7 +535,7 @@ const App: React.FC = () => {
           />
           <Route 
             path="/connect/whop" 
-            element={<AdminRoute><WhopConnectPage /></AdminRoute>} 
+            element={<AdminRoute><Layout><WhopConnectPage /></Layout></AdminRoute>} 
           />
         </Routes>
       </AppProvider>

@@ -1,10 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { LockClosedIcon } from '../icons';
 
 interface FeatureLockProps {
     title: string;
     description: string;
-    requiredTier: 'Silver' | 'Gold';
+    requiredTier: 'Core' | 'Pro';
     children?: React.ReactNode;
 }
 
@@ -16,14 +17,12 @@ const FeatureLock: React.FC<FeatureLockProps> = ({ title, description, requiredT
             <p className="text-sm text-slate-300">
                 This feature is available on the <span className="font-bold">{requiredTier}</span> plan.
             </p>
-            <a 
-                href="https://ai.google.dev/gemini-api/docs/billing" 
-                target="_blank" 
-                rel="noopener noreferrer"
+            <Link 
+                to="/pricing"
                 className="mt-4 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
             >
                 View Plans
-            </a>
+            </Link>
         </div>
         <div className="opacity-30">
             <h3 className="text-lg font-bold text-white mb-4">{title}</h3>

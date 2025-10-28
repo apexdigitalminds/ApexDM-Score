@@ -1,8 +1,8 @@
 import React from 'react';
 import { useApp } from '../App';
 import BadgeItem from './BadgeItem';
-// FIX: The type `BadgeConfig` is implicitly handled by the `badgesConfig` from `useApp`.
-import type { Badge } from '../types';
+// FIX: Import BadgeConfig to resolve type errors.
+import type { Badge, BadgeConfig } from '../types';
 
 const BadgeShowcase: React.FC = () => {
     const { badgesConfig } = useApp();
@@ -12,7 +12,11 @@ const BadgeShowcase: React.FC = () => {
     const allBadges: Badge[] = Object.entries(badgesConfig).map(([name, config], index) => ({
         id: `showcase_${index}`,
         name,
-        ...config,
+        // FIX: Replaced spread operator to resolve "Spread types may only be created from object types" error.
+        // FIX: Cast config to BadgeConfig as it was being inferred as 'unknown'.
+        description: (config as BadgeConfig).description,
+        icon: (config as BadgeConfig).icon,
+        color: (config as BadgeConfig).color,
     }));
 
     return (

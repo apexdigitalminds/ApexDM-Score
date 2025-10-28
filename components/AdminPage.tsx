@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../App';
 import Leaderboard from './Leaderboard';
 import BadgeItem from './BadgeItem';
-import type { ActionType, Reward, BadgeConfig, Badge, Quest, QuestTask, StoreItem } from '../types';
-import { iconMapKeys, LockClosedIcon, DiscordIcon, TrophyIcon, ShoppingCartIcon } from './icons';
+import type { ActionType, Reward, BadgeConfig, Badge, Quest, QuestTask, StoreItem, User, Action } from '../types';
+import { iconMapKeys, LockClosedIcon, DiscordIcon, TrophyIcon } from './icons';
+import ActionLogModal from './ActionLogModal';
 
 const AdminPage: React.FC = () => {
   const { 
@@ -15,6 +16,7 @@ const AdminPage: React.FC = () => {
     community, 
     questsAdmin,
     storeItems,
+    selectedUser: adminUser,
     syncWhopMembers,
     handleRecordAction,
     handleAwardBadge,
@@ -34,6 +36,12 @@ const AdminPage: React.FC = () => {
     handleUpdateStoreItem,
     handleDeleteStoreItem,
     handleToggleStoreItemActive,
+    adminUpdateUserStats,
+    adminUpdateUserRole,
+    adminBanUser,
+    adminGetUserEmail,
+    getAllUserActions,
+    adminUpdateCommunityTier,
   } = useApp();
   const navigate = useNavigate();
   
@@ -78,11 +86,32 @@ const AdminPage: React.FC = () => {
   const [itemDescription, setItemDescription] = useState('');
   const [itemCost, setItemCost] = useState(500);
   const [itemIcon, setItemIcon] = useState('Snowflake');
+  const [itemType, setItemType] = useState<'INSTANT' | 'TIMED_EFFECT'>('INSTANT');
+  const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
+  const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
+
 
   // State for Discord bot simulation
   const discordActions = ['ask_good_question', 'share_alpha'];
   const [discordAction, setDiscordAction] = useState(discordActions[0]);
   const [discordChannel, setDiscordChannel] = useState('#general');
+  
+  // State for User Management
+  const [editXp, setEditXp] = useState(0);
+  const [editStreak, setEditStreak] = useState(0);
+  const [editFreezes, setEditFreezes] = useState(0);
+  const [editRole, setEditRole] = useState<'member' | 'admin'>('member');
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [logActions, setLogActions] = useState<Action[]>([]);
+  
+  useEffect(() => {
+    if (targetUser) {
+        setEditXp(targetUser.xp);
+        setEditStreak(targetUser.streak);
+        setEditFreezes(targetUser.streakFreezes);
+        setEditRole(targetUser.role);
+    }
+  }, [targetUser]);
 
 
   const showNotification = (message: string, duration: number = 3000) => {
@@ -99,8 +128,8 @@ const AdminPage: React.FC = () => {
   
   const handleAwardBadgeClick = async () => {
     if (targetUser && badgeToAward) {
-      await handleAwardBadge(targetUser.id, badgeToAward);
-      showNotification(`Awarded '${badgeToAward}' badge to ${targetUser.username}.`);
+      const result = await handleAwardBadge(targetUser.id, badgeToAward);
+      showNotification(result.message);
     }
   };
 
@@ -129,9 +158,9 @@ const AdminPage: React.FC = () => {
   };
 
   const handleDeleteRewardClick = async (actionType: string) => {
-    if (window.confirm(`Are you sure you want to delete the reward "${actionType}"? This cannot be undone.`)) {
-        await handleDeleteReward(actionType);
-        showNotification(`Deleted reward '${actionType}'.`);
+    if (window.confirm(`Are you sure you want to delete the reward "${actionType}"? This is only possible if no user has ever been awarded this action.`)) {
+        const result = await handleDeleteReward(actionType);
+        showNotification(result.message, 4000);
     }
   };
 
@@ -153,11 +182,16 @@ const AdminPage: React.FC = () => {
     if (editBadgeName) {
       await handleUpdateBadge(editBadgeName, config);
       showNotification(`Updated badge '${editBadgeName}'.`);
+      cancelEditBadge();
     } else {
-      await handleAddBadge(newBadgeName, config);
-      showNotification(`Added new badge: '${newBadgeName}'.`);
+      const result = await handleAddBadge(newBadgeName, config);
+      if (result.success) {
+        showNotification(`Added new badge: '${newBadgeName}'.`);
+        cancelEditBadge();
+      } else {
+        showNotification(result.message || 'An error occurred.', 4000);
+      }
     }
-    cancelEditBadge();
   };
   
   const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => {
@@ -169,9 +203,9 @@ const AdminPage: React.FC = () => {
   };
 
   const handleDeleteBadgeClick = async (badgeName: string) => {
-    if (window.confirm(`Are you sure you want to delete the badge "${badgeName}"? This will also remove it from all users who have earned it. This cannot be undone.`)) {
-        await handleDeleteBadge(badgeName);
-        showNotification(`Deleted badge '${badgeName}'.`);
+    if (window.confirm(`Are you sure you want to delete the badge "${badgeName}"? This is only possible if it has not been awarded to any users.`)) {
+        const result = await handleDeleteBadge(badgeName);
+        showNotification(result.message, 4000);
     }
   };
 
@@ -220,7 +254,7 @@ const AdminPage: React.FC = () => {
     
     const handleQuestSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const questData = { title: questTitle, description: questDescription, xpReward: questXpReward, badgeReward: questBadgeReward, tasks: questTasks, isActive: editingQuest?.isActive || false };
+        const questData = { title: questTitle, description: questDescription, xpReward: questXpReward, badgeReward: questBadgeReward, tasks: questTasks };
         let success = false;
         if (editingQuest) {
             success = await handleUpdateQuest(editingQuest.id, questData);
@@ -258,6 +292,9 @@ const AdminPage: React.FC = () => {
         setItemDescription('');
         setItemCost(500);
         setItemIcon('Snowflake');
+        setItemType('INSTANT');
+        setItemDuration(undefined);
+        setItemModifier(undefined);
     };
 
     const handleEditItemClick = (item: StoreItem) => {
@@ -266,6 +303,9 @@ const AdminPage: React.FC = () => {
         setItemDescription(item.description);
         setItemCost(item.cost);
         setItemIcon(item.icon);
+        setItemType(item.itemType);
+        setItemDuration(item.durationHours || undefined);
+        setItemModifier(item.modifier || undefined);
     };
 
     const handleItemSubmit = async (e: React.FormEvent) => {
@@ -276,15 +316,18 @@ const AdminPage: React.FC = () => {
             description: itemDescription, 
             cost: itemCost, 
             icon: itemIcon, 
-            isActive: editingItem?.isActive ?? true
+            isActive: editingItem?.isActive ?? true,
+            itemType: itemType,
+            durationHours: itemType === 'TIMED_EFFECT' ? (itemDuration || 24) : null,
+            modifier: itemType === 'TIMED_EFFECT' ? (itemModifier || 1) : null,
         };
 
         let success = false;
         if (editingItem) {
-            success = await handleUpdateStoreItem(editingItem.id, itemData);
+            success = await handleUpdateStoreItem(editingItem.id, itemData as any);
             if (success) showNotification(`Updated item: ${itemName}`);
         } else {
-            success = await handleCreateStoreItem(itemData);
+            success = await handleCreateStoreItem(itemData as any);
             if (success) showNotification(`Created new item: ${itemName}`);
         }
 
@@ -296,15 +339,11 @@ const AdminPage: React.FC = () => {
     };
 
     const handleDeleteItemClick = async (item: StoreItem) => {
-        if (window.confirm(`Are you sure you want to delete the item "${item.name}"? This cannot be undone.`)) {
-            const success = await handleDeleteStoreItem(item.id);
-            if (success) {
-                showNotification(`Deleted item: ${item.name}`);
-                if (editingItem?.id === item.id) {
-                    resetItemForm();
-                }
-            } else {
-                showNotification(`Failed to delete item.`);
+        if (window.confirm(`Are you sure you want to delete the item "${item.name}"? This is only possible if it has not been purchased by any users.`)) {
+            const result = await handleDeleteStoreItem(item.id);
+            showNotification(result.message, 4000);
+            if (result.success && editingItem?.id === item.id) {
+                resetItemForm();
             }
         }
     };
@@ -329,15 +368,59 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const isDiscordEnabled = isFeatureEnabled('discordIntegration');
-  const whopConnectedUsers = allUsers.filter(u => u.whop_user_id);
+  const handleAdminStatUpdate = async () => {
+      if (!targetUser) return;
+      const result = await adminUpdateUserStats(targetUser.id, editXp, editStreak, editFreezes);
+      showNotification(result.message);
+  };
   
-  // FIX: Removed unnecessary type cast. With the corrected `BadgeConfig` type, type inference works correctly.
+  const handleAdminRoleUpdate = async () => {
+      if (!targetUser) return;
+      const result = await adminUpdateUserRole(targetUser.id, editRole);
+      showNotification(result.message);
+  };
+
+  const handleAdminBan = async (durationHours: number | null) => {
+      if (!targetUser) return;
+      const durationText = durationHours === 0 ? "unbanned" : durationHours ? `banned for ${durationHours}h` : "permanently banned";
+      if(window.confirm(`Are you sure you want to have ${targetUser.username} ${durationText}?`)) {
+          const result = await adminBanUser(targetUser.id, durationHours);
+          showNotification(result.message);
+      }
+  };
+
+  const handlePasswordReset = async () => {
+      if (!targetUser) return;
+      const email = await adminGetUserEmail(targetUser.id);
+      if (email) {
+          alert(`User's email: ${email}\n\nPlease instruct the user to visit the login page and use the "Forgot Password" feature. For security reasons, admins cannot set passwords directly.`);
+      } else {
+          showNotification("Could not retrieve user's email. This may be a permissions issue.", 4000);
+      }
+  };
+
+  const handleViewLogs = async () => {
+      if (!targetUser) return;
+      const actions = await getAllUserActions(targetUser.id);
+      setLogActions(actions);
+      setIsLogModalOpen(true);
+  }
+
+  const handleTierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTier = e.target.value as 'starter' | 'core' | 'pro';
+    const success = await adminUpdateCommunityTier(newTier);
+    showNotification(success ? `Community tier changed to ${newTier}. Refresh to see changes.` : `Failed to change tier.`);
+  };
+  
   const allBadgesForShowcase: Badge[] = Object.entries(badgesConfig).map(([name, config], index) => ({
     id: `showcase_${index}`,
     name,
-    ...config,
+    description: (config as BadgeConfig).description,
+    icon: (config as BadgeConfig).icon,
+    color: (config as BadgeConfig).color,
   }));
+
+  const isSelf = targetUser?.id === adminUser?.id;
 
   return (
     <div className="space-y-6">
@@ -345,6 +428,14 @@ const AdminPage: React.FC = () => {
         <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600">
           {notification}
         </div>
+      )}
+      {isLogModalOpen && targetUser && (
+        <ActionLogModal 
+          isOpen={isLogModalOpen}
+          onClose={() => setIsLogModalOpen(false)}
+          username={targetUser.username}
+          actions={logActions}
+        />
       )}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Panel</h1>
@@ -364,96 +455,8 @@ const AdminPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Forms */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-             <h3 className="text-lg font-bold text-white mb-4">Whop Integration</h3>
-             <div className="space-y-4">
-                {isWhopConnected && community ? (
-                  <div className="bg-slate-700/50 p-4 rounded-lg flex items-center gap-4">
-                    <img src={community.logoUrl} alt={community.name} className="w-12 h-12 rounded-lg object-cover" />
-                    <div>
-                      <p className="font-bold text-white">{community.name}</p>
-                      <p className="text-xs text-slate-400">Tier: <span className="capitalize font-semibold">{community.subscriptionTier}</span></p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400">
-                      Connect your Whop account to enable integration features.
-                  </p>
-                )}
-                <button 
-                    onClick={handleSync} 
-                    disabled={!isWhopConnected} 
-                    className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
-                >
-                  Sync Whop Members
-                </button>
-             </div>
-          </div>
-          <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-            <h3 className="text-lg font-bold text-white mb-4">Webhook Simulator</h3>
-            <div className="space-y-3">
-              <p className="text-sm text-slate-400">
-                Simulate events coming from Whop to test automated rewards for synced members.
-              </p>
-              {isWhopConnected && whopConnectedUsers.length > 0 ? (
-                whopConnectedUsers.map(user => (
-                  <div key={user.id} className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
-                    <span className="font-medium text-white">{user.username}</span>
-                    <button
-                      onClick={() => handleSimulateRenewal(user.id)}
-                      className="bg-green-600 text-white text-sm font-semibold py-1 px-3 rounded-md hover:bg-green-700 transition-colors"
-                    >
-                      Simulate Renewal
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-500 text-center py-2">
-                  {isWhopConnected ? 'No synced members to show.' : 'Connect to Whop to see members.'}
-                </p>
-              )}
-            </div>
-          </div>
-           <div className={`bg-slate-800 p-6 rounded-2xl shadow-lg relative ${!isDiscordEnabled && 'opacity-60'}`}>
-              {!isDiscordEnabled && (
-                <div className="absolute inset-0 bg-slate-900/50 flex flex-col items-center justify-center rounded-2xl z-10 text-center p-4">
-                  <LockClosedIcon className="w-10 h-10 text-yellow-400 mb-2" />
-                  <p className="font-bold text-white">Feature Locked</p>
-                  <p className="text-xs text-slate-300">Upgrade to the 'Silver' plan to enable Discord actions.</p>
-                </div>
-              )}
-              <div className="flex items-center gap-3 mb-4">
-                <DiscordIcon className="w-7 h-7 text-indigo-400" />
-                <h3 className="text-lg font-bold text-white">Discord Bot Simulation</h3>
-              </div>
-              <div className="space-y-3">
-                <p className="text-sm text-slate-400">
-                  Simulate a moderator rewarding a user for a valuable action in Discord.
-                </p>
-                <div>
-                  <label htmlFor="discord-action" className="block text-sm font-medium text-slate-400 mb-1">Action</label>
-                  <select id="discord-action" value={discordAction} onChange={e => setDiscordAction(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2">
-                    {discordActions.map(action => <option key={action} value={action}>{action.replace(/_/g, ' ')}</option>)}
-                  </select>
-                </div>
-                <div>
-                   <label htmlFor="discord-channel" className="block text-sm font-medium text-slate-400 mb-1">Channel</label>
-                  <input type="text" id="discord-channel" value={discordChannel} onChange={e => setDiscordChannel(e.target.value)} placeholder="#general" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2"/>
-                </div>
-                <button 
-                  onClick={handleDiscordAward}
-                  disabled={!targetUser || !isDiscordEnabled} 
-                  className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
-                >
-                  Award via Bot
-                </button>
-              </div>
-            </div>
-          <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-            <h3 className="text-lg font-bold text-white mb-4">Manual Awards</h3>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="user-select" className="block text-sm font-medium text-slate-400 mb-1">Select User</label>
+           <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                <h3 className="text-lg font-bold text-white mb-4">Select User to Manage</h3>
                 <select
                   id="user-select"
                   value={targetUserId || ''}
@@ -462,7 +465,69 @@ const AdminPage: React.FC = () => {
                 >
                   {allUsers.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                 </select>
-              </div>
+            </div>
+          
+           {targetUser && (
+                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                    <h3 className="text-lg font-bold text-white mb-4">Manage: {targetUser.username}</h3>
+                    <div className="space-y-4">
+                        {/* Edit Stats */}
+                        <div className="space-y-2">
+                            <h4 className="font-semibold text-slate-300">Edit Stats</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-400">XP</label>
+                                  <input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" aria-label="XP" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-400">Streak</label>
+                                  <input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" aria-label="Streak" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-400">Freezes</label>
+                                  <input type="number" value={editFreezes} onChange={e => setEditFreezes(parseInt(e.target.value))} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" aria-label="Streak Freezes" />
+                                </div>
+                            </div>
+                            <button onClick={handleAdminStatUpdate} className="w-full text-sm bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700">Update Stats</button>
+                        </div>
+                        {/* Edit Role */}
+                        <div className="space-y-2 border-t border-slate-700 pt-4">
+                           <h4 className="font-semibold text-slate-300">Change Role</h4>
+                           <div className="flex gap-2">
+                               <select value={editRole} onChange={e => setEditRole(e.target.value as any)} disabled={isSelf} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 disabled:opacity-50">
+                                   <option value="member">Member</option>
+                                   <option value="admin">Admin</option>
+                               </select>
+                               <button onClick={handleAdminRoleUpdate} disabled={isSelf} className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 disabled:bg-slate-600">Set Role</button>
+                           </div>
+                           {isSelf && <p className="text-xs text-slate-500 text-center">You cannot change your own role.</p>}
+                        </div>
+                        {/* Ban User */}
+                        <div className="space-y-2 border-t border-slate-700 pt-4">
+                           <h4 className="font-semibold text-red-400">Actions</h4>
+                           <div className="grid grid-cols-2 gap-2">
+                               <button onClick={handlePasswordReset} className="w-full text-sm bg-slate-600 hover:bg-slate-500 font-semibold py-2 rounded-lg">Password Help</button>
+                               <button onClick={handleViewLogs} className="w-full text-sm bg-slate-600 hover:bg-slate-500 font-semibold py-2 rounded-lg">View Logs</button>
+                           </div>
+                            <div className="grid grid-cols-2 gap-2">
+                               {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() ? (
+                                   <button onClick={() => handleAdminBan(0)} disabled={isSelf} className="col-span-2 w-full text-sm bg-green-600 hover:bg-green-500 font-semibold py-2 rounded-lg disabled:bg-slate-600">Unban User</button>
+                               ) : (
+                                   <>
+                                    <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="w-full text-sm bg-red-600 hover:bg-red-500 font-semibold py-2 rounded-lg disabled:bg-slate-600">Ban 24h</button>
+                                    <button onClick={() => handleAdminBan(null)} disabled={isSelf} className="w-full text-sm bg-red-800 hover:bg-red-700 font-semibold py-2 rounded-lg disabled:bg-slate-600">Perma-ban</button>
+                                   </>
+                               )}
+                            </div>
+                            {isSelf && <p className="text-xs text-slate-500 text-center">You cannot ban yourself.</p>}
+                        </div>
+                    </div>
+                </div>
+           )}
+
+          <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+            <h3 className="text-lg font-bold text-white mb-4">Manual Awards</h3>
+            <div className="space-y-4">
               <div className="border-t border-slate-700 pt-4">
                  <label htmlFor="action-type" className="block text-sm font-medium text-slate-400 mb-1">Action Type</label>
                  <select
@@ -502,116 +567,173 @@ const AdminPage: React.FC = () => {
       </div>
       
        {/* Manage Quests */}
-      <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-        <h3 className="text-lg font-bold text-white mb-4">Manage Quests</h3>
-        <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Quest Title" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
-            <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Quest Description" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 md:col-span-2" rows={2}/>
-            <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP Reward" required min="0" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
-            <select value={questBadgeReward || ''} onChange={e => setQuestBadgeReward(e.target.value || null)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2">
-              <option value="">No Badge Reward</option>
-              {Object.keys(badgesConfig).map(name => <option key={name} value={name}>{name}</option>)}
-            </select>
-          </div>
-          <div className="border-t border-slate-600 pt-4 space-y-3">
-             <h4 className="font-semibold text-slate-300">Tasks</h4>
-             {questTasks.map((task, index) => (
-                 <div key={index} className="grid grid-cols-1 md:grid-cols-8 gap-2 items-center bg-slate-800/50 p-3 rounded-md">
-                     <select value={task.actionType} onChange={e => handleUpdateTask(index, 'actionType', e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-2">
-                         {Object.keys(rewardsConfig).map(key => <option key={key} value={key}>{key.replace(/_/g, ' ')}</option>)}
-                     </select>
-                     <input type="number" value={task.targetCount} onChange={e => handleUpdateTask(index, 'targetCount', parseInt(e.target.value))} min="1" className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-1" />
-                     <input type="text" value={task.description} onChange={e => handleUpdateTask(index, 'description', e.target.value)} placeholder="Task Description (e.g., 'Log 5 trades')" required className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-4" />
-                     <button type="button" onClick={() => handleRemoveTask(index)} disabled={questTasks.length <= 1} className="text-red-500 hover:text-red-400 disabled:opacity-50 md:col-span-1">Remove</button>
+      {isFeatureEnabled('quests') ? (
+        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+          <h3 className="text-lg font-bold text-white mb-4">Manage Quests</h3>
+          <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Quest Title" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+              <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Quest Description" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 md:col-span-2" rows={2}/>
+              <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP Reward" required min="0" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+              <select value={questBadgeReward || ''} onChange={e => setQuestBadgeReward(e.target.value || null)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2">
+                <option value="">No Badge Reward</option>
+                {Object.keys(badgesConfig).map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </div>
+            <div className="border-t border-slate-600 pt-4 space-y-3">
+               <h4 className="font-semibold text-slate-300">Tasks</h4>
+               {questTasks.map((task, index) => (
+                   <div key={index} className="grid grid-cols-1 md:grid-cols-8 gap-2 items-center bg-slate-800/50 p-3 rounded-md">
+                       <select value={task.actionType} onChange={e => handleUpdateTask(index, 'actionType', e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-2">
+                           {Object.keys(rewardsConfig).map(key => <option key={key} value={key}>{key.replace(/_/g, ' ')}</option>)}
+                       </select>
+                       <input type="number" value={task.targetCount} onChange={e => handleUpdateTask(index, 'targetCount', parseInt(e.target.value))} min="1" className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-1" />
+                       <input type="text" value={task.description} onChange={e => handleUpdateTask(index, 'description', e.target.value)} placeholder="Task Description (e.g., 'Log 5 trades')" required className="w-full bg-slate-700 border-slate-600 text-white rounded p-2 md:col-span-4" />
+                       <button type="button" onClick={() => handleRemoveTask(index)} disabled={questTasks.length <= 1} className="text-red-500 hover:text-red-400 disabled:opacity-50 md:col-span-1">Remove</button>
+                   </div>
+               ))}
+               <button type="button" onClick={handleAddTask} className="text-sm bg-slate-600 hover:bg-slate-500 text-white font-semibold py-1 px-3 rounded-md">Add Task</button>
+            </div>
+             <div className="flex gap-2 pt-4 border-t border-slate-600">
+                  <button type="submit" className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
+                      {editingQuest ? 'Update Quest' : 'Create Quest'}
+                  </button>
+                  {editingQuest && <button type="button" onClick={resetQuestForm} className="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg">Cancel Edit</button>}
+              </div>
+          </form>
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+             {questsAdmin.map(quest => (
+                 <div key={quest.id} className="bg-slate-700/50 p-4 rounded-lg">
+                     <div className="flex justify-between items-start">
+                         <div>
+                             <h4 className="font-bold text-white">{quest.title}</h4>
+                             <p className="text-sm text-slate-400">{quest.description}</p>
+                             <div className="flex items-center gap-4 mt-2">
+                                 <span className="flex items-center gap-1 text-sm font-semibold text-yellow-400"><TrophyIcon className="w-4 h-4"/> {quest.xpReward} XP</span>
+                                 {quest.badgeReward && <span className="text-xs font-semibold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">{quest.badgeReward}</span>}
+                             </div>
+                         </div>
+                         <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                            <label className="flex items-center cursor-pointer">
+                                <span className="mr-2 text-sm text-slate-400">{quest.isActive ? 'Active' : 'Inactive'}</span>
+                                <div className="relative">
+                                    <input type="checkbox" checked={quest.isActive} onChange={() => handleToggleQuest(quest.id, !quest.isActive)} className="sr-only"/>
+                                    <div className={`block w-10 h-6 rounded-full ${quest.isActive ? 'bg-green-500' : 'bg-slate-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${quest.isActive ? 'translate-x-4' : ''}`}></div>
+                                </div>
+                            </label>
+                             <button onClick={() => handleEditQuestClick(quest)} className="text-sm font-semibold text-slate-400 hover:text-white">Edit</button>
+                             <button onClick={() => handleDeleteQuestClick(quest)} className="text-sm font-semibold text-red-500 hover:text-red-400">Delete</button>
+                         </div>
+                     </div>
                  </div>
              ))}
-             <button type="button" onClick={handleAddTask} className="text-sm bg-slate-600 hover:bg-slate-500 text-white font-semibold py-1 px-3 rounded-md">Add Task</button>
           </div>
-           <div className="flex gap-2 pt-4 border-t border-slate-600">
-                <button type="submit" className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
-                    {editingQuest ? 'Update Quest' : 'Create Quest'}
-                </button>
-                {editingQuest && <button type="button" onClick={resetQuestForm} className="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg">Cancel Edit</button>}
-            </div>
-        </form>
-        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-           {questsAdmin.map(quest => (
-               <div key={quest.id} className="bg-slate-700/50 p-4 rounded-lg">
-                   <div className="flex justify-between items-start">
-                       <div>
-                           <h4 className="font-bold text-white">{quest.title}</h4>
-                           <p className="text-sm text-slate-400">{quest.description}</p>
-                           <div className="flex items-center gap-4 mt-2">
-                               <span className="flex items-center gap-1 text-sm font-semibold text-yellow-400"><TrophyIcon className="w-4 h-4"/> {quest.xpReward} XP</span>
-                               {quest.badgeReward && <span className="text-xs font-semibold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">{quest.badgeReward}</span>}
-                           </div>
-                       </div>
-                       <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-                          <label className="flex items-center cursor-pointer">
-                              <span className="mr-2 text-sm text-slate-400">{quest.isActive ? 'Active' : 'Inactive'}</span>
-                              <div className="relative">
-                                  <input type="checkbox" checked={quest.isActive} onChange={() => handleToggleQuest(quest.id, !quest.isActive)} className="sr-only"/>
-                                  <div className={`block w-10 h-6 rounded-full ${quest.isActive ? 'bg-green-500' : 'bg-slate-600'}`}></div>
-                                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${quest.isActive ? 'translate-x-4' : ''}`}></div>
-                              </div>
-                          </label>
-                           <button onClick={() => handleEditQuestClick(quest)} className="text-sm font-semibold text-slate-400 hover:text-white">Edit</button>
-                           <button onClick={() => handleDeleteQuestClick(quest)} className="text-sm font-semibold text-red-500 hover:text-red-400">Delete</button>
-                       </div>
-                   </div>
-               </div>
-           ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 rounded-2xl z-10">
+                <LockClosedIcon className="w-12 h-12 text-yellow-400 mb-4" />
+                <p className="text-xl font-bold text-white">Manage Quests</p>
+                <p className="text-sm text-slate-300">
+                    This feature is available on the <span className="font-bold">Core</span> plan and above.
+                </p>
+                 <Link to="/pricing" className="mt-4 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">
+                    View Plans
+                </Link>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-4 opacity-30">Manage Quests</h3>
+            <div className="opacity-30 space-y-2">
+                <div className="h-12 bg-slate-700/50 rounded-lg"></div>
+                <div className="h-24 bg-slate-700/50 rounded-lg"></div>
+            </div>
+        </div>
+      )}
       
        {/* Manage Store Items */}
-      <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-        <h3 className="text-lg font-bold text-white mb-4">Manage Store Items</h3>
-        <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} placeholder="Item Name" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
-              <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} placeholder="XP Cost" required min="0" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
-              <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} placeholder="Item Description" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 md:col-span-2" rows={2}/>
-              <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 md:col-span-2">
-                {iconMapKeys.map(key => <option key={key} value={key}>{key}</option>)}
-              </select>
-           </div>
-           <div className="flex gap-2 pt-4 border-t border-slate-600">
-                <button type="submit" className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
-                    {editingItem ? 'Update Item' : 'Create Item'}
-                </button>
-                {editingItem && <button type="button" onClick={resetItemForm} className="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg">Cancel Edit</button>}
-            </div>
-        </form>
-         <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-           {storeItems.map(item => (
-               <div key={item.id} className="bg-slate-700/50 p-4 rounded-lg">
-                   <div className="flex justify-between items-start">
-                       <div>
-                           <h4 className="font-bold text-white">{item.name}</h4>
-                           <p className="text-sm text-slate-400">{item.description}</p>
-                           <div className="flex items-center gap-4 mt-2">
-                               <span className="flex items-center gap-1 text-sm font-semibold text-blue-400"><TrophyIcon className="w-4 h-4"/> {item.cost} XP</span>
-                           </div>
-                       </div>
-                       <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-                          <label className="flex items-center cursor-pointer">
-                              <span className="mr-2 text-sm text-slate-400">{item.isActive ? 'Active' : 'Inactive'}</span>
-                              <div className="relative">
-                                  <input type="checkbox" checked={item.isActive} onChange={() => handleToggleStoreItemActive(item.id, !item.isActive)} className="sr-only"/>
-                                  <div className={`block w-10 h-6 rounded-full ${item.isActive ? 'bg-green-500' : 'bg-slate-600'}`}></div>
-                                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${item.isActive ? 'translate-x-4' : ''}`}></div>
-                              </div>
-                          </label>
-                           <button onClick={() => handleEditItemClick(item)} className="text-sm font-semibold text-slate-400 hover:text-white">Edit</button>
-                           <button onClick={() => handleDeleteItemClick(item)} className="text-sm font-semibold text-red-500 hover:text-red-400">Delete</button>
-                       </div>
-                   </div>
-               </div>
-           ))}
+      {isFeatureEnabled('store') ? (
+        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+          <h3 className="text-lg font-bold text-white mb-4">Manage Store Items</h3>
+          <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} placeholder="Item Name" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+                <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} placeholder="XP Cost" required min="0" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+                <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} placeholder="Item Description" required className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 md:col-span-2" rows={2}/>
+                <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2">
+                  {iconMapKeys.map(key => <option key={key} value={key}>{key}</option>)}
+                </select>
+                 <select value={itemType} onChange={e => setItemType(e.target.value as any)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2">
+                  <option value="INSTANT">Instant Use</option>
+                  <option value="TIMED_EFFECT">Timed Effect</option>
+                </select>
+                {itemType === 'TIMED_EFFECT' && (
+                    <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">Duration (hours)</label>
+                          <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="e.g., 48" required min="1" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">XP Modifier</label>
+                          <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="e.g., 2 for 2x" required min="1" step="0.1" className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2" />
+                      </div>
+                    </div>
+                )}
+             </div>
+             <div className="flex gap-2 pt-4 border-t border-slate-600">
+                  <button type="submit" className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">
+                      {editingItem ? 'Update Item' : 'Create Item'}
+                  </button>
+                  {editingItem && <button type="button" onClick={resetItemForm} className="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded-lg">Cancel Edit</button>}
+              </div>
+          </form>
+           <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+             {storeItems.map(item => (
+                 <div key={item.id} className="bg-slate-700/50 p-4 rounded-lg">
+                     <div className="flex justify-between items-start">
+                         <div>
+                             <h4 className="font-bold text-white">{item.name}</h4>
+                             <p className="text-sm text-slate-400">{item.description}</p>
+                             <div className="flex items-center gap-4 mt-2">
+                                 <span className="flex items-center gap-1 text-sm font-semibold text-blue-400"><TrophyIcon className="w-4 h-4"/> {item.cost} XP</span>
+                                 <span className="text-xs font-semibold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">{item.itemType === 'TIMED_EFFECT' ? `Timed (${item.durationHours}h, ${item.modifier}x)` : 'Instant'}</span>
+                             </div>
+                         </div>
+                         <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                            <label className="flex items-center cursor-pointer">
+                                <span className="mr-2 text-sm text-slate-400">{item.isActive ? 'Active' : 'Inactive'}</span>
+                                <div className="relative">
+                                    <input type="checkbox" checked={item.isActive} onChange={() => handleToggleStoreItemActive(item.id, !item.isActive)} className="sr-only"/>
+                                    <div className={`block w-10 h-6 rounded-full ${item.isActive ? 'bg-green-500' : 'bg-slate-600'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${item.isActive ? 'translate-x-4' : ''}`}></div>
+                                </div>
+                            </label>
+                             <button onClick={() => handleEditItemClick(item)} className="text-sm font-semibold text-slate-400 hover:text-white">Edit</button>
+                             <button onClick={() => handleDeleteItemClick(item)} className="text-sm font-semibold text-red-500 hover:text-red-400">Delete</button>
+                         </div>
+                     </div>
+                 </div>
+             ))}
+          </div>
         </div>
-      </div>
+       ) : (
+        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 rounded-2xl z-10">
+                <LockClosedIcon className="w-12 h-12 text-yellow-400 mb-4" />
+                <p className="text-xl font-bold text-white">Manage XP Store</p>
+                <p className="text-sm text-slate-300">
+                    This feature is available on the <span className="font-bold">Pro</span> plan.
+                </p>
+                <Link to="/pricing" className="mt-4 bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">
+                    View Plans
+                </Link>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-4 opacity-30">Manage Store Items</h3>
+            <div className="opacity-30 space-y-2">
+                <div className="h-12 bg-slate-700/50 rounded-lg"></div>
+                <div className="h-24 bg-slate-700/50 rounded-lg"></div>
+            </div>
+        </div>
+      )}
 
 
       {/* Manage Rewards */}
@@ -695,20 +817,25 @@ const AdminPage: React.FC = () => {
         </div>
       </div>
 
+       {/* Testing Panel */}
       <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-        <h3 className="text-lg font-bold text-red-500 mb-2">Danger Zone</h3>
-        <p className="text-sm text-slate-400 mb-4">
-            Reset all application data to its initial state, including users, actions, and rewards. This action cannot be undone.
-        </p>
-        <button 
-            disabled
-            className="w-full bg-red-600/50 text-white/50 font-semibold py-2 px-4 rounded-lg cursor-not-allowed"
-        >
-            Reset All Data
-        </button>
-        <p className="text-xs text-slate-500 mt-2 text-center">
-            Data reset is disabled for live database integration. Please manage data directly in your Supabase dashboard.
-        </p>
+        <h3 className="text-lg font-bold text-white mb-4">Testing & Simulation</h3>
+        <div className="bg-slate-700/50 p-4 rounded-lg">
+            <label htmlFor="tier-select" className="block text-sm font-medium text-slate-400 mb-1">
+                Simulate Subscription Tier
+            </label>
+            <select
+                id="tier-select"
+                value={community?.subscriptionTier || 'starter'}
+                onChange={handleTierChange}
+                className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500"
+            >
+                <option value="starter">Starter (Core Features)</option>
+                <option value="core">Core (Quests, Analytics)</option>
+                <option value="pro">Pro (Store, Advanced Analytics)</option>
+            </select>
+            <p className="text-xs text-slate-500 mt-2">Changes the community tier to test feature-gating on all pages.</p>
+        </div>
       </div>
     </div>
   );
