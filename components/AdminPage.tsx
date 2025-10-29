@@ -23,9 +23,11 @@ const AdminPage: React.FC = () => {
     handleAddReward,
     handleUpdateReward,
     handleDeleteReward,
+    handleRestoreReward,
     handleAddBadge,
     handleUpdateBadge,
     handleDeleteBadge,
+    handleRestoreBadge,
     handleTriggerWebhook,
     isFeatureEnabled,
     handleCreateQuest,
@@ -158,11 +160,16 @@ const AdminPage: React.FC = () => {
   };
 
   const handleDeleteRewardClick = async (actionType: string) => {
-    if (window.confirm(`Are you sure you want to delete the reward "${actionType}"? This is only possible if no user has ever been awarded this action.`)) {
-        const result = await handleDeleteReward(actionType);
+    if (window.confirm(`This will archive the reward "${actionType}" if it has been used, or delete it permanently if it has not. Continue?`)) {
+        const result = await handleDeleteReward(actionType, true);
         showNotification(result.message, 4000);
     }
   };
+
+  const handleRestoreRewardClick = async (actionType: string) => {
+      const result = await handleRestoreReward(actionType);
+      showNotification(result.message);
+  }
 
   const cancelEditBadge = () => {
     setEditBadgeName(null);
@@ -203,11 +210,16 @@ const AdminPage: React.FC = () => {
   };
 
   const handleDeleteBadgeClick = async (badgeName: string) => {
-    if (window.confirm(`Are you sure you want to delete the badge "${badgeName}"? This is only possible if it has not been awarded to any users.`)) {
-        const result = await handleDeleteBadge(badgeName);
+    if (window.confirm(`This will archive the badge "${badgeName}" if it has been awarded, or delete it permanently if it has not. Continue?`)) {
+        const result = await handleDeleteBadge(badgeName, true);
         showNotification(result.message, 4000);
     }
   };
+
+  const handleRestoreBadgeClick = async (badgeName: string) => {
+      const result = await handleRestoreBadge(badgeName);
+      showNotification(result.message);
+  }
 
   // Quest Form Logic
     const resetQuestForm = () => {
@@ -216,7 +228,7 @@ const AdminPage: React.FC = () => {
         setQuestDescription('');
         setQuestXpReward(100);
         setQuestBadgeReward(null);
-        setQuestTasks([{ actionType: Object.keys(rewardsConfig)[0] || '', targetCount: 1, description: '' }]);
+        setQuestTasks([{ actionType: Object.keys(rewardsConfig).length > 0 ? Object.keys(rewardsConfig)[0] : '', targetCount: 1, description: '' }]);
     };
 
     useEffect(() => {
@@ -764,7 +776,7 @@ const AdminPage: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => handleEditRewardClick(key, value as Reward)} className="text-xs font-semibold text-slate-400 hover:text-white">Edit</button>
-                        <button onClick={() => handleDeleteRewardClick(key)} className="text-xs font-semibold text-red-500 hover:text-red-400">Delete</button>
+                        <button onClick={() => handleDeleteRewardClick(key)} className="text-xs font-semibold text-yellow-500 hover:text-yellow-400">Archive</button>
                     </div>
                 </div>
             ))}
@@ -810,7 +822,7 @@ const AdminPage: React.FC = () => {
                     <BadgeItem badge={badge} />
                     <div className="mt-1 flex justify-center gap-2">
                         <button onClick={() => handleEditBadgeClick(badge.name, badge as BadgeConfig)} className="text-xs font-semibold text-slate-400 hover:text-white">Edit</button>
-                        <button onClick={() => handleDeleteBadgeClick(badge.name)} className="text-xs font-semibold text-red-500 hover:text-red-400">Delete</button>
+                        <button onClick={() => handleDeleteBadgeClick(badge.name)} className="text-xs font-semibold text-yellow-500 hover:text-yellow-400">Archive</button>
                     </div>
                 </div>
             ))}

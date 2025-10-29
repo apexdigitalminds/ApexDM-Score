@@ -83,6 +83,7 @@ export interface Quest {
 }
 
 export interface UserQuestProgress {
+  id: number;
   questId: string;
   progress: { [actionType: string]: number }; // e.g., { "log_trade": 3 }
   completed: boolean;

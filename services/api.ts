@@ -73,6 +73,7 @@ const questFromSupabase = (data: any): Quest => ({
 });
 
 const userQuestProgressFromSupabase = (data: any): UserQuestProgress => ({
+    id: data.id,
     questId: data.quest_id,
     progress: data.progress,
     completed: data.is_completed,
@@ -488,24 +489,35 @@ export const api = {
         const { error } = await supabase.from('reward_actions').update({ xp_gained: xp }).eq('action_type', actionType);
         if (error) console.error(`Error updating reward "${actionType}":`, error.message);
     },
-    deleteReward: async (actionType: string) => {
+    deleteReward: async (actionType: string, isArchive: boolean) => {
+        // Check if the action is used in logs or quests.
         const { count: logCount, error: logCountError } = await supabase.from('actions_log').select('action_type', { count: 'exact' }).eq('action_type', actionType);
         if (logCountError) return { success: false, message: `Could not check reward usage: ${logCountError.message}` };
-        if ((logCount ?? 0) > 0) {
-            return { success: false, message: `Cannot delete: in use in ${logCount} log entries.` };
-        }
-    
+        
         const { count: questTaskCount, error: questTaskError } = await supabase.from('quest_tasks').select('action_type', { count: 'exact' }).eq('action_type', actionType);
         if (questTaskError) return { success: false, message: `Could not check quest task usage: ${questTaskError.message}` };
-        if ((questTaskCount ?? 0) > 0) {
-            return { success: false, message: `Cannot delete: used in ${questTaskCount} quest task(s).` };
+        
+        const isUsed = (logCount ?? 0) > 0 || (questTaskCount ?? 0) > 0;
+
+        if (isUsed) {
+             // If used, we can only archive it.
+            const { error } = await supabase.from('reward_actions').update({ is_archived: true }).eq('action_type', actionType);
+            return error 
+                ? { success: false, message: `Failed to archive: ${error.message}` } 
+                : { success: true, message: `Reward "${actionType}" is in use and has been archived.` };
         }
-    
+        
+        // If not used, we can permanently delete it.
         const { error } = await supabase.from('reward_actions').delete().eq('action_type', actionType);
-        if (error) {
-            return { success: false, message: `Failed to delete reward: ${error.message}` };
-        }
-        return { success: true, message: `Reward "${actionType}" deleted.` };
+        return error
+            ? { success: false, message: `Failed to delete: ${error.message}` }
+            : { success: true, message: `Reward "${actionType}" deleted permanently.` };
+    },
+    restoreReward: async(actionType: string) => {
+        const { error } = await supabase.from('reward_actions').update({ is_archived: false }).eq('action_type', actionType);
+        return error
+            ? { success: false, message: `Failed to restore: ${error.message}` }
+            : { success: true, message: `Reward "${actionType}" restored.` };
     },
     createBadge: async (name: string, config: BadgeConfig) => {
         const communityId = await getCommunityId();
@@ -521,30 +533,37 @@ export const api = {
         const { error } = await supabase.from('badges').update(config).eq('name', name).eq('community_id', communityId);
         if (error) console.error(`Error updating badge "${name}":`, error.message);
     },
-    deleteBadge: async (name: string) => {
+    deleteBadge: async (name: string, isArchive: boolean) => {
         const communityId = await getCommunityId();
         const { data: badge, error: badgeError } = await supabase.from('badges').select('id').eq('name', name).eq('community_id', communityId).single();
-        if (badgeError || !badge) return { success: false, message: "Badge not found or permission denied." };
-    
-        const { count, error: countError } = await supabase.from('user_badges').select('badge_id', { count: 'exact' }).eq('badge_id', badge.id);
-        if (countError) return { success: false, message: `Could not check badge usage: ${countError.message}` };
-        if ((count ?? 0) > 0) {
-            return { success: false, message: `Cannot delete: awarded ${count} times.` };
-        }
+        if (badgeError || !badge) return { success: false, message: "Badge not found." };
+
+        const { count: userCount, error: userCountError } = await supabase.from('user_badges').select('badge_id', { count: 'exact' }).eq('badge_id', badge.id);
+        if (userCountError) return { success: false, message: `Could not check usage: ${userCountError.message}` };
         
         const { count: questCount, error: questCountError } = await supabase.from('quests').select('badge_reward_id', { count: 'exact' }).eq('badge_reward_id', badge.id);
         if (questCountError) return { success: false, message: `Could not check quest usage: ${questCountError.message}` };
-        if ((questCount ?? 0) > 0) {
-            return { success: false, message: `Cannot delete: used as a reward in ${questCount} quest(s).` };
+        
+        const isUsed = (userCount ?? 0) > 0 || (questCount ?? 0) > 0;
+
+        if (isUsed) {
+            const { error } = await supabase.from('badges').update({ is_archived: true }).eq('id', badge.id);
+            return error
+                ? { success: false, message: `Failed to archive badge: ${error.message}` }
+                : { success: true, message: `Badge "${name}" is in use and has been archived.` };
         }
-    
-        const { error: deleteError } = await supabase.from('badges').delete().eq('id', badge.id);
-        if (deleteError) {
-            return { success: false, message: `Failed to delete badge: ${deleteError.message}` };
-        }
-        return { success: true, message: `Badge "${name}" deleted.` };
+        
+        const { error } = await supabase.from('badges').delete().eq('id', badge.id);
+        return error
+            ? { success: false, message: `Failed to delete badge: ${error.message}` }
+            : { success: true, message: `Badge "${name}" deleted permanently.` };
     },
-    
+    restoreBadge: async(name: string) => {
+        const { error } = await supabase.from('badges').update({ is_archived: false }).eq('name', name);
+        return error
+            ? { success: false, message: `Failed to restore badge: ${error.message}` }
+            : { success: true, message: `Badge "${name}" restored.` };
+    },
     signInWithPassword: (credentials: SignInCredentials) => supabase.auth.signInWithPassword(credentials),
     signUpNewUser: (credentials: SignUpCredentials) => supabase.auth.signUp({
         email: credentials.email, password: credentials.password,
@@ -741,18 +760,79 @@ export const api = {
         return data as { success: boolean; message: string; };
     },
 
-    claimQuestReward: async (userId: string, questId: string): Promise<{ success: boolean; message: string; }> => {
-        const { data, error } = await supabase.rpc('claim_quest_reward', {
-            p_user_id: userId,
-            p_quest_id: questId
-        });
+    claimQuestReward: async (progressId: number): Promise<{ success: boolean; message: string; }> => {
+        try {
+            // 1. Atomically update the progress record to prevent double-claiming
+            const { data: updatedProgress, error: updateError } = await supabase
+                .from('user_quest_progress')
+                .update({ is_claimed: true })
+                .eq('id', progressId)
+                .eq('is_completed', true)
+                .eq('is_claimed', false)
+                .select()
+                .single();
 
-        if (error) {
-            console.error("Error claiming quest reward:", error.message);
-            return { success: false, message: "Error claiming quest reward." };
+            if (updateError || !updatedProgress) {
+                // This can happen if already claimed, not completed, or record not found.
+                // It safely prevents proceeding.
+                console.error('Failed to claim quest or already claimed:', updateError?.message);
+                return { success: false, message: 'Reward already claimed or quest not complete.' };
+            }
+
+            const { user_id: userId, quest_id: questId } = updatedProgress;
+
+            // 2. Get quest details for rewards
+            const { data: questData, error: questError } = await supabase
+                .from('quests')
+                .select('xp_reward, badge_reward_id, badges(name)')
+                .eq('id', questId)
+                .single();
+
+            if (questError || !questData) {
+                // This would be an inconsistent state, but we should handle it.
+                console.error('Quest not found after claiming:', questError?.message);
+                return { success: false, message: 'Quest data not found.' };
+            }
+
+            let messages = [`+${questData.xp_reward} XP!`];
+
+            // 3. Award XP
+            const { error: xpError } = await supabase.rpc('increment_user_xp', {
+                p_user_id: userId,
+                p_xp_to_add: questData.xp_reward
+            });
+
+            if (xpError) {
+                // The claim is already registered, so user can't retry. Log for admin.
+                console.error(`CRITICAL: Failed to award XP for claimed quest progress ${progressId}: ${xpError.message}`);
+                messages.push('Error awarding XP.');
+            }
+
+            // 4. Award Badge
+            if (questData.badge_reward_id) {
+                const communityId = await getCommunityId();
+                const { error: badgeInsertError } = await supabase
+                    .from('user_badges')
+                    .insert({
+                        user_id: userId,
+                        badge_id: questData.badge_reward_id,
+                        community_id: communityId
+                    });
+                
+                if (badgeInsertError && badgeInsertError.code !== '23505') { // Ignore if badge already exists
+                    console.error(`CRITICAL: Failed to award badge for claimed quest progress ${progressId}: ${badgeInsertError.message}`);
+                    messages.push('Error awarding badge.');
+                } else if (questData.badges) {
+                    messages.push(`Badge unlocked: ${questData.badges.name}!`);
+                }
+            }
+            
+            return { success: true, message: messages.join(' ') };
+
+        } catch (error: any) {
+            console.error("Fatal error in claimQuestReward:", error.message);
+            return { success: false, message: 'An unexpected error occurred while claiming.' };
         }
-
-        return data as { success: boolean; message: string; };
     },
     getAnalyticsData: async (dateRange: '7d' | '30d'): Promise<AnalyticsData | null> => {
         try {
@@ -869,7 +949,7 @@ export const api = {
                     participationRate: totalUsers > 0 ? (participants.length / totalUsers) * 100 : 0,
                     completionRate: participants.length > 0 ? (completers.length / participants.length) * 100 : 0,
                 };
-            }).sort((a,b) => b.participationRate - a.completionRate);
+            }).sort((a,b) => b.participationRate - a.participationRate);
             
             const itemsCounter: Record<string, number> = {};
             for (const p of allUserPurchases as any[]) {

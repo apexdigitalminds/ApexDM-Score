@@ -86,9 +86,18 @@ const QuestsPage: React.FC = () => {
 
     const handleClaim = async (questId: string) => {
         if (!selectedUser) return;
+
+        const progress = userQuestProgress.find(p => p.questId === questId);
+
+        if (!progress || !progress.id) {
+            setNotification({ type: 'error', message: 'Could not find quest progress to claim.' });
+            setTimeout(() => setNotification(null), 3000);
+            return;
+        }
+
         setClaimingId(questId);
-        const result = await claimQuestReward(selectedUser.id, questId);
-         setNotification({
+        const result = await claimQuestReward(progress.id);
+        setNotification({
             type: result.success ? 'success' : 'error',
             message: result.message
         });

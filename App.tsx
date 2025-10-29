@@ -63,10 +63,12 @@ interface AppContextType {
   handleAwardBadge: (userId: string, badgeName: string) => Promise<{success: boolean, message: string}>;
   handleAddReward: (actionName: string, xp: number) => Promise<void>;
   handleUpdateReward: (actionType: string, xp: number) => Promise<void>;
-  handleDeleteReward: (actionType: string) => Promise<{success: boolean, message: string}>;
+  handleDeleteReward: (actionType: string, isArchive: boolean) => Promise<{success: boolean, message: string}>;
+  handleRestoreReward: (actionType: string) => Promise<{success: boolean, message: string}>;
   handleAddBadge: (badgeName: string, config: BadgeConfig) => Promise<{ success: boolean; message?: string; }>;
   handleUpdateBadge: (badgeName: string, config: BadgeConfig) => Promise<void>;
-  handleDeleteBadge: (badgeName: string) => Promise<{success: boolean, message: string}>;
+  handleDeleteBadge: (badgeName: string, isArchive: boolean) => Promise<{success: boolean, message: string}>;
+  handleRestoreBadge: (badgeName: string) => Promise<{success: boolean, message: string}>;
   handleCreateQuest: (questData: Omit<Quest, 'id' | 'isActive'>) => Promise<boolean>;
   handleUpdateQuest: (questId: string, questData: Omit<Quest, 'id' | 'isActive'>) => Promise<boolean>;
   handleDeleteQuest: (questId: string) => Promise<boolean>;
@@ -81,7 +83,7 @@ interface AppContextType {
   handleTriggerWebhook: (userId: string, actionType: string) => Promise<string | null>;
   isFeatureEnabled: (feature: Feature) => boolean;
   handleBuyStoreItem: (userId: string, itemId: string) => Promise<{ success: boolean; message: string; }>;
-  claimQuestReward: (userId: string, questId: string) => Promise<{ success: boolean; message: string; }>;
+  claimQuestReward: (progressId: number) => Promise<{ success: boolean; message: string; }>;
   resetAppData: () => Promise<void>;
   // Inventory
   getUserInventory: (userId: string) => Promise<UserInventoryItem[]>;
@@ -240,13 +242,21 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     await fetchStaticData();
   };
 
-  const handleDeleteReward = async (actionType: string) => {
-    const result = await api.deleteReward(actionType);
+  const handleDeleteReward = async (actionType: string, isArchive: boolean) => {
+    const result = await api.deleteReward(actionType, isArchive);
     if (result.success) {
         await fetchStaticData();
     }
     return result;
   };
+
+  const handleRestoreReward = async (actionType: string) => {
+    const result = await api.restoreReward(actionType);
+    if (result.success) {
+        await fetchStaticData();
+    }
+    return result;
+  }
 
   const handleAddBadge = async (badgeName: string, config: BadgeConfig): Promise<{ success: boolean; message?: string; }> => {
     if (badgeName.trim()) {
@@ -265,13 +275,21 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       await fetchStaticData();
   };
 
-  const handleDeleteBadge = async (badgeName: string) => {
-      const result = await api.deleteBadge(badgeName);
+  const handleDeleteBadge = async (badgeName: string, isArchive: boolean) => {
+      const result = await api.deleteBadge(badgeName, isArchive);
       if (result.success) {
           await fetchStaticData();
       }
       return result;
   };
+
+  const handleRestoreBadge = async (badgeName: string) => {
+      const result = await api.restoreBadge(badgeName);
+      if (result.success) {
+          await fetchStaticData();
+      }
+      return result;
+  }
 
    const handleCreateQuest = async (questData: Omit<Quest, 'id' | 'isActive'>) => {
       const success = await api.createQuest(questData);
@@ -368,8 +386,8 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return result;
   };
   
-  const claimQuestReward = async (userId: string, questId: string) => {
-      const result = await api.claimQuestReward(userId, questId);
+  const claimQuestReward = async (progressId: number) => {
+      const result = await api.claimQuestReward(progressId);
        if(result.success) {
             await refreshDynamicData();
         }
@@ -427,9 +445,11 @@ const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     handleAddReward,
     handleUpdateReward,
     handleDeleteReward,
+    handleRestoreReward,
     handleAddBadge,
     handleUpdateBadge,
     handleDeleteBadge,
+    handleRestoreBadge,
     handleCreateQuest,
     handleUpdateQuest,
     handleDeleteQuest,
