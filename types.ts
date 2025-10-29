@@ -14,6 +14,7 @@ export interface User {
   role: 'admin' | 'member';
   whop_user_id?: string;
   bannedUntil?: string | null;
+  created_at?: string; // For "Member since" display
 }
 
 export interface Action {

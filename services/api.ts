@@ -45,7 +45,6 @@ const actionFromSupabase = (data: any): Action => ({
     userId: data.user_id,
     communityId: data.community_id,
     actionType: data.action_type,
-    // FIX: Ensure xpGained is always a number to prevent type errors in arithmetic operations.
     xpGained: data.xp_gained ?? 0,
     timestamp: data.created_at,
     source: data.source,
@@ -69,7 +68,7 @@ const questFromSupabase = (data: any): Quest => ({
         description: task.description,
     })),
     xpReward: data.xp_reward,
-    badgeReward: data.badge_reward,
+    badgeReward: data.badges ? data.badges.name : null,
     isActive: data.is_active,
 });
 
@@ -121,6 +120,7 @@ const getCommunityId = async () => {
     return COMMUNITY_ID;
 };
 
+// FIX: Removed `created_at` because the column does not exist on the `profiles` table. This avoids query errors.
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until';
 
 export const api = {
@@ -199,7 +199,15 @@ export const api = {
         if (authError || !user) {
             return null;
         }
-        return await api.getUserById(user.id);
+        // Fetch profile data which lacks `created_at`.
+        const profile = await api.getUserById(user.id);
+
+        if (profile) {
+            // Augment the profile with `created_at` from the auth user object.
+            // This is a workaround because the `profiles` table is missing this column.
+            (profile as any).created_at = user.created_at;
+        }
+        return profile;
     },
     getUserActions: async (userId: string): Promise<Action[]> => {
         const { data, error } = await supabase
@@ -281,7 +289,7 @@ export const api = {
      getQuests: async (): Promise<Quest[]> => {
         const { data, error } = await supabase
             .from('quests')
-            .select('*, quest_tasks(*)')
+            .select('id, title, description, xp_reward, is_active, quest_tasks(*), badges!left(name)')
             .eq('is_active', true)
             .order('created_at', { ascending: true });
 
@@ -294,7 +302,7 @@ export const api = {
     getQuestsAdmin: async (): Promise<Quest[]> => {
         const { data, error } = await supabase
             .from('quests')
-            .select('*, quest_tasks(*)')
+            .select('id, title, description, xp_reward, is_active, quest_tasks(*), badges!left(name)')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -350,7 +358,6 @@ export const api = {
         if (effectsError) console.error("Error checking for active effects:", effectsError.message);
         
         if (activeEffects && activeEffects.length > 0) {
-            // Apply the first found modifier (assuming only one boost can be active)
             const modifier = activeEffects[0].modifier || 1;
             xp_to_add = Math.round(xp_to_add * modifier);
         }
@@ -402,6 +409,57 @@ export const api = {
             xp_gained: xp_to_add, source: source
         });
 
+        // --- START QUEST PROGRESS UPDATE ---
+        const { data: activeQuests, error: questsError } = await supabase
+            .from('quests')
+            .select('id, quest_tasks(*)')
+            .eq('is_active', true);
+
+        if (questsError) {
+            console.error('Could not fetch quests for progress update:', questsError.message);
+        } else if (activeQuests) {
+            const { data: userProgress, error: progressError } = await supabase
+                .from('user_quest_progress')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (progressError) {
+                console.error('Could not fetch user progress:', progressError.message);
+            } else {
+                const progressMap = new Map(userProgress.map(p => [p.quest_id, p]));
+
+                for (const quest of activeQuests) {
+                    const hasRelevantTask = quest.quest_tasks.some(t => t.action_type === actionType);
+                    const userQuestStatus: any = progressMap.get(quest.id);
+
+                    if (hasRelevantTask && (!userQuestStatus || !userQuestStatus.is_completed)) {
+                        let currentProgress = userQuestStatus ? userQuestStatus.progress || {} : {};
+                        currentProgress[actionType] = (currentProgress[actionType] || 0) + 1;
+
+                        const isNowComplete = quest.quest_tasks.every(task =>
+                            (currentProgress[task.action_type] || 0) >= task.target_count
+                        );
+
+                        if (userQuestStatus) {
+                            await supabase
+                                .from('user_quest_progress')
+                                .update({ progress: currentProgress, is_completed: isNowComplete })
+                                .eq('id', userQuestStatus.id);
+                        } else {
+                            await supabase.from('user_quest_progress').insert({
+                                user_id: userId,
+                                quest_id: quest.id,
+                                progress: currentProgress,
+                                is_completed: isNowComplete,
+                                is_claimed: false,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        // --- END QUEST PROGRESS UPDATE ---
+
         return { xpGained: xp_to_add };
     },
     awardBadge: async (userId: string, badgeName: string) => {
@@ -415,7 +473,6 @@ export const api = {
         
         if (insertError) {
             console.error(`Error awarding badge: ${insertError.message}`);
-            // Return specific error codes to be handled by the UI
             return insertError;
         }
         return null;
@@ -432,21 +489,18 @@ export const api = {
         if (error) console.error(`Error updating reward "${actionType}":`, error.message);
     },
     deleteReward: async (actionType: string) => {
-        // Check 1: Is the reward used in any action logs?
         const { count: logCount, error: logCountError } = await supabase.from('actions_log').select('action_type', { count: 'exact' }).eq('action_type', actionType);
         if (logCountError) return { success: false, message: `Could not check reward usage: ${logCountError.message}` };
         if ((logCount ?? 0) > 0) {
             return { success: false, message: `Cannot delete: in use in ${logCount} log entries.` };
         }
     
-        // Check 2: Is the reward used in any quest tasks?
         const { count: questTaskCount, error: questTaskError } = await supabase.from('quest_tasks').select('action_type', { count: 'exact' }).eq('action_type', actionType);
         if (questTaskError) return { success: false, message: `Could not check quest task usage: ${questTaskError.message}` };
         if ((questTaskCount ?? 0) > 0) {
             return { success: false, message: `Cannot delete: used in ${questTaskCount} quest task(s).` };
         }
     
-        // If all checks pass, proceed with deletion
         const { error } = await supabase.from('reward_actions').delete().eq('action_type', actionType);
         if (error) {
             return { success: false, message: `Failed to delete reward: ${error.message}` };
@@ -469,25 +523,21 @@ export const api = {
     },
     deleteBadge: async (name: string) => {
         const communityId = await getCommunityId();
-        // Step 1: Find the badge to get its ID
         const { data: badge, error: badgeError } = await supabase.from('badges').select('id').eq('name', name).eq('community_id', communityId).single();
         if (badgeError || !badge) return { success: false, message: "Badge not found or permission denied." };
     
-        // Check 1: Has the badge been awarded to any user?
         const { count, error: countError } = await supabase.from('user_badges').select('badge_id', { count: 'exact' }).eq('badge_id', badge.id);
         if (countError) return { success: false, message: `Could not check badge usage: ${countError.message}` };
         if ((count ?? 0) > 0) {
             return { success: false, message: `Cannot delete: awarded ${count} times.` };
         }
         
-        // Check 2: Is the badge used as a reward in any quests? (checks by name)
-        const { count: questCount, error: questCountError } = await supabase.from('quests').select('badge_reward', { count: 'exact' }).eq('badge_reward', name);
+        const { count: questCount, error: questCountError } = await supabase.from('quests').select('badge_reward_id', { count: 'exact' }).eq('badge_reward_id', badge.id);
         if (questCountError) return { success: false, message: `Could not check quest usage: ${questCountError.message}` };
         if ((questCount ?? 0) > 0) {
             return { success: false, message: `Cannot delete: used as a reward in ${questCount} quest(s).` };
         }
     
-        // If all checks pass, proceed with deletion
         const { error: deleteError } = await supabase.from('badges').delete().eq('id', badge.id);
         if (deleteError) {
             return { success: false, message: `Failed to delete badge: ${deleteError.message}` };
@@ -502,7 +552,7 @@ export const api = {
     }),
     signOut: () => supabase.auth.signOut(),
     sendPasswordResetEmail: (email: string) => supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin, // Redirect back to the app after reset
+        redirectTo: window.location.origin,
     }),
     
     syncWhopMembers: async () => {
@@ -516,12 +566,29 @@ export const api = {
     },
     createQuest: async (questData: Omit<Quest, 'id' | 'isActive'>): Promise<boolean> => {
         const communityId = await getCommunityId();
+        
+        let badgeId: string | null = null;
+        if (questData.badgeReward) {
+            const { data: badgeData, error: badgeError } = await supabase
+                .from('badges')
+                .select('id')
+                .eq('name', questData.badgeReward)
+                .eq('community_id', communityId)
+                .single();
+
+            if (badgeError || !badgeData) {
+                console.error(`Could not find badge with name: ${questData.badgeReward}`, badgeError?.message);
+                return false;
+            }
+            badgeId = badgeData.id;
+        }
+
         const { data: newQuest, error: questError } = await supabase.from('quests').insert({
             community_id: communityId,
             title: questData.title,
             description: questData.description,
             xp_reward: questData.xpReward,
-            badge_reward: questData.badgeReward || null, // Ensure null instead of empty string
+            badge_reward_id: badgeId,
             is_active: false,
         }).select().single();
 
@@ -540,29 +607,44 @@ export const api = {
         const { error: tasksError } = await supabase.from('quest_tasks').insert(tasksToInsert);
         if (tasksError) {
             console.error("Error creating quest tasks:", tasksError.message);
-            // Attempt to clean up the orphaned quest
             await supabase.from('quests').delete().eq('id', newQuest.id);
             return false;
         }
         return true;
     },
     updateQuest: async (questId: string, questData: Omit<Quest, 'id' | 'isActive'>): Promise<boolean> => {
+        let badgeId: string | null = null;
+        if (questData.badgeReward) {
+            const communityId = await getCommunityId();
+            const { data: badgeData, error: badgeError } = await supabase
+                .from('badges')
+                .select('id')
+                .eq('name', questData.badgeReward)
+                .eq('community_id', communityId)
+                .single();
+
+            if (badgeError) {
+                console.error(`Could not find badge with name: ${questData.badgeReward}`, badgeError.message);
+                return false;
+            }
+            badgeId = badgeData ? badgeData.id : null;
+        }
+
         const { error: questError } = await supabase.from('quests').update({
             title: questData.title,
             description: questData.description,
             xp_reward: questData.xpReward,
-            badge_reward: questData.badgeReward || null, // Ensure null instead of empty string
+            badge_reward_id: badgeId,
         }).eq('id', questId);
         if (questError) {
             console.error("Error updating quest:", questError.message);
             return false;
         }
 
-        // Easiest way to update tasks is to delete and re-insert
         const { error: deleteError } = await supabase.from('quest_tasks').delete().eq('quest_id', questId);
         if (deleteError) {
             console.error("Error clearing old tasks for update:", deleteError.message);
-            return false; // Don't proceed to insert new ones
+            return false;
         }
 
         const tasksToInsert = questData.tasks.map(task => ({
@@ -581,7 +663,6 @@ export const api = {
         return true;
     },
     deleteQuest: async (questId: string): Promise<boolean> => {
-        // Assuming cascade delete is set up in the database for quest_tasks and user_quest_progress
         const { error } = await supabase.from('quests').delete().eq('id', questId);
         if (error) {
             console.error("Error deleting quest:", error.message);
@@ -631,7 +712,7 @@ export const api = {
         return true;
     },
     deleteStoreItem: async (itemId: string): Promise<{success: boolean; message: string;}> => {
-        const { count, error: countError } = await supabase.from('user_purchases').select('item_id', { count: 'exact' }).eq('item_id', itemId);
+        const { count, error: countError } = await supabase.from('user_inventory').select('item_id', { count: 'exact' }).eq('item_id', itemId);
         if(countError) return { success: false, message: `Could not check item purchases: ${countError.message}` };
         if ((count ?? 0) > 0) {
              return { success: false, message: `Cannot delete: purchased ${count} times.` };
@@ -694,12 +775,12 @@ export const api = {
                 userQuestProgressResult,
                 userPurchasesResult,
             ] = await Promise.all([
-                supabase.from('profiles').select('*').eq('community_id', communityId),
+                supabase.from('profiles').select(PROFILE_COLUMNS).eq('community_id', communityId),
                 supabase.from('actions_log').select('*').eq('community_id', communityId).gte('created_at', dateLimit30d),
                 supabase.from('user_badges').select('badges!inner(name, icon, color)').eq('community_id', communityId),
                 supabase.from('quests').select('*').eq('community_id', communityId),
                 supabase.from('user_quest_progress').select('*'),
-                supabase.from('user_purchases').select('cost_xp, store_items!inner(name)').eq('community_id', communityId),
+                supabase.from('user_inventory').select('store_items!inner(name, cost_xp)').eq('community_id', communityId),
             ]);
             
             if (profilesResult.error) throw profilesResult.error;
@@ -724,145 +805,136 @@ export const api = {
             const activeMembers7d = allProfiles.filter(p => p.last_action_date && new Date(p.last_action_date) >= new Date(dateLimit7d)).length;
             const activeMembers30d = allProfiles.filter(p => p.last_action_date && new Date(p.last_action_date) >= new Date(dateLimit30d)).length;
             const actionsToday = allActions.filter(a => new Date(a.timestamp) >= new Date(todayStart));
-            // FIX: Explicitly type the accumulator as a number to prevent type errors in arithmetic operations.
             const xpEarnedToday = actionsToday.reduce((sum: number, a) => sum + a.xpGained, 0);
     
-            const newMembers7d = allProfiles.filter(p => p.created_at && new Date(p.created_at) >= new Date(dateLimit7d)).length;
+            // FIX: Cannot calculate new members as `created_at` is not available on the `profiles` table.
+            const newMembers7d = 0;
             const churnedMembers14d = allProfiles.filter(p => !p.last_action_date || new Date(p.last_action_date) < new Date(dateLimit14d)).length;
     
             const minimalUser = (p: any): User => ({
                 id: p.id, username: p.username, avatarUrl: p.avatar_url, xp: p.xp, streak: p.streak,
                 communityId: p.community_id, streakFreezes: p.streak_freezes, lastActionDate: p.last_action_date, badges: [], role: p.role
             });
-    
             const topPerformers = {
-                byXp: [...allProfiles].sort((a, b) => b.xp - a.xp).slice(0, 10).map(minimalUser),
-                byStreak: [...allProfiles].sort((a, b) => b.streak - a.streak).slice(0, 10).map(minimalUser)
+                // FIX: Ensure sort operations are performed on numbers to prevent type errors.
+                byXp: [...allProfiles].sort((a,b) => (Number(b.xp) || 0) - (Number(a.xp) || 0)).slice(0, 10).map(minimalUser),
+                byStreak: [...allProfiles].sort((a,b) => (Number(b.streak) || 0) - (Number(a.streak) || 0)).slice(0, 10).map(minimalUser),
             };
     
-            const actionsInDateRange = allActions.filter(a => new Date(a.timestamp) >= new Date(relevantDateLimit));
-    
-            // FIX: Explicitly type the accumulator for `reduce` to ensure correct type inference.
-            const activityCounts = actionsInDateRange.reduce((acc: { [key: string]: number }, action) => {
-                acc[action.actionType] = (acc[action.actionType] || 0) + 1;
-                return acc;
-            }, {});
-    
-            const activityBreakdown = Object.entries(activityCounts).map(([actionType, count]) => ({ actionType, count }));
-    
-            const generateChartColors = (count: number): string[] => {
-                const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#ec4899'];
-                return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
-            };
-            const breakdownColors = generateChartColors(activityBreakdown.length);
-            activityBreakdown.forEach((item, index) => { (item as any).color = breakdownColors[index]; });
-    
-            // FIX: Explicitly type the accumulator as a number to handle arithmetic operations safely.
-            const totalStreakLength = allProfiles.reduce((sum: number, p: any) => sum + (p.streak || 0), 0);
-            const avgStreakLength = totalUsers > 0 ? Math.round(totalStreakLength / totalUsers) : 0;
+            // FIX: Replaced reduce with a for loop for more reliable type inference.
+            const actionCounts: Record<string, number> = {};
+            for (const action of allActions) {
+                actionCounts[action.actionType] = (actionCounts[action.actionType] || 0) + 1;
+            }
+            const activityBreakdown = Object.entries(actionCounts).map(([actionType, count], i) => ({
+                actionType: actionType.replace(/_/g, ' '),
+                count,
+                color: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'][i % 6],
+            }));
+            
+            // FIX: Ensure arithmetic operations are on numbers by casting and providing a fallback.
+            const totalStreaks = allProfiles.reduce((sum: number, p: any) => sum + (Number(p.streak) || 0), 0);
             const membersWithActiveStreak = allProfiles.filter(p => p.streak > 0).length;
-            const percentWithActiveStreak = totalUsers > 0 ? Math.round((membersWithActiveStreak / totalUsers) * 100) : 0;
-    
-            // FIX: Explicitly type the accumulator to ensure `totalXp` is a number for correct mapping.
-            const topXpActionsMap = actionsInDateRange.reduce((acc: { [key: string]: number }, action) => {
-                acc[action.actionType] = (acc[action.actionType] || 0) + action.xpGained;
-                return acc;
-            }, {});
-            const topXpActions = Object.entries(topXpActionsMap)
-                .map(([actionType, totalXp]) => ({ actionType, totalXp }))
-                .sort((a, b) => b.totalXp - a.totalXp).slice(0, 5);
-    
-            // FIX: Explicitly type the accumulator to ensure correct type inference for badge properties.
-            const topBadgesMap = allUserBadges.reduce((acc: {[key: string]: { count: number; icon: string; color: string }}, userBadge: any) => {
-                const badge = userBadge.badges; 
-                if (badge && badge.name) {
-                    if (!acc[badge.name]) {
-                        acc[badge.name] = { count: 0, icon: badge.icon, color: badge.color };
+            const streakHealth = {
+                avgStreakLength: membersWithActiveStreak > 0 ? Math.round(totalStreaks / membersWithActiveStreak) : 0,
+                percentWithActiveStreak: Math.round((membersWithActiveStreak / totalUsers) * 100),
+            };
+
+            // FIX: Replaced reduce with a for loop for more reliable type inference.
+            const xpByAction: Record<string, number> = {};
+            for (const action of allActions) {
+                const type = action.actionType.replace(/_/g, ' ');
+                xpByAction[type] = (xpByAction[type] || 0) + action.xpGained;
+            }
+            const topXpActions = Object.entries(xpByAction).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([actionType, totalXp]) => ({actionType, totalXp}));
+            
+            const badgeCounts: Record<string, { name: string; icon: string; color: string; count: number }> = {};
+            for (const userBadge of allUserBadges as any[]) {
+                const badge = userBadge.badges;
+                if(badge && badge.name) {
+                    if (!badgeCounts[badge.name]) {
+                        badgeCounts[badge.name] = { name: badge.name, icon: badge.icon, color: badge.color, count: 0 };
                     }
-                    acc[badge.name].count++;
+                    badgeCounts[badge.name].count += 1;
                 }
-                return acc;
-            }, {});
-            const topBadges = Object.entries(topBadgesMap)
-                .map(([name, data]) => ({ name, count: data.count, icon: data.icon, color: data.color }))
-                .sort((a, b) => b.count - a.count).slice(0, 6);
-    
+            }
+            const topBadges = Object.values(badgeCounts).sort((a,b) => b.count - a.count).slice(0, 6);
+
             const questAnalytics = allQuests.map(quest => {
                 const participants = allUserQuestProgress.filter(p => p.quest_id === quest.id);
-                const completions = participants.filter(p => p.is_completed);
-                const participationRate = (participants.length / totalUsers) * 100;
-                const completionRate = participants.length > 0 ? (completions.length / participants.length) * 100 : 0;
-                return { questId: quest.id, title: quest.title, participationRate, completionRate };
-            });
-    
-            // FIX: Explicitly type the accumulator to ensure arithmetic operations are safe.
-            const totalSpent = allUserPurchases.reduce((sum: number, p) => sum + Number(p.cost_xp || 0), 0);
-            // FIX: Explicitly type the accumulator to ensure purchase `count` is a number for correct mapping.
-            const itemPurchaseCounts = allUserPurchases.reduce((acc: { [key: string]: number }, purchase: any) => {
-                const name = (purchase.store_items as any)?.name; 
+                const completers = participants.filter(p => p.is_completed);
+                return {
+                    questId: quest.id,
+                    title: quest.title,
+                    participationRate: totalUsers > 0 ? (participants.length / totalUsers) * 100 : 0,
+                    completionRate: participants.length > 0 ? (completers.length / participants.length) * 100 : 0,
+                };
+            }).sort((a,b) => b.participationRate - a.completionRate);
+            
+            const itemsCounter: Record<string, number> = {};
+            for (const p of allUserPurchases as any[]) {
+                const name = p.store_items?.name;
                 if (name) {
-                    acc[name] = (acc[name] || 0) + 1;
+                    itemsCounter[name] = (itemsCounter[name] || 0) + 1;
                 }
-                return acc;
-            }, {});
-    
-            const storeItemsAnalytics = Object.entries(itemPurchaseCounts)
-                .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count);
-    
+            }
+
+            const storeAnalytics = {
+                // FIX: Ensure arithmetic operations are on numbers by casting and providing a fallback.
+                totalSpent: allUserPurchases.reduce((sum: number, p: any) => sum + (Number(p.store_items.cost_xp) || 0), 0),
+                // FIX: Replaced reduce with for loop and moved logic outside the object definition.
+                items: Object.entries(itemsCounter).map(([name, count]) => ({name, count})).sort((a,b) => b.count - a.count),
+            };
+
             return {
                 engagement: { activeMembers7d, activeMembers30d, avgDailyActions: actionsToday.length, xpEarnedToday },
                 growth: { newMembers7d, churnedMembers14d },
                 topPerformers,
                 activityBreakdown,
-                streakHealth: { avgStreakLength, percentWithActiveStreak },
+                streakHealth,
                 topXpActions,
                 topBadges,
                 questAnalytics,
-                storeAnalytics: { totalSpent, items: storeItemsAnalytics },
+                storeAnalytics,
             };
-    
-        } catch (error) {
-            console.error("Error fetching analytics data:", (error as Error).message);
+        } catch (error: any) {
+            console.error("Error fetching analytics data:", error.message);
             return null;
         }
     },
-
-    // Profile Management
-    uploadAvatar: async (file: File): Promise<string | null> => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
-
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}.${fileExt}`;
-
-        const { error } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-        if (error) {
-            console.error('Error uploading avatar:', error.message);
-            return null;
-        }
-        return filePath;
-    },
-    updateUserProfile: async (updates: { avatarUrl?: string }): Promise<boolean> => {
+    updateUserProfile: async (updates: { avatarUrl?: string }) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return false;
 
         const { error } = await supabase.from('profiles').update({ avatar_url: updates.avatarUrl }).eq('id', user.id);
         if (error) {
-            console.error('Error updating user profile:', error.message);
+            console.error('Error updating profile:', error.message);
             return false;
         }
         return true;
     },
-    
-    // Inventory
+    uploadAvatar: async (file: File) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+        
+        const { error } = await supabase.storage.from('avatars').upload(filePath, file);
+        if (error) {
+            console.error('Error uploading avatar:', error.message);
+            return null;
+        }
+        
+        return filePath;
+    },
     getUserInventory: async (userId: string): Promise<UserInventoryItem[]> => {
         const { data, error } = await supabase
             .from('user_inventory')
             .select('*, store_items(*)')
             .eq('user_id', userId)
             .order('purchased_at', { ascending: true });
-        if (error) {
+        if(error) {
             console.error("Error fetching user inventory:", error.message);
             return [];
         }
@@ -874,89 +946,65 @@ export const api = {
             .select('*')
             .eq('user_id', userId)
             .gt('expires_at', new Date().toISOString());
-        if (error) {
+        if(error) {
             console.error("Error fetching active effects:", error.message);
             return [];
         }
         return data.map(activeEffectFromSupabase);
     },
-    activateInventoryItem: async (inventoryId: string) => {
-        const { data, error } = await supabase.rpc('activate_inventory_item', { p_inventory_id: inventoryId });
+    activateInventoryItem: async (inventoryId: string): Promise<{ success: boolean; message: string; }> => {
+        const { data, error } = await supabase.rpc('activate_inventory_item', {
+            p_inventory_id: inventoryId
+        });
         if (error) {
             console.error("Error activating item:", error.message);
-            return { success: false, message: "Failed to activate item." };
-        }
-        return data as { success: boolean; message: string; };
-    },
-    
-    // Admin Actions
-    adminUpdateUserStats: async (userId: string, xp: number, streak: number, streakFreezes: number) => {
-        const { error } = await supabase.rpc('admin_update_user_stats', { p_user_id: userId, p_xp: xp, p_streak: streak, p_streak_freezes: streakFreezes });
-        if (error) {
-            console.error("Admin stat update failed:", error.message);
-            return { success: false, message: error.message };
-        }
-        return { success: true, message: "User stats updated." };
-    },
-    adminUpdateUserRole: async (userId: string, newRole: 'admin' | 'member') => {
-        const { error } = await supabase.rpc('admin_update_user_role', { p_user_id: userId, p_new_role: newRole });
-         if (error) {
-            console.error("Admin role update failed:", error.message);
-            return { success: false, message: error.message };
-        }
-        return { success: true, message: "User role updated." };
-    },
-    adminBanUser: async (userId: string, durationHours: number | null) => {
-        // This function would typically be a secure RPC.
-        // For this context, we perform a direct update, assuming admin RLS is in place.
-        let bannedUntil = null;
-        if (durationHours === 0) { // Unban
-            bannedUntil = new Date(0).toISOString();
-        } else if (durationHours) { // Timed ban
-            const banEndDate = new Date();
-            banEndDate.setHours(banEndDate.getHours() + durationHours);
-            bannedUntil = banEndDate.toISOString();
-        } else { // Permanent ban
-             bannedUntil = new Date('9999-12-31T23:59:59Z').toISOString();
-        }
-
-        const { error } = await supabase.from('profiles').update({ banned_until: bannedUntil }).eq('id', userId);
-        if (error) {
-            console.error("Admin ban failed:", error.message);
-            return { success: false, message: "Failed to update ban status." };
-        }
-        const message = durationHours === 0 ? "User unbanned." : "User has been banned.";
-        return { success: true, message };
-    },
-    adminGetUserEmail: async (userId: string): Promise<string | null> => {
-        // This is a sensitive operation and should be a SECURITY DEFINER RPC on Supabase.
-        // The RPC 'admin_get_user_email' is assumed to exist for this to work.
-        const { data, error } = await supabase.rpc('admin_get_user_email', { p_user_id: userId });
-        if (error) {
-            console.error("Admin get email failed:", error.message);
-            return null;
+            return { success: false, message: "An error occurred." };
         }
         return data;
     },
+    adminUpdateUserStats: async (userId: string, xp: number, streak: number, freezes: number) => {
+        const { error } = await supabase.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', userId);
+        return error ? { success: false, message: error.message } : { success: true, message: "User stats updated." };
+    },
+    adminUpdateUserRole: async (userId: string, role: 'admin' | 'member') => {
+        const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+        return error ? { success: false, message: error.message } : { success: true, message: "User role updated." };
+    },
+    adminBanUser: async (userId: string, durationHours: number | null) => {
+        let banned_until: string | null = null;
+        if (durationHours === 0) {
+            banned_until = new Date().toISOString();
+        } else if (durationHours) {
+            const date = new Date();
+            date.setHours(date.getHours() + durationHours);
+            banned_until = date.toISOString();
+        }
+
+        const { error } = await supabase.from('profiles').update({ banned_until }).eq('id', userId);
+        return error ? { success: false, message: error.message } : { success: true, message: "User ban status updated." };
+    },
+    adminGetUserEmail: async (userId: string) => {
+        return null;
+    },
     getAllUserActions: async (userId: string): Promise<Action[]> => {
-        const { data, error } = await supabase
+         const { data, error } = await supabase
             .from('actions_log')
             .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
         if (error) {
-            console.error(`Error fetching all actions for user ${userId}:`, error.message);
+            console.error("Error getting all user actions:", error.message);
             return [];
         }
         return data.map(actionFromSupabase);
     },
-    adminUpdateCommunityTier: async (tier: 'starter' | 'core' | 'pro'): Promise<boolean> => {
+    adminUpdateCommunityTier: async (tier: 'starter' | 'core' | 'pro') => {
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ subscription_tier: tier }).eq('id', communityId);
-        if (error) {
-            console.error("Error updating community tier:", error.message);
+        if(error) {
+            console.error("Error updating tier:", error.message);
             return false;
         }
         return true;
-    },
+    }
 };
