@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+import { AppProvider } from "@/context/AppContext";
+import Layout from "./Layout";
 import { useApp } from "@/context/AppContext";
 import LockedPageMockup from './LockedPageMockup';
 import type {
@@ -222,6 +223,11 @@ const popularEmojis = [
 ];
 
   return (
+<AppProvider 
+            verifiedUserId="ADMIN_CHECK" 
+            experienceId="ADMIN_CHECK"
+        >
+          <Layout>
     <div className="space-y-6 pb-20">
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
@@ -796,6 +802,7 @@ const popularEmojis = [
             )}
         </div>
       )}
-    </div>
+    </div></Layout>
+        </AppProvider>
   );
 }
