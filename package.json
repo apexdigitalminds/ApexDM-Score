@@ -1,23 +1,40 @@
 {
   "name": "apexdm-score",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome lint"
   },
   "dependencies": {
-    "react-dom": "^19.2.0",
+    "@supabase/supabase-js": "^2.80.0",
+    "@vercel/functions": "^3.1.4",
+    "@whop/react": "0.3.0",
+    "@whop/sdk": "^0.0.3",
+    "autoprefixer": "^10.4.21",
+    "next": "^16.0.1",
+    "postcss": "^8.5.6",
     "react": "^19.2.0",
-    "react-router-dom": "^7.9.4",
-    "@supabase/supabase-js": "2"
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@biomejs/biome": "2.2.6",
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^20.19.21",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "dotenv-cli": "^10.0.0",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.2",
+      "@types/react-dom": "19.2.2"
+    }
   }
 }
