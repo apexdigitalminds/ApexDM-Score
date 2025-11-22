@@ -69,7 +69,15 @@ export interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-export const AppProvider = ({ children }: { children: ReactNode }) => {
+export const AppProvider = ({ 
+    children, 
+    verifiedUserId, 
+    experienceId 
+}: { 
+    children: ReactNode, 
+    verifiedUserId: string, 
+    experienceId: string 
+}) => {
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
   const [isWhopConnected, setIsWhopConnected] = useState(false);
@@ -193,22 +201,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  useEffect(() => {
+useEffect(() => {
     const initAuth = async () => {
-      let user = await api.getCurrentUserProfile();
-      if (!user && process.env.NODE_ENV === 'development') {
+      let user = null;
+
+      if (verifiedUserId) {
+         // 🟢 PROD/VERIFIED: Use the ID passed from the server
+         user = await api.getUserByWhopId(verifiedUserId);
+      } else if (process.env.NODE_ENV === 'development') {
+          // 🚧 DEV: Fallback to local mock ID only if server failed/is mock
           const mockWhopId = "mock_dev_token_12345"; 
           user = await api.getUserByWhopId(mockWhopId);
       }
+
       setSelectedUser(user);
       const connected = localStorage.getItem("whop_connected") === "true";
       setIsWhopConnected(connected);
       await fetchCommunity();
-      setIsLoading(false);
+setIsLoading(false);
       fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems();
     };
     initAuth();
-  }, []);
+  }, [verifiedUserId]);
 
   useEffect(() => { if (selectedUser) fetchUserQuestProgress(); }, [selectedUser]);
 

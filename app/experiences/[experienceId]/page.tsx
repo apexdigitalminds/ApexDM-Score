@@ -4,6 +4,11 @@ import DashboardPage from "../../components/bolt/DashboardPage";
 import Layout from "../../components/bolt/Layout";
 import { AppProvider } from "@/context/AppContext";
 
+interface ExperiencePageProps {
+    verifiedUserId: string;
+    experienceId: string;
+}
+
 export default async function ExperiencePage({
 	params,
 }: {
@@ -39,11 +44,15 @@ export default async function ExperiencePage({
 
 	// 2. Render the Member Dashboard
 	// We wrap this in AppProvider to ensure the client-side app has access to state.
-	return (
-		<AppProvider>
-			<Layout>
-				<DashboardPage />
-			</Layout>
-		</AppProvider>
-	);
+return (
+    // Pass the verified ID and experience ID as props
+    <AppProvider 
+        verifiedUserId={userId} 
+        experienceId={experienceId}
+    >
+        <Layout>
+            <DashboardPage />
+        </Layout>
+    </AppProvider>
+);
 }
