@@ -10,8 +10,11 @@ export interface AppContextValue {
   isLoading: boolean;
   community: Community | null;
   isWhopConnected: boolean;
-  connectWhop: () => Promise<void>;
-  signOut: () => Promise<void>;
+  
+  // AUTH FUNCTIONS DISABLED FOR WHOP EMBED
+  // connectWhop: () => Promise<void>;
+  // signOut: () => Promise<void>;
+
   allUsers: Profile[];
   getUserById: (id: string) => Promise<Profile | null>;
   getUserActions: (userId: string) => Promise<Action[]>;
@@ -62,8 +65,6 @@ export interface AppContextValue {
   analyticsData: AnalyticsData | null;
   refreshAnalytics: (range?: "7d" | "30d") => Promise<void>;
   handleRestoreStoreItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
-  
-  // 🟢 [NEW] Added Missing Function Definition
   handleToggleWhiteLabel: (enabled: boolean) => Promise<void>;
 }
 
@@ -90,8 +91,11 @@ export const AppProvider = ({
   const [userQuestProgress, setUserQuestProgress] = useState<UserQuestProgress[]>([]);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
 
+  /* // AUTH LOGIC DISABLED FOR WHOP EMBED
   const connectWhop = async () => { try { const url = await whopApi.authorize(); if (url) window.location.href = url; } catch (err) { console.error("Whop connection failed:", err); } };
   const signOut = async () => { localStorage.removeItem("whop_connected"); setIsWhopConnected(false); setSelectedUser(null); };
+  */
+
   const fetchAllUsers = async () => { const users = await api.getUsers(); setAllUsers(users); };
   const fetchCommunity = async () => { const commData = await api.getCommunityInfo(); if (commData) setCommunity(commData); };
   
@@ -133,15 +137,9 @@ export const AppProvider = ({
       return result;
   };
 
-  // 🟢 [NEW] Added White Label Toggle Logic
   const handleToggleWhiteLabel = async (enabled: boolean) => {
-    // Optimistic UI Update
     setCommunity((prev) => (prev ? { ...prev, whiteLabelEnabled: enabled } : prev));
-
-    // API Call
     const success = await api.updateCommunityBranding(enabled);
-    
-    // Rollback if failed
     if (!success) {
         console.error("Failed to save White Label setting");
         setCommunity((prev) => (prev ? { ...prev, whiteLabelEnabled: !enabled } : prev));
@@ -164,62 +162,61 @@ export const AppProvider = ({
   const refreshAnalytics = async (range: "7d" | "30d" = "30d") => { const data = await api.getAnalyticsData(range); setAnalyticsData(data); };
 
   // -------------------------------
-  // FEATURE GATING (STRICT HIERARCHY)
+  // FEATURE GATING
   // -------------------------------
   const isFeatureEnabled = (feature: string) => {
     const f = feature.toLowerCase();
-    
-    // 1. Trial Override (All Access)
     if (community?.trialEndsAt) {
        if (new Date(community.trialEndsAt) > new Date()) return true; 
     }
-
-    // 2. Normalize Tier
     const tierValue = (community?.tier || "free").toLowerCase();
-    
-    // Always allow basic navigation
     if (f === 'dashboard') return true;
-
-    // 3. ELITE: God Mode
     if (tierValue === 'elite') return true;
-
-    // 4. PRO: Everything EXCEPT Elite features
     if (tierValue === 'pro') {
         const eliteFeatures = ['store', 'retention', 'inventory', 'white_label'];
         return !eliteFeatures.includes(f);
     }
-    
-    // 5. CORE: Only Basic Gamification
     if (tierValue === 'core') {
-        // Explicitly Allow these:
         const coreFeatures = ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard']; 
-        // NOTE: 'analytics', 'quests', 'discord', 'seasonal_leaderboard' are NOT here, so they return false.
         return coreFeatures.includes(f);
     }
-    
-    // 6. Free/Default
     return false;
   };
 
-useEffect(() => {
+  // -------------------------------
+  // INITIALIZATION / AUTH (UPDATED)
+  // -------------------------------
+  useEffect(() => {
     const initAuth = async () => {
+      // 1. TRACER LOG
+      console.log("🟢 AppProvider Mounted via layout prop");
+      console.log("👉 Verified User ID:", verifiedUserId);
+
       let user = null;
 
-      if (verifiedUserId) {
-         // 🟢 PROD/VERIFIED: Use the ID passed from the server
+      if (verifiedUserId && verifiedUserId !== "GUEST") {
+         // 泙 PROD/VERIFIED: Use the ID passed from the server
+         console.log("🔍 Fetching user profile for:", verifiedUserId);
          user = await api.getUserByWhopId(verifiedUserId);
+         console.log("✅ User profile result:", user);
       } else if (process.env.NODE_ENV === 'development') {
-          // 🚧 DEV: Fallback to local mock ID only if server failed/is mock
-          const mockWhopId = "mock_dev_token_12345"; 
-          user = await api.getUserByWhopId(mockWhopId);
+          // 圦 DEV: Fallback logic (only if strict dev mode)
+          console.log("⚠️ No valid verifiedUserId found (or GUEST).");
       }
 
       setSelectedUser(user);
-      const connected = localStorage.getItem("whop_connected") === "true";
-      setIsWhopConnected(connected);
+      
+      // We treat connection as true if we have a user
+      setIsWhopConnected(!!user);
+      
       await fetchCommunity();
-setIsLoading(false);
-      fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems();
+      setIsLoading(false);
+      console.log("🏁 initAuth finished. Loading set to false.");
+
+      // Fetch initial data
+      if (user) {
+          fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems();
+      }
     };
     initAuth();
   }, [verifiedUserId]);
@@ -229,7 +226,9 @@ setIsLoading(false);
   return (
     <AppContext.Provider
       value={{
-        selectedUser, isLoading, community, isWhopConnected, connectWhop, signOut,
+        selectedUser, isLoading, community, isWhopConnected, 
+        // connectWhop, // DISABLED
+        // signOut, // DISABLED
         allUsers, getUserById: api.getUserById, getUserActions: api.getUserActions, getAllUserActions: api.getAllUserActions, fetchAllUsers,
         adminUpdateUserRole, adminBanUser, adminGetUserEmail, adminUpdateCommunityTier, adminUpdateUserStats,
         rewardsConfig, badgesConfig, questsAdmin, storeItems,
@@ -241,7 +240,7 @@ setIsLoading(false);
         handleRecordAction, handleAwardBadge, handleTriggerWebhook,
         userQuestProgress, claimQuestReward, getUserInventory: api.getUserInventory, getActiveEffects: api.getActiveEffects, activateInventoryItem, handleBuyStoreItem,
         isFeatureEnabled, analyticsData, refreshAnalytics, getUserItemUsage: api.getUserItemUsage,
-        handleToggleWhiteLabel, // 🟢 [NEW] EXPOSED TO COMPONENTS
+        handleToggleWhiteLabel,
       }}
     >
       {children}

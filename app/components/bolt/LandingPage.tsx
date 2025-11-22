@@ -1,8 +1,8 @@
 import React from 'react';
-import Link from 'next/link'; // FIX: 'Link' is a default export
+import Link from 'next/link'; 
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { LogoIcon, TrophyIcon, CrownIcon, ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon } from './icons';
+import { LogoIcon, TrophyIcon, CrownIcon, ChartBarIcon, UserGroupIcon, ArrowTrendingUpIcon, ChartPieIcon } from './icons';
 
 interface FeatureCardProps {
     icon: React.ReactNode;
@@ -20,7 +20,6 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, iconBg, title, descript
         <p className="text-slate-400">{description}</p>
     </div>
 );
-
 
 const LandingPage: React.FC = () => {
   const { selectedUser } = useApp();
@@ -43,32 +42,28 @@ const LandingPage: React.FC = () => {
         <p className="text-lg md:text-xl text-slate-400 max-w-xl mx-auto mb-8">
           Reward members with XP, badges, and streaks for learning and taking action. Boost engagement and retention with powerful gamification.
         </p>
+        
+        {/* AUTH BUTTONS REPLACED WITH DASHBOARD ACTION */}
         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+             {/* Since auth is automatic, we always point to Dashboard */}
+             <Link
+                href="/dashboard"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
+             >
+                <ChartPieIcon className="h-6 w-6" />
+                Open Dashboard
+             </Link>
+
+            {/* // COMMENTED OUT MANUAL AUTH
             {selectedUser ? (
-                 <button
-                    onClick={() => router.push('/dashboard')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
-                 >
-                    Go to Dashboard
-                 </button>
+                 <button onClick={() => router.push('/dashboard')} ... >Go to Dashboard</button>
             ) : (
                 <>
-                    <Link
-                      href="/signup"
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 transform hover:scale-105"
-                    >
-                      <UserGroupIcon className="h-6 w-6" />
-                      Get Started
-                    </Link>
-                     <Link
-                      href="/login"
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-700 text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-600 transition-all"
-                    >
-                       <ArrowTrendingUpIcon className="h-6 w-6" />
-                      Sign In
-                    </Link>
+                    <Link href="/signup" ... >Get Started</Link>
+                    <Link href="/login" ... >Sign In</Link>
                 </>
-            )}
+            )} 
+            */}
         </div>
       </div>
 
@@ -104,11 +99,13 @@ const LandingPage: React.FC = () => {
           automatically reward members for subscriptions, renewals, and community
           participation.
         </p>
+        
+        {/* UPDATED LINK: Points to Dashboard instead of Signup */}
         <Link
-          href="/signup"
+          href="/dashboard"
           className="inline-block bg-white text-purple-700 font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-200 transition-all transform hover:scale-105 shadow-lg"
         >
-          Explore Features
+          Enter App
         </Link>
       </div>
 
