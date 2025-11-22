@@ -1,15 +1,4 @@
 // Whop-native API helper
-// Uses Whop’s injected x-whop-user-token header automatically when embedded in Whop.
-// Adds a mock token ONLY for local development.
-
-const MOCK_TOKEN = "mock_dev_token_12345"; // local-dev only
-
-// Detects whether we are running in the browser and local dev
-const isBrowser = typeof window !== "undefined";
-const isLocalDev =
-  isBrowser &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
 
 // -------------------------------------
 // Basic fetch wrapper
@@ -38,10 +27,6 @@ export const fetchApi = async <T = any>(
   };
 
   // ⚙️ Only attach mock token in local dev
-  if (isLocalDev) {
-    (config.headers as Record<string, string>)["x-whop-user-token"] =
-      MOCK_TOKEN;
-  }
 
   if (body) config.body = JSON.stringify(body);
 
