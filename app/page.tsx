@@ -1,15 +1,16 @@
+// app/page.tsx
+
 "use client";
 import React from 'react';
-import LandingPage from './components/bolt/LandingPage'; // Direct import from app root
+import LandingPage from './components/bolt/LandingPage'; 
 import Layout from './components/bolt/Layout';
-import { AppProvider } from '@/context/AppContext';
 
 export default function Page() {
   return (
-    <AppProvider>
-      <Layout>
-        <LandingPage />
-      </Layout>
-    </AppProvider>
+    // The AppProvider and all context wrappers are now handled in layout.tsx.
+    // This file only renders the specific content for the route.
+    <Layout>
+      <LandingPage />
+    </Layout>
   );
 }
