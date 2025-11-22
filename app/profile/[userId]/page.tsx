@@ -7,9 +7,14 @@ import ProtectedRoute from '../../components/bolt/ProtectedRoute';
 import Layout from '../../components/bolt/Layout';
 import { AppProvider } from '@/context/AppContext';
 
+const PLACEHOLDER_ID = "[userid]-placeholder";
+
 export default function Page() {
   return (
-    <AppProvider>
+<AppProvider 
+        verifiedUserId={PLACEHOLDER_ID} 
+        experienceId={PLACEHOLDER_ID}
+    >
       <Layout>
         <ProtectedRoute>
           <ProfilePage />

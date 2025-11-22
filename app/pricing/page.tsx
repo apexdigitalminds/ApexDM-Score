@@ -6,9 +6,14 @@ import PricingPage from '../components/bolt/PricingPage';
 import Layout from '../components/bolt/Layout';
 import { AppProvider } from '@/context/AppContext';
 
+const PLACEHOLDER_ID = "public-pricing";
+
 export default function Page() {
   return (
-    <AppProvider>
+<AppProvider 
+        verifiedUserId={PLACEHOLDER_ID} 
+        experienceId={PLACEHOLDER_ID}
+    >
       <Layout>
         {/* We do NOT wrap this in ProtectedRoute. 
           This allows public visitors (and potential customers) to see your pricing 
