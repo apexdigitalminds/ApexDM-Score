@@ -938,16 +938,33 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         if (error) return false;
         return true;
     },
-    uploadAvatar: async (file: File) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return null;
+uploadAvatar: async (file: File, userId?: string) => {
+        // 1. Use passed ID or fallback to auth user (though auth user is likely null in Whop)
+        let targetId = userId;
+        if (!targetId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) targetId = user.id;
+        }
+        
+        if (!targetId) {
+            console.error("Upload failed: No user ID found.");
+            return null;
+        }
         
         const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+        // Create a clean path: userId/random.ext
+        const filePath = `${targetId}/${Math.random().toString(36).substring(2)}.${fileExt}`;
         
+        // 2. Upload
         const { error } = await supabase.storage.from('avatars').upload(filePath, file);
-        if (error) return null;
-        return filePath;
+        if (error) {
+            console.error("Supabase upload error:", error.message);
+            return null;
+        }
+
+        // 3. Get Public URL immediately
+        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        return data.publicUrl;
     },
     getUserInventory: async (userId: string): Promise<UserInventoryItem[]> => {
         const { data, error } = await supabase.from('user_inventory').select('*, store_items(*)').eq('user_id', userId).order('purchased_at', { ascending: true });

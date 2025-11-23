@@ -1,24 +1,16 @@
-"use client";
+"use client"; 
 
 import React from 'react';
-import AnalyticsPage from '../components/bolt/AnalyticsPage';
-import AdminRoute from '../components/bolt/AdminRoute';
-import Layout from '../components/bolt/Layout';
-import { AppProvider } from '@/context/AppContext';
-
-const PLACEHOLDER_ID = "analytics-placeholder";
+import Layout from '../components/bolt/Layout'; 
+import AdminRoute from '../components/bolt/AdminRoute'; // Assuming you want this protected
+import AnalyticsPage from '../components/bolt/AnalyticsPage'; 
 
 export default function Page() {
   return (
-<AppProvider 
-        verifiedUserId={PLACEHOLDER_ID} 
-        experienceId={PLACEHOLDER_ID}
-    >
-      <Layout>
-        <AdminRoute>
-          <AnalyticsPage />
-        </AdminRoute>
-      </Layout>
-    </AppProvider>
+    <Layout>
+      <AdminRoute>
+        <AnalyticsPage /> 
+      </AdminRoute>
+    </Layout>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { api } from '@/services/api'; // Already imported, which is correct
+import { api } from '@/services/api';
 
 const avatarStyles = [
   { id: 'lorelei', name: 'Illustrative' },
@@ -19,8 +19,7 @@ interface AvatarUpdateModalProps {
 }
 
 const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }) => {
-    // FIX: Removed 'updateUserProfile', it's not in the context
-    const { selectedUser } = useApp();
+    const { selectedUser, fetchAllUsers } = useApp(); // Added fetchAllUsers to refresh after update
     const [activeTab, setActiveTab] = useState<'select' | 'upload'>('select');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -42,7 +41,6 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
 
     useEffect(() => {
         if (isOpen) {
-            // Reset state when modal opens
             setError('');
             setIsLoading(false);
             setSelectedFile(null);
@@ -73,34 +71,40 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
     };
     
     const handleSave = async () => {
+        if (!selectedUser) return;
+        
         setIsLoading(true);
         setError('');
 
         let newAvatarUrl: string | null = null;
         
-        if (activeTab === 'select') {
-            newAvatarUrl = `https://api.dicebear.com/8.x/${avatarStyle}/svg?seed=${encodeURIComponent(selectedAvatarSeed)}`;
-        } else if (activeTab === 'upload' && selectedFile) {
-            newAvatarUrl = await api.uploadAvatar(selectedFile);
-            if (!newAvatarUrl) {
-                setError('Failed to upload image. Please try again.');
-                setIsLoading(false);
-                return;
+        try {
+            if (activeTab === 'select') {
+                newAvatarUrl = `https://api.dicebear.com/8.x/${avatarStyle}/svg?seed=${encodeURIComponent(selectedAvatarSeed)}`;
+            } else if (activeTab === 'upload' && selectedFile) {
+                // FIX: Pass the userId explicitly for the upload path
+                newAvatarUrl = await api.uploadAvatar(selectedFile, selectedUser.id);
+                if (!newAvatarUrl) {
+                    throw new Error('Failed to upload image.');
+                }
             }
-        }
-        
-        if (newAvatarUrl) {
-            // FIX: Call the 'api' service directly
-// FIX: Pass the selectedUser.id so the API knows which row to update
-const success = await api.updateUserProfile({ avatarUrl: newAvatarUrl }, selectedUser?.id);
-if (success) {
-    window.location.reload(); // Force refresh to show new avatar
-    onClose();
-} else {
-                setError('Failed to update profile. Please try again.');
+            
+            if (newAvatarUrl) {
+                const success = await api.updateUserProfile({ avatarUrl: newAvatarUrl }, selectedUser.id);
+                if (success) {
+                    await fetchAllUsers(); // Refresh data in background
+                    window.location.reload(); // Force refresh to update UI immediately
+                    onClose();
+                } else {
+                    throw new Error('Failed to update profile in database.');
+                }
             }
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || 'An error occurred.');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     if (!isOpen) return null;
@@ -139,11 +143,8 @@ if (success) {
                     {activeTab === 'select' && (
                         <div className="space-y-4">
                              <div>
-                                <label htmlFor="modal-avatar-style" className="block text-sm font-medium text-slate-400 mb-2">
-                                    Avatar Style
-                                </label>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">Avatar Style</label>
                                 <select
-                                    id="modal-avatar-style"
                                     value={avatarStyle}
                                     onChange={(e) => setAvatarStyle(e.target.value)}
                                     className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-3"
@@ -178,12 +179,11 @@ if (success) {
                     {activeTab === 'upload' && (
                         <div className="space-y-4">
                              <div className="flex items-center justify-center w-full">
-                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-48 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700">
+                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-48 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700 transition-colors">
                                     {previewUrl ? (
                                         <img src={previewUrl} alt="Preview" className="w-24 h-24 rounded-full object-cover"/>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                            <svg className="w-8 h-8 mb-4 text-slate-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
                                             <p className="mb-2 text-sm text-slate-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
                                             <p className="text-xs text-slate-500">PNG, JPG or GIF (MAX. 2MB)</p>
                                         </div>

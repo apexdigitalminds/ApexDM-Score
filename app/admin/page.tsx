@@ -1,24 +1,16 @@
-"use client";
+"use client"; 
 
 import React from 'react';
-import AdminPage from '../components/bolt/AdminPage';
+import Layout from '../components/bolt/Layout'; 
 import AdminRoute from '../components/bolt/AdminRoute';
-import Layout from '../components/bolt/Layout';
-import { AppProvider } from '@/context/AppContext';
-
-const PLACEHOLDER_ID = "admin-placeholder";
+import AdminPage from '../components/bolt/AdminPage'; 
 
 export default function Page() {
   return (
-<AppProvider 
-        verifiedUserId={PLACEHOLDER_ID} 
-        experienceId={PLACEHOLDER_ID}
-    >
-      <Layout>
-        <AdminRoute>
-          <AdminPage />
-        </AdminRoute>
-      </Layout>
-    </AppProvider>
+    <Layout>
+      <AdminRoute>
+        <AdminPage /> 
+      </AdminRoute>
+    </Layout>
   );
 }
