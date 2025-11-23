@@ -1,18 +1,20 @@
-// app/layout.tsx (Final, Corrected Structure)
-
 import { WhopApp } from "@whop/react/components";
 import { AppProvider } from "@/context/AppContext";
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from 'next/headers';
-import WhopSDK from '@whop/sdk'; // Default import fixed previously
+// FIX: Import the configured SDK instance instead of creating a new incomplete one
+import { whopsdk } from "@/lib/whop-sdk"; 
 
-export const metadata: Metadata = { /* ... */ };
+export const metadata: Metadata = {
+  title: "ApexDM Score",
+  description: "Admin and Member Dashboard",
+};
+
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-// 1. RootLayout must only accept 'children' for the function signature
 export default async function RootLayout({ 
   children,
 }: {
@@ -21,30 +23,25 @@ export default async function RootLayout({
   
   // --- SERVER-SIDE AUTHENTICATION ---
   let verifiedUserId: string | undefined;
-  // Layout cannot reliably determine experienceId, so we use a safe fallback.
   const experienceId = "no_experience"; 
 
   try {
-    const whopsdk = new WhopSDK({ 
-      apiKey: process.env.WHOP_API_KEY!, 
-      baseURL: process.env.NEXT_PUBLIC_APP_URL! 
-    });
-    
-    // Check for the token injected by Whop proxy
+    // Use the robust SDK instance (with App ID and API Key)
     const { userId } = await whopsdk.verifyUserToken(await headers());
     verifiedUserId = userId;
+    console.log("✅ Server Auth Success for:", userId);
   } catch (e) {
-    // If verification fails, verifiedUserId remains undefined.
+    console.error("❌ Server Auth Failed:", e);
+    // If verifiedUserId stays undefined, the client will be GUEST
   }
   
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <WhopApp>
-          {/* PASS THE VERIFIED ID AND EXPERIENCE CONTEXT TO THE PROVIDER */}
           <AppProvider 
             verifiedUserId={verifiedUserId || 'GUEST'} 
-            experienceId={experienceId || 'no_experience'}
+            experienceId={experienceId}
           >
             {children}
           </AppProvider>
