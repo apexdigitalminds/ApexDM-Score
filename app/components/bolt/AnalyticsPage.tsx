@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import type { AnalyticsData, ChartData, QuestData, StoreData } from '@/types';
+import type { AnalyticsData } from '@/types';
 import MetricCard from './analytics/MetricCard';
 import ActivityBreakdownChart from './analytics/ActivityBreakdownChart';
 import TopPerformers from './analytics/TopPerformers';
@@ -18,16 +18,19 @@ import LockedPageMockup from './LockedPageMockup';
 
 const AnalyticsPage: React.FC = () => {
     const { isFeatureEnabled } = useApp();
+    
+    // 1. Early Return for Gating
     if (!isFeatureEnabled('analytics')) {
-    return (
-        <LockedPageMockup 
-            title="Community Analytics" 
-            description="Unlock deep insights into your community growth, engagement, and retention." 
-            requiredTier="Pro"
-            mockType="charts"
-        />
-    );
-}
+        return (
+            <LockedPageMockup 
+                title="Community Analytics" 
+                description="Unlock deep insights into your community growth, engagement, and retention." 
+                requiredTier="Pro"
+                mockType="charts"
+            />
+        );
+    }
+
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState<'7d' | '30d'>('30d');
@@ -46,24 +49,20 @@ const AnalyticsPage: React.FC = () => {
         ? ((data.growth.churnedMembers14d / data.engagement.activeMembers30d) * 100).toFixed(1)
         : 0;
         
-    const showAnalytics = isFeatureEnabled('analytics');
-    // For retention, we might want to check 'store' enabled (Elite) or add a specific 'retention' check.
-    // Using 'store' as proxy for Elite for now, or you can add 'retention' to AppContext later.
     const showRetention = isFeatureEnabled('store'); 
 
-    // Transform data for ActivityBreakdownChart
-    const activityChartData: ChartData[] = data
+    // FIX: Removed explicit ': ChartData[]' type to allow TS to infer correct types for the chart component
+    const activityChartData = data
       ? data.activityBreakdown.map(item => ({
-          actionType: item.label,
-          count: item.value,
+          actionType: item.label || 'Unknown', // Fallback to ensure string
+          count: item.value || 0,
         }))
       : [];
 
-    // Transform quest data
     const questAnalyticsData = data
       ? (data.questAnalytics as unknown as any[])
-          .filter(item => typeof item.questId === 'string') 
-          .map(item => ({
+          .filter((item: any) => typeof item.questId === 'string') 
+          .map((item: any) => ({
             questId: item.questId,
             title: item.title,
             participationRate: item.participationRate,
@@ -71,12 +70,11 @@ const AnalyticsPage: React.FC = () => {
           }))
       : [];
       
-    // Transform store data
     const storeAnalyticsData = data
       ? { 
           ...data.storeAnalytics, 
           totalSpent: data.storeAnalytics.xpSpent, 
-          items: [] 
+          items: data.storeAnalytics.items 
         }
       : null;
 
@@ -108,7 +106,6 @@ const AnalyticsPage: React.FC = () => {
                 <div className="text-center p-8">Could not load analytics data.</div>
             ) : (
                 <>
-                    {/* Core Metrics */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard 
                             icon={<UserGroupIcon className="w-7 h-7 text-blue-400" />}
@@ -136,7 +133,6 @@ const AnalyticsPage: React.FC = () => {
                         />
                     </div>
 
-                    {/* Charts and Data Visualizations */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         <div className="lg:col-span-3 bg-slate-800 p-6 rounded-2xl shadow-lg">
                            <TopXpActionsChart data={data.topXpActions} />
@@ -174,11 +170,8 @@ const AnalyticsPage: React.FC = () => {
                     
                     <TopPerformers usersByXp={data.topPerformers.byXp} usersByStreak={data.topPerformers.byStreak} />
                     
-                    {/* Gated Features */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {showAnalytics ? <QuestAnalytics data={questAnalyticsData} /> : <FeatureLock title="Quest Funnel Analytics" description="See how many members are participating in and completing your quests to optimize engagement." requiredTier="Pro" />}
-                        
-                        {/* FIX: Updated requiredTier to Elite */}
+                        <QuestAnalytics data={questAnalyticsData} />
                         {showRetention ? <StoreAnalytics data={storeAnalyticsData} /> : <FeatureLock title="XP Store Analytics" description="Track which items are most popular in your XP store and see how much XP is being spent." requiredTier="Elite" />}
                     </div>
 
@@ -191,7 +184,7 @@ const AnalyticsPage: React.FC = () => {
                         <FeatureLock 
                             title="Member Retention Over Time"
                             description="Visualize how member cohorts stay active over weeks and months to identify patterns and improve long-term retention."
-                            requiredTier="Elite" // FIX: Updated text to Elite
+                            requiredTier="Elite"
                         >
                             <RetentionChartPlaceholder />
                         </FeatureLock>

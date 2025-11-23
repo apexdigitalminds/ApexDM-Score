@@ -13,8 +13,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    // Removed 'signOut' from destructuring since it's not used in the embedded view
-    const { selectedUser, isFeatureEnabled, community, isLoading } = useApp();
+    // FIX: Single destructuring line including activeEffects
+    const { selectedUser, isFeatureEnabled, community, isLoading, activeEffects } = useApp();
     const router = useRouter();
     const pathname = usePathname(); 
     
@@ -22,17 +22,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    /* // AUTHENTICATION LOGIC DISABLED FOR WHOP EMBED
-    // Users are authenticated automatically via the Whop iframe/proxy.
-    // Manual logout buttons can cause state desync.
-    
-    const handleLogout = async () => {
-        await signOut();
-        router.push('/');
-    };
-    */
+    // FIX: Check if any active effect is an XP Boost
+    const isBoosted = activeEffects ? activeEffects.some(e => e.effectType === 'XP_BOOST') : false;
 
-    // Feature Flags
     const showQuests = isFeatureEnabled('quests');
     const showStore = isFeatureEnabled('store');
     const showAnalytics = isFeatureEnabled('analytics');
@@ -94,7 +86,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         href={`/profile/${selectedUser.id}`} 
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        <Avatar src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-8 h-8 rounded-full" />
+                                        {/* FIX: Visual Pulse Wrapper */}
+                                        <div className={`relative rounded-full ${isBoosted ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)] animate-pulse' : ''}`}>
+                                            <Avatar 
+                                                src={selectedUser.avatarUrl} 
+                                                alt={selectedUser.username || "User"} 
+                                                className="w-8 h-8 rounded-full" 
+                                            />
+                                        </div>
                                         <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>
                                     </Link>
                                     <Link href="/dashboard" className={`${navLinkClasses} ${pathname === '/dashboard' ? activeClass : inactiveClass}`}>
@@ -106,7 +105,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         <span className="hidden sm:inline">Collection</span>
                                     </Link>
                                     
-                                    {/* GATED FEATURES */}
                                     <Link href="/quests" className={`${navLinkClasses} ${pathname === '/quests' ? activeClass : inactiveClass}`}>
                                         <TargetIcon className="h-5 w-5" />
                                         <span className="hidden sm:inline">Quests</span>
@@ -133,27 +131,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             </Link>
                                         </>
                                     )}
-                                    
-                                    {/* // DEV LOGOUT BUTTON DISABLED
-                                    {isDev && (
-                                        <button onClick={handleLogout} className="ml-2 px-4 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-slate-700 transition-colors border border-slate-700">
-                                            Logout (Dev)
-                                        </button>
-                                    )} 
-                                    */}
                                 </>
                             ) : (
-                                <>
-                                    {/* // PUBLIC AUTH BUTTONS DISABLED
-                                    // Whop handles all user onboarding.
-                                    
-                                    <Link href="/login" className={`${navLinkClasses} ${inactiveClass}`}>Sign In</Link>
-                                    <Link href="/signup" className="bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">Sign Up</Link>
-                                    */}
-                                    
-                                    {/* Placeholder for unauthenticated state (optional) */}
-                                    <span className="text-sm text-slate-500 italic px-4">Connecting...</span>
-                                </>
+                                <span className="text-sm text-slate-500 italic px-4">Connecting...</span>
                             )}
                         </div>
                     </div>

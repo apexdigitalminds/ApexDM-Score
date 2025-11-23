@@ -1,36 +1,21 @@
 // ==========================================
-// 📘 ApexDM Score - Global Types (Frontend)
+// 📘 ApexDM Score - Global Types (Fixed)
 // ==========================================
 
 // ------------------------------------------------
-// 🌐 Community ( Consolidated )
-// ------------------------------------------------
-export interface Community {
-  id: string;
-  name: string;
-  description?: string;
-  logoUrl?: string;
-  tier: 'Free' | 'Core' | 'Pro' | 'Elite'; 
-  trialEndsAt?: string | null; 
-  createdAt?: string;
-  whiteLabelEnabled?: boolean; // [NEW] Added for Elite White Labeling
-}
-
-// ------------------------------------------------
-// 🪪 Whop Integration
-// ------------------------------------------------
-export interface WhopUser {
-  id: string; // Whop user ID
-  username: string;
-  email?: string;
-  membershipTier?: string;
-  joinedAt?: string; // maps to Whop join date
-}
-
-// ------------------------------------------------
-// 🧩 ActionType — defines valid action keys
+// 🧩 ActionType (Enum)
 // ------------------------------------------------
 export type ActionType = 
+  | 'daily_login' 
+  | 'complete_module' 
+  | 'watch_content' 
+  | 'post_comment' 
+  | 'attend_call' 
+  | 'renew_subscription' 
+  | 'referral' 
+  | 'feedback'
+  | 'log_trade'
+  | 'ask_good_question'
   | 'login'
   | 'purchase'
   | 'quest_complete'
@@ -38,38 +23,10 @@ export type ActionType =
   | 'invite_friend'
   | 'post_message'
   | 'react_to_post'
-  | 'watch_content'
   | 'other';
 
 // ------------------------------------------------
-// 🏆 RewardAction — represents earned rewards
-// ------------------------------------------------
-export interface RewardAction {
-  id: string; // uuid
-  communityId: string; // maps to communities.id
-  userId: string; // maps to profiles.id
-  actionType: ActionType;
-  xpGained: number; // maps to xp_gained
-  badgeId?: string | null;
-  description?: string;
-  createdAt?: string; // timestamp
-}
-
-// ------------------------------------------------
-// 💎 Reward — base reward configuration
-// ------------------------------------------------
-export interface Reward {
-  id: string;
-  communityId: string;
-  actionType: string;
-  xpGained: number;
-  description?: string;
-  isActive: boolean;
-  isArchived: boolean;
-}
-
-// ------------------------------------------------
-// 🪶 Action — logged XP event (Supabase actions_log)
+// 🪶 Action (Database Row) - THIS WAS MISSING
 // ------------------------------------------------
 export interface Action {
   id: number;
@@ -82,29 +39,60 @@ export interface Action {
 }
 
 // ------------------------------------------------
-// 🧍 User / Profile
+// 🎒 Items & Inventory (Cosmetics)
 // ------------------------------------------------
-export interface Profile {
+export type ItemType = 
+  | 'INSTANT'        
+  | 'TIMED_EFFECT'   
+  | 'NAME_COLOR'     
+  | 'TITLE'          
+  | 'BANNER'         
+  | 'FRAME';         
+
+export interface ItemMetadata {
+  color?: string;       
+  text?: string;        
+  imageUrl?: string;    
+  [key: string]: any;   
+}
+
+export interface StoreItem {
   id: string;
-  whopUser?: WhopUser; // optional Whop sync identity
-  whop_user_id?: string | null;
-  username: string;
-  xp: number;
-  streak: number;
-  streakFreezes?: number;
-  level: number;
-  role: 'member' | 'moderator' | 'admin';
   communityId: string;
-  joinedAt?: string;
-  badges?: Badge[];
-  activeEffects?: ActiveEffect[];
-  last_action_date: string | null;
-  avatarUrl?: string; // Moved from legacy module to main interface for safety
-  bannedUntil?: string; // Moved from legacy module to main interface for safety
+  name: string;
+  description?: string;
+  cost: number;
+  icon: string;
+  isActive: boolean;
+  isArchived: boolean;
+  createdAt?: string;
+  itemType: ItemType;
+  durationHours?: number; 
+  modifier?: number;      
+  metadata?: ItemMetadata; 
+}
+
+export interface UserInventoryItem {
+  id: string;
+  userId: string;
+  itemId: string;
+  isActive: boolean;
+  purchasedAt?: string;
+  itemDetails?: StoreItem;
+  metadata?: ItemMetadata;
+}
+
+export interface ActiveEffect {
+  id: string;
+  userId: string;
+  itemId: string;
+  effectType: string;
+  modifier: number;
+  expiresAt?: string;
 }
 
 // ------------------------------------------------
-// 🏅 Badge — unified model for database + UI
+// 🧍 User / Profile
 // ------------------------------------------------
 export interface Badge {
   id: string;
@@ -117,24 +105,38 @@ export interface Badge {
   isArchived?: boolean; 
 }
 
-// ------------------------------------------------
-// ⚙️ BadgeConfig
-// ------------------------------------------------
-
-export interface BadgeConfig {
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
+export interface WhopUser {
+  id: string;
+  username: string;
+  email?: string;
+  membershipTier?: string;
+  joinedAt?: string;
 }
 
-export interface BadgesConfig {
-    [badgeName: string]: {
-        name: string;
-        description: string;
-        icon: string;
-        color: string;
-    };
+export interface Profile {
+  id: string;
+  whopUser?: WhopUser;
+  whop_user_id?: string | null;
+  username: string;
+  xp: number;
+  streak: number;
+  streakFreezes: number;
+  level: number;
+  role: 'member' | 'moderator' | 'admin' | string;
+  communityId: string;
+  joinedAt?: string;
+  last_action_date: string | null;
+  avatarUrl?: string;
+  bannedUntil?: string;
+  badges?: Badge[];
+  activeEffects?: ActiveEffect[];
+  metadata?: {
+      nameColor?: string;
+      title?: string;
+      bannerUrl?: string;
+      frameUrl?: string;
+      [key: string]: any;
+  };
 }
 
 // ------------------------------------------------
@@ -143,9 +145,9 @@ export interface BadgesConfig {
 export interface QuestTask {
   id: string;
   questId: string;
-  actionType?: ActionType;
-  targetCount?: number;
-  description?: string;
+  actionType: ActionType | string;
+  targetCount: number;
+  description: string;
 }
 
 export interface Quest {
@@ -154,67 +156,57 @@ export interface Quest {
   title: string;
   description?: string;
   xpReward: number;
-  badgeRewardId?: string | null;
-  tasks?: QuestTask[];
+  badgeReward: string | null;
+  badgeRewardId?: string;
+  tasks: QuestTask[];
   isActive: boolean;
-  isArchived?: boolean;
+  isArchived: boolean;
   createdAt?: string;
-  badgeReward?: string | null; // Moved from legacy for easier access
 }
 
-// ------------------------------------------------
-// 🧭 UserQuestProgress
-// ------------------------------------------------
 export interface UserQuestProgress {
-  id: string;
+  id?: number; 
   userId: string;
   questId: string;
-  progress: Record<string, number>; // { actionType: count }
+  progress: Record<string, number>;
   isClaimed: boolean;
+  completed: boolean; 
   updatedAt?: string;
-  completed?: boolean; // Legacy alias support
-  claimed?: boolean; // Legacy alias support
 }
 
 // ------------------------------------------------
-// 🏪 Store Items & Inventory
+// 🧱 General Configs & Analytics
 // ------------------------------------------------
-export interface StoreItem {
+export interface Reward {
+  xpGained: number;
+  isActive: boolean;
+  isArchived: boolean;
+  actionType?: string; 
+}
+
+export interface BadgeConfig {
+  name?: string;
+  description: string;
+  icon: string;
+  color: string;
+  isActive?: boolean;
+  isArchived?: boolean;
+}
+
+export type RewardsConfig = Record<string, Reward>;
+export type BadgesConfig = Record<string, BadgeConfig>;
+
+export interface Community {
   id: string;
-  communityId: string;
   name: string;
   description?: string;
-  cost: number;
-  icon: string;
-  itemType: 'INSTANT' | 'TIMED_EFFECT';
-  durationHours?: number;
-  modifier?: number;
-  isActive: boolean;
-  isArchived?: boolean; 
+  logoUrl?: string;
+  tier: 'Free' | 'Core' | 'Pro' | 'Elite'; 
+  trialEndsAt?: string | null; 
   createdAt?: string;
+  whiteLabelEnabled?: boolean;
 }
 
-export interface UserInventoryItem {
-  id: string;
-  userId: string;
-  itemId: string;
-  isActive: boolean;
-  purchasedAt?: string;
-  itemDetails?: StoreItem;
-}
-
-export interface ActiveEffect {
-  id: string;
-  userId: string;
-  itemId: string;
-  effectType: 'XP_BOOST' | 'STREAK_PROTECT' | string;
-  modifier: number;
-  expiresAt?: string; // maps to expires_at
-}
-
-// ------------------------------------------------
-// 📊 Analytics
-// ------------------------------------------------
 export interface AnalyticsData {
   engagement: {
     activeMembers7d: number;
@@ -264,54 +256,17 @@ export interface AnalyticsData {
 }
 
 // ------------------------------------------------
-// 🧱 General Configs
+// 🏗️ Legacy & Utility Types
 // ------------------------------------------------
-export interface RewardsConfig {
-  [actionType: string]: {
-    xpGained: number;
-    description?: string;
-  };
-}
+export type User = Profile; // Legacy alias
 
-export interface APIResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-}
-
-// ==========================================
-// 🧩 Legacy Compatibility Layer 
-// ==========================================
-
-// Alias old "User" to new Profile
-export type User = Profile;
-
-// Add minimal placeholder types for analytics components
-export interface BadgeStat {
-  name: string;
-  icon: string;
-  color: string;
-  count: number;
-  id?: string;
-}
-
+// Analytics Page Helper Types
 export interface ChartData {
-  actionType: string;
-  count: number;
+  label?: string; 
+  actionType?: string;
+  value?: number;
+  count?: number;
 }
-
-// Keep temporary QuestData/StoreData used in analytics
-export interface QuestData {
-  questId?: string;
-  title?: string;
-  participationRate?: number;
-  completionRate?: number;
-}
-
-export interface StoreData {
-  totalItems: number;
-  xpSpent: number;
-  mostPopularItem: string;
-  totalSpent?: number;
-  items?: { name: string; count: number }[];
-}
+export interface QuestData { questId: string; title: string; participationRate: number; completionRate: number; }
+export interface StoreData { totalItems: number; xpSpent: number; mostPopularItem: string; totalSpent: number; items: { name: string; count: number }[]; }
+export interface APIResponse<T> { success: boolean; message?: string; data?: T; }
