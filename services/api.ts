@@ -49,7 +49,7 @@ const actionFromSupabase = (data: any): Action => ({
     communityId: data.community_id,
     actionType: data.action_type,
     xpGained: data.xp_gained ?? 0,
-    createdAt: data.created_at, // FIX: Renamed from timestamp to createdAt
+    createdAt: data.created_at,
     source: data.source,
 });
 
@@ -78,9 +78,9 @@ const questFromSupabase = (data: any): Quest => ({
     })),
     xpReward: data.xp_reward,
     badgeReward: data.badges ? data.badges.name : null,
-    badgeRewardId: data.badge_reward_id, // Ensure ID is passed
+    badgeRewardId: data.badge_reward_id,
     isActive: data.is_active,
-    isArchived: data.is_archived, // Ensure archived status is passed
+    isArchived: data.is_archived,
 });
 
 const userQuestProgressFromSupabase = (data: any): UserQuestProgress => ({
@@ -88,7 +88,7 @@ const userQuestProgressFromSupabase = (data: any): UserQuestProgress => ({
     userId: data.user_id ?? "",
     questId: data.quest_id,
     progress: data.progress,
-    completed: data.is_completed, // Mapped to alias in types.ts
+    completed: data.is_completed,
     isClaimed: data.is_claimed,
 });
 
@@ -100,7 +100,7 @@ const storeItemFromSupabase = (data: any): StoreItem => ({
     cost: data.cost_xp,
     icon: data.icon,
     isActive: data.is_available,
-    isArchived: data.is_archived, // Ensure archived status is passed
+    isArchived: data.is_archived,
     itemType: data.item_type,
     durationHours: data.duration_hours,
     modifier: data.modifier,
@@ -214,28 +214,63 @@ export const api = {
         return profileFromSupabase(enrichedProfile);
     },
 
+    // 泙 UPDATED: Auto-creates user if not found
     getUserByWhopId: async (whopId: string): Promise<User | null> => {
-        const { data, error } = await supabase
+        // 1. Try to get existing user
+        const { data: existingUser, error: fetchError } = await supabase
             .from('profiles')
             .select(PROFILE_COLUMNS)
             .eq('whop_user_id', whopId)
-            .single();
+            .maybeSingle();
 
-        if (error || !data) {
-            return null;
+        if (!fetchError && existingUser) {
+            // User exists, fetch badges and return
+            const { data: userBadges } = await supabase
+                .from('user_badges')
+                .select('badge_id!inner(id, name, description, icon, color, is_archived)')
+                .eq('user_id', existingUser.id);
+
+            const enrichedProfile = {
+                ...existingUser,
+                user_badges: (userBadges || []).map(b => ({ badges: b.badge_id })),
+            };
+            return profileFromSupabase(enrichedProfile);
         }
 
-        const { data: userBadges } = await supabase
-            .from('user_badges')
-            .select('badge_id!inner(id, name, description, icon, color, is_archived)')
-            .eq('user_id', data.id);
-
-        const enrichedProfile = {
-            ...data,
-            user_badges: (userBadges || []).map(b => ({ badges: b.badge_id })),
-        };
+        // 2. User does not exist, create them
+        console.log("User not found in DB, creating new profile for Whop ID:", whopId);
         
-        return profileFromSupabase(enrichedProfile);
+        try {
+            const communityId = await getCommunityId();
+            // Generate a placeholder username since we don't have Whop metadata yet
+            // In a real app, you might fetch this from Whop API using the token
+            const placeholderUsername = `User_${whopId.substring(0, 6)}`; 
+            
+            const { data: newUser, error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                    whop_user_id: whopId,
+                    community_id: communityId,
+                    username: placeholderUsername,
+                    role: 'member',
+                    xp: 0,
+                    streak: 0
+                })
+                .select(PROFILE_COLUMNS)
+                .single();
+
+            if (createError || !newUser) {
+                console.error("Failed to auto-create user:", createError?.message);
+                return null;
+            }
+
+            // Return the newly created user
+            return profileFromSupabase({ ...newUser, user_badges: [] });
+
+        } catch (err) {
+            console.error("Error during user auto-creation:", err);
+            return null;
+        }
     },
 
      getCurrentUserProfile: async (): Promise<User | null> => {
@@ -267,7 +302,7 @@ export const api = {
 getRewardsConfig: async (): Promise<RewardsConfig> => {
         const { data, error } = await supabase
             .from('reward_actions')
-            .select('action_type, xp_gained, is_archived, is_active'); // 🟢 Added is_active
+            .select('action_type, xp_gained, is_archived, is_active'); 
         
         if (error) {
             console.error('Error fetching rewards config:', error.message);
@@ -278,7 +313,7 @@ getRewardsConfig: async (): Promise<RewardsConfig> => {
             acc[reward.action_type] = { 
                 xpGained: reward.xp_gained,
                 isArchived: reward.is_archived,
-                isActive: reward.is_active // 🟢 Now maps to the real DB column
+                isActive: reward.is_active 
             };
             return acc;
         }, {} as any);
@@ -387,7 +422,7 @@ getStoreItems: async (): Promise<StoreItem[]> => {
             .from('store_items')
             .select('*')
             .order('cost_xp', { ascending: true })
-            .order('name', { ascending: true }); // 🟢 FIX: Added Tie-Breaker to prevent jumping
+            .order('name', { ascending: true }); 
 
         if (error) {
             console.error('Error fetching store items:', error.message);
@@ -401,14 +436,11 @@ getUserItemUsage: async (userId: string) => {
             .select('*')
             .eq('user_id', userId)
             .order('used_at', { ascending: false })
-            .limit(5); // Limit to 5 most recent
+            .limit(5); 
             
         if (error) return [];
         return data;
     },
-    // WRITE operations
-// Find the recordAction function in services/api.ts and replace it with this:
-
     recordAction: async (userId: string, actionType: string, source: 'manual' | 'whop' | 'discord') => {
         const { data: rewardData, error: rewardError } = await supabase
             .from('reward_actions').select('xp_gained').eq('action_type', actionType).single();
@@ -419,7 +451,6 @@ getUserItemUsage: async (userId: string) => {
         }
         let xp_to_add = rewardData.xp_gained;
 
-        // Check for active XP Boost effects
         const { data: activeEffects, error: effectsError } = await supabase
             .from('user_active_effects')
             .select('modifier')
@@ -432,7 +463,6 @@ getUserItemUsage: async (userId: string) => {
             xp_to_add = Math.round(xp_to_add * modifier);
         }
 
-        // 1. Fetch Fresh Profile
         const { data: profile, error: profileError } = await supabase
             .from('profiles').select('streak, last_action_date, streak_freezes').eq('id', userId).single();
 
@@ -441,11 +471,9 @@ getUserItemUsage: async (userId: string) => {
             return null;
         }
 
-        // 2. Robust Date Calculation (UTC Midnight)
         const today = new Date();
-        const lastAction = profile.last_action_date ? new Date(profile.last_action_date) : new Date(0); // Epoch if null
+        const lastAction = profile.last_action_date ? new Date(profile.last_action_date) : new Date(0); 
 
-        // Normalize both to UTC Midnight to compare "Calendar Days" ignoring time
         const utcToday = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
         const utcLast = Date.UTC(lastAction.getUTCFullYear(), lastAction.getUTCMonth(), lastAction.getUTCDate());
 
@@ -457,36 +485,24 @@ getUserItemUsage: async (userId: string) => {
         let shouldUpdateDate = false;
 
         if (diffDays === 0) {
-            // Already acted today. Do not increment streak, but allow XP gain.
             shouldUpdateDate = false; 
         } 
         else if (diffDays === 1) {
-            // Perfect! Acted yesterday. Increment.
             new_streak += 1;
             shouldUpdateDate = true;
         } 
         else if (diffDays > 1) {
-            // Missed one or more days. Check freezes.
             if (profile.streak_freezes > 0) {
-                // Saved by the freeze!
                 freezes_used = 1;
-                // Maintain streak (don't increment, but don't reset)
-                // Or technically, if they use a freeze, they shouldn't lose the streak, 
-                // but usually you don't *gain* a streak day for a frozen day unless you backfill.
-                // Logic: Keep streak same, consume freeze, update date to today.
                 shouldUpdateDate = true;
             } else {
-                // RIP Streak
                 new_streak = 1;
                 shouldUpdateDate = true;
             }
         } else {
-            // Negative diff? Time travel or timezone weirdness. 
-            // Treat as 'Today' (update date to ensure sync)
             shouldUpdateDate = true;
         }
         
-        // 3. Execute Updates
         const { error: xpError } = await supabase.rpc('increment_user_xp', {
             p_user_id: userId, p_xp_to_add: xp_to_add
         });
@@ -496,11 +512,10 @@ getUserItemUsage: async (userId: string) => {
             return null;
         }
 
-        // Only update profile stats if the calendar day changed
         if (shouldUpdateDate) {
             await supabase.from('profiles').update({
                 streak: new_streak,
-                last_action_date: new Date().toISOString(), // Store full ISO
+                last_action_date: new Date().toISOString(), 
                 streak_freezes: profile.streak_freezes - freezes_used
             }).eq('id', userId);
         }
@@ -511,7 +526,6 @@ getUserItemUsage: async (userId: string) => {
             xp_gained: xp_to_add, source: source
         });
 
-        // --- QUEST PROGRESS CHECK ---
         const { data: activeQuests } = await supabase.from('quests').select('id, quest_tasks(*)').eq('is_active', true).eq('is_archived', false);
         
         if (activeQuests) {
@@ -570,7 +584,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         const updates: any = {};
         if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
         
-        // 🟢 FIX: Update the is_active column, NOT is_archived
         if (data.isActive !== undefined) updates.is_active = data.isActive;
 
         const { error } = await supabase.from('reward_actions').update(updates).eq('action_type', actionType);
@@ -628,8 +641,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         const { error } = await supabase.from('badges').update({ is_archived: false }).eq('name', name);
         return error ? { success: false, message: error.message } : { success: true, message: "Restored." };
     },
-    
-    // QUESTS
     createQuest: async (questData: Omit<Quest, 'id' | 'isActive' | 'isArchived'>): Promise<boolean> => {
         const communityId = await getCommunityId();
         let badgeId = questData.badgeRewardId;
@@ -705,8 +716,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
     updateQuestActiveStatus: async (questId: string, isActive: boolean) => {
         await supabase.from('quests').update({ is_active: isActive }).eq('id', questId);
     },
-
-    // STORE
     createStoreItem: async (itemData: Omit<StoreItem, 'id'>): Promise<boolean> => {
         const communityId = await getCommunityId();
         const { error } = await supabase.from('store_items').insert({
@@ -759,7 +768,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         if (error) return { success: false, message: "An error occurred during purchase." };
         return data as { success: boolean; message: string; };
     },
-
     claimQuestReward: async (progressId: number): Promise<{ success: boolean; message: string; }> => {
         try {
             const { data: updatedProgress, error: updateError } = await supabase
@@ -788,7 +796,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
                 const { error: badgeError } = await supabase.from('user_badges').insert({ user_id: userId, badge_id: questData.badge_reward_id, community_id: communityId });
                 
                 if (!badgeError && questData.badges) {
-                    // FIX: Handle array type returned by Supabase join (Fixes TS error 2339)
                     const badgeList = Array.isArray(questData.badges) ? questData.badges : [questData.badges];
                     const badgeName = badgeList[0]?.name;
                     if (badgeName) messages.push(`Badge unlocked: ${badgeName}!`);
@@ -984,7 +991,6 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         if (error) return [];
         return data.map(actionFromSupabase);
     },
-    // FIX: Updated to accept Title Case strings to match types.ts
     adminUpdateCommunityTier: async (tier: 'Core' | 'Pro' | 'Elite') => {
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ subscription_tier: tier }).eq('id', communityId);
