@@ -11,7 +11,6 @@ import BadgeDisplay from './BadgeDisplay';
 import Avatar from './Avatar';
 import AvatarUpdateModal from './AvatarUpdateModal';
 import { CameraIcon } from './icons';
-import Countdown from './Countdown';
 
 const ProfilePage: React.FC = () => {
     const { userId } = useParams<{ userId: string }>();
@@ -21,26 +20,29 @@ const ProfilePage: React.FC = () => {
     const [actions, setActions] = useState<Action[]>([]);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     
-    const isOwnProfile = selectedUser?.id === userId;
+    const isOwnProfile = selectedUser?.id === userId || (!userId && selectedUser);
 
     useEffect(() => {
         const fetchProfileData = async () => {
-            if (userId) {
-                if (isOwnProfile) {
+            // If no userId param, assume current user
+            const targetId = userId || selectedUser?.id;
+            
+            if (targetId) {
+                if (selectedUser?.id === targetId) {
                     setProfile(selectedUser);
                 } else {
-                    const userProfile = await getUserById(userId);
+                    const userProfile = await getUserById(targetId);
                     setProfile(userProfile);
                 }
-                const userActions = await getUserActions(userId);
+                const userActions = await getUserActions(targetId);
                 setActions(userActions);
             }
         };
         fetchProfileData();
-    }, [userId, isOwnProfile, selectedUser, getUserById, getUserActions]);
+    }, [userId, selectedUser, getUserById, getUserActions]);
 
     if (!profile) {
-        return <div className="text-center p-8">Loading profile...</div>;
+        return <div className="text-center p-8 text-slate-400">Loading profile...</div>;
     }
     
     const registrationDate = profile.joinedAt
@@ -49,41 +51,69 @@ const ProfilePage: React.FC = () => {
         })
         : null;
 
+    // 🟢 COSMETIC LOGIC
+    const nameColor = profile.metadata?.nameColor || '#FFFFFF'; // Default White
+    const titlePrefix = profile.metadata?.title ? `[${profile.metadata.title}] ` : '';
+    const bannerUrl = profile.metadata?.bannerUrl;
+
     return (
         <div className="space-y-6">
             <AvatarUpdateModal 
                 isOpen={isAvatarModalOpen}
                 onClose={() => setIsAvatarModalOpen(false)}
             />
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center gap-6">
-                <div className="relative group">
-                    <Avatar 
-                        src={profile.avatarUrl} 
-                        alt={profile.username}
-                        className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover"
+            
+            {/* 🟢 PROFILE HEADER (With Banner Support) */}
+            <div className={`relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden ${bannerUrl ? 'pt-32' : 'p-6'}`}>
+                {bannerUrl && (
+                    <div 
+                        className="absolute inset-0 h-32 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${bannerUrl})` }}
                     />
-                    {isOwnProfile && (
-                        <button 
-                            onClick={() => setIsAvatarModalOpen(true)}
-                            className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                            <CameraIcon className="w-8 h-8 text-white" />
-                        </button>
-                    )}
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold">{profile.username}</h1>
-                    {registrationDate && <p className="text-slate-400">Member since {registrationDate}</p>}
-                    {profile.role === 'admin' && (
-                        <span className="text-xs font-bold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full mt-2 inline-block">
-                            Admin
-                        </span>
-                    )}
-                     {profile.bannedUntil && new Date(profile.bannedUntil) > new Date() && (
-                        <div className="mt-2 text-sm bg-red-500/20 text-red-300 p-2 rounded-lg">
-                            <b>Banned until:</b> {new Date(profile.bannedUntil).toLocaleString()}
+                )}
+                
+                <div className={`relative flex flex-col sm:flex-row items-center gap-6 ${bannerUrl ? 'px-6 pb-6' : ''}`}>
+                    <div className="relative group">
+                        <Avatar 
+                            src={profile.avatarUrl} 
+                            alt={profile.username}
+                            className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover bg-slate-800"
+                        />
+                        {isOwnProfile && (
+                            <button 
+                                onClick={() => setIsAvatarModalOpen(true)}
+                                className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <CameraIcon className="w-8 h-8 text-white" />
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="text-center sm:text-left">
+                        <h1 className="text-3xl font-bold" style={{ color: nameColor }}>
+                            <span className="text-xl opacity-70 mr-2 font-normal text-slate-300">{titlePrefix}</span>
+                            {profile.username}
+                        </h1>
+                        
+                        {registrationDate && <p className="text-slate-400">Member since {registrationDate}</p>}
+                        
+                        <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
+                            {profile.role === 'admin' && (
+                                <span className="text-xs font-bold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
+                                    Admin
+                                </span>
+                            )}
+                            <span className="text-xs font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">
+                                Level {profile.level}
+                            </span>
                         </div>
-                    )}
+
+                        {profile.bannedUntil && new Date(profile.bannedUntil) > new Date() && (
+                            <div className="mt-2 text-sm bg-red-500/20 text-red-300 p-2 rounded-lg">
+                                <b>Banned until:</b> {new Date(profile.bannedUntil).toLocaleString()}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -108,7 +138,6 @@ const ProfilePage: React.FC = () => {
                                 <div>
                                     <p className="text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
                                     <p className="text-xs text-slate-500">
-                                        {/* FIX: Updated timestamp to createdAt */}
                                         {action.createdAt ? new Date(action.createdAt).toLocaleDateString() : 'Date unknown'}
                                     </p>
                                 </div>

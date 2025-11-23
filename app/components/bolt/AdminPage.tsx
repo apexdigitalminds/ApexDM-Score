@@ -187,14 +187,14 @@ export default function AdminPage() {
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
   
-  // 🟢 FIX: Converted null to undefined
+  // FIX: Converted null to undefined
   const handleQuestSubmit = async (e: React.FormEvent) => { 
       e.preventDefault(); 
       const q = { 
           title: questTitle, 
           description: questDescription, 
           xpReward: questXpReward, 
-          badgeRewardId: questBadgeReward ?? undefined, // <--- FIX HERE
+          badgeRewardId: questBadgeReward ?? undefined, 
           tasks: questTasks as QuestTask[] 
       }; 
       if (editingQuest) await handleUpdateQuest(editingQuest.id, q); 
@@ -377,6 +377,7 @@ export default function AdminPage() {
       {activeTab === 'engagement' && (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* Rewards Column */}
                  <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
@@ -455,7 +456,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            {/* Manage Badges (Bottom Full) */}
+            {/* Badges (Full Width) */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">Manage Badges</h3>
@@ -590,6 +591,13 @@ export default function AdminPage() {
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
+                                            {/* 🟢 FIX: Restore Icon Display */}
+                                            <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
+                                                {(() => {
+                                                    const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
+                                                    return <IconComponent className="w-4 h-4 text-purple-400" />;
+                                                })()}
+                                            </div>
                                             <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
                                             <p className="font-bold text-sm text-white">{item.name}</p>
                                         </div>
