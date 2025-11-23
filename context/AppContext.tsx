@@ -111,6 +111,14 @@ export const AppProvider = ({
   const fetchStoreItems = async () => { const items = await api.getStoreItems(); setStoreItems(items); };
   const fetchUserQuestProgress = async () => { if (selectedUser) { const progress = await api.getUserQuestProgress(selectedUser.id); setUserQuestProgress(progress); } };
 
+  // --- HELPER TO REFRESH CURRENT USER ---
+  const refreshSelectedUser = async () => {
+      if (selectedUser) {
+          const fresh = await api.getUserById(selectedUser.id);
+          if (fresh) setSelectedUser(fresh);
+      }
+  };
+
   const handleAddReward = async (reward: Partial<Reward>) => { if (!reward.actionType || reward.xpGained == null) return; await api.createReward(reward.actionType, reward.xpGained); await fetchRewards(); };
   const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean }) => { await api.updateReward(actionType, data); await fetchRewards(); };
   const handleDeleteReward = async (actionType: string) => { await api.deleteReward(actionType, true); await fetchRewards(); };
@@ -146,14 +154,24 @@ export const AppProvider = ({
     }
   };
 
-  const handleRecordAction = async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord' = "manual") => { try { const result = await api.recordAction(userId, actionType, source); if (selectedUser && userId === selectedUser.id) await fetchUserQuestProgress(); return result; } catch (err) { return null; } };
+  // 🟢 FIX: Refresh user and leaderboard after action record
+  const handleRecordAction = async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord' = "manual") => { 
+      try { 
+          const result = await api.recordAction(userId, actionType, source); 
+          if (selectedUser && userId === selectedUser.id) {
+              await fetchUserQuestProgress();
+              await refreshSelectedUser(); // Refresh XP/Streak
+          }
+          await fetchAllUsers(); // Refresh Leaderboard
+          return result; 
+      } catch (err) { return null; } 
+  };
+
   const handleAwardBadge = async (userId: string, badgeName: string) => { 
       const res = await api.awardBadge(userId, badgeName); 
-      // REFRESH: Fetch latest data so the UI updates immediately
-      await fetchAllUsers();
+      await fetchAllUsers(); // Refresh Leaderboard/Badges list
       if (selectedUser && userId === selectedUser.id) {
-          const freshUser = await api.getUserById(userId);
-          setSelectedUser(freshUser);
+          await refreshSelectedUser();
       }
       return res ? { success: false, message: "Failed" } : { success: true, message: "Awarded" }; 
   };
@@ -163,42 +181,49 @@ export const AppProvider = ({
   const adminBanUser = async (userId: string, h: number | null) => { return await api.adminBanUser(userId, h); };
   const adminGetUserEmail = async (userId: string) => { return await api.adminGetUserEmail(userId); };
   const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
- const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { 
+  
+  // 🟢 FIX: Refresh after manual stats update
+  const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { 
       const res = await api.adminUpdateUserStats(userId, xp, streak, freezes); 
-      // REFRESH: Fetch latest data so the UI updates immediately
-      await fetchAllUsers(); 
-      if (selectedUser && userId === selectedUser.id) {
-          const freshUser = await api.getUserById(userId);
-          setSelectedUser(freshUser);
+      await fetchAllUsers(); // Update Leaderboard
+      if (selectedUser && userId === selectedUser.id) await refreshSelectedUser(); // Update Profile
+      return res;
+  };
+
+  // 🟢 FIX: Refresh XP and Leaderboard after claiming reward
+  const claimQuestReward = async (id: number) => { 
+      const res = await api.claimQuestReward(id); 
+      if (res.success) {
+          await fetchUserQuestProgress();
+          await refreshSelectedUser(); // Get new XP
+          await fetchAllUsers(); // Update Leaderboard ranking
       }
       return res; 
   };
 
-  const claimQuestReward = async (id: number) => {
-    const res = await api.claimQuestReward(id);
-    if (res.success) {
-        // REFRESH STATE: Immediately get new XP/Badges
-        await fetchUserQuestProgress();
-        if (selectedUser) {
-            const freshUser = await api.getUserById(selectedUser.id);
-            if (freshUser) setSelectedUser(freshUser);
-        }
-        await fetchBadges(); // In case a badge was unlocked
-    }
-    return res;
-};
-  const activateInventoryItem = async (id: string) => { return await api.activateInventoryItem(id); };
-  const handleBuyStoreItem = async (userId: string, itemId: string) => {
-    const result = await api.buyStoreItem(userId, itemId);
-    if (result.success) {
-        // REFRESH STATE: Immediately get new XP/Inventory
-        const freshUser = await api.getUserById(userId);
-        if (freshUser) setSelectedUser(freshUser);
-        await fetchStoreItems(); // In case of stock limits
-        // If you have an inventory state, refresh it here too
-    }
-    return result;
-};
+  // 🟢 FIX: Refresh Inventory and Active Effects
+  const activateInventoryItem = async (id: string) => { 
+      const res = await api.activateInventoryItem(id); 
+      if (res.success) {
+          // Refresh Inventory to remove used item
+          // Since we don't store inventory in context state yet, this might be handled by the page, 
+          // but refreshing user is good practice if the item changed stats instantly.
+          await refreshSelectedUser();
+      }
+      return res;
+  };
+
+  // 🟢 FIX: Refresh XP (Cost deduction) and Leaderboard after purchase
+  const handleBuyStoreItem = async (uid: string, iid: string) => { 
+      const res = await api.buyStoreItem(uid, iid); 
+      if (res.success) {
+          await refreshSelectedUser(); // Update XP and Streak Freezes
+          await fetchAllUsers(); // Update Leaderboard (XP spent might affect rank)
+          await fetchStoreItems(); // Update stock if applicable
+      }
+      return res;
+  };
+
   const refreshAnalytics = async (range: "7d" | "30d" = "30d") => { const data = await api.getAnalyticsData(range); setAnalyticsData(data); };
 
   // -------------------------------
@@ -224,36 +249,29 @@ export const AppProvider = ({
   };
 
   // -------------------------------
-  // INITIALIZATION / AUTH (UPDATED)
+  // INITIALIZATION / AUTH
   // -------------------------------
   useEffect(() => {
     const initAuth = async () => {
-      // 1. TRACER LOG
       console.log("🟢 AppProvider Mounted via layout prop");
       console.log("👉 Verified User ID:", verifiedUserId);
 
       let user = null;
 
       if (verifiedUserId && verifiedUserId !== "GUEST") {
-         // 泙 PROD/VERIFIED: Use the ID passed from the server
          console.log("🔍 Fetching user profile for:", verifiedUserId);
          user = await api.getUserByWhopId(verifiedUserId);
          console.log("✅ User profile result:", user);
       } else if (process.env.NODE_ENV === 'development') {
-          // 圦 DEV: Fallback logic (only if strict dev mode)
           console.log("⚠️ No valid verifiedUserId found (or GUEST).");
       }
 
       setSelectedUser(user);
-      
-      // We treat connection as true if we have a user
       setIsWhopConnected(!!user);
-      
       await fetchCommunity();
       setIsLoading(false);
       console.log("🏁 initAuth finished. Loading set to false.");
 
-      // Fetch initial data
       if (user) {
           fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems();
       }
