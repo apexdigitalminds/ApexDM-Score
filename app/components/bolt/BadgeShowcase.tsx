@@ -6,14 +6,13 @@ import BadgeItem from './BadgeItem';
 import StreakShowcase from './StreakShowcase';
 import type { Badge, BadgeConfig, UserInventoryItem } from '@/types';
 import { api } from '@/services/api';
-import { SparklesIcon, ClockIcon } from './icons';
+import { SparklesIcon } from './icons';
 
 const BadgeShowcase: React.FC = () => {
     const { badgesConfig, getUserInventory, selectedUser, activateInventoryItem, activeEffects, fetchAllUsers } = useApp();
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Fetch Inventory on mount
     useEffect(() => {
         if (selectedUser) {
             getUserInventory(selectedUser.id).then(setInventory);
@@ -24,7 +23,7 @@ const BadgeShowcase: React.FC = () => {
         if (selectedUser) {
             const items = await getUserInventory(selectedUser.id);
             setInventory(items);
-            await fetchAllUsers(); // Refresh profile/header
+            await fetchAllUsers(); 
         }
     };
 
@@ -32,20 +31,21 @@ const BadgeShowcase: React.FC = () => {
         if (!item.itemDetails) return;
         setIsLoading(true);
 
-        // 🟢 LOGIC SPLIT: Equip vs Activate
-        const isCosmetic = ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME'].includes(item.itemDetails.itemType);
+        // 🟢 ROBUST CHECK: Handle case sensitivity and ensure type exists
+        const type = (item.itemDetails.itemType || '').toUpperCase();
+        const isCosmetic = ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME'].includes(type);
 
         if (isCosmetic) {
-            // Cosmetic -> Equip (Update Profile Metadata)
+            // 🟢 EQUIP LOGIC
             const result = await api.equipCosmetic(selectedUser!.id, item.itemDetails);
-            alert(result.message); // Simple feedback
+            alert(result.message); 
         } else {
-            // Consumable -> Activate (Consume Item)
+            // 🔴 CONSUME LOGIC
             const result = await activateInventoryItem(item.id);
             alert(result.message);
         }
 
-        await handleRefresh(); // Refresh list
+        await handleRefresh(); 
         setIsLoading(false);
     };
 
@@ -62,11 +62,10 @@ const BadgeShowcase: React.FC = () => {
     return (
         <div className="space-y-8">
             
-            {/* SECTION 1: ACTIVE EFFECTS & INVENTORY */}
+            {/* INVENTORY SECTION */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <h3 className="text-lg font-bold text-white mb-4">Inventory & Active Effects</h3>
                 
-                {/* Active Effects List */}
                 {activeEffects.length > 0 && (
                     <div className="space-y-2 mb-6">
                         {activeEffects.map(effect => (
@@ -85,41 +84,45 @@ const BadgeShowcase: React.FC = () => {
                     </div>
                 )}
 
-                {/* Inventory Grid */}
                 {inventory.length > 0 ? (
                     <div className="grid gap-4">
-                        {inventory.map(item => (
-                            <div key={item.id} className="flex justify-between items-center bg-slate-700/30 p-4 rounded-xl border border-slate-700">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-2xl">
-                                        {/* Render item icon if available in future, for now generic */}
-                                        🎒
+                        {inventory.map(item => {
+                             // Determine button label based on type
+                             const type = (item.itemDetails?.itemType || '').toUpperCase();
+                             const isCosmetic = ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME'].includes(type);
+                             
+                             return (
+                                <div key={item.id} className="flex justify-between items-center bg-slate-700/30 p-4 rounded-xl border border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-2xl">
+                                            🎒
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white">{item.itemDetails?.name}</h4>
+                                            <p className="text-xs text-slate-400 uppercase">{type.replace('_', ' ')}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-white">{item.itemDetails?.name}</h4>
-                                        <p className="text-xs text-slate-400 uppercase">{item.itemDetails?.itemType.replace('_', ' ')}</p>
-                                    </div>
+                                    <button 
+                                        onClick={() => handleUseItem(item)}
+                                        disabled={isLoading}
+                                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${
+                                            isCosmetic
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                        }`}
+                                    >
+                                        {isCosmetic ? 'Equip' : 'Use Item'}
+                                    </button>
                                 </div>
-                                <button 
-                                    onClick={() => handleUseItem(item)}
-                                    disabled={isLoading}
-                                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${
-                                        ['NAME_COLOR', 'TITLE', 'BANNER'].includes(item.itemDetails?.itemType || '')
-                                        ? 'bg-blue-600 hover:bg-blue-700 text-white' // Equip Color
-                                        : 'bg-purple-600 hover:bg-purple-700 text-white' // Use Color
-                                    }`}
-                                >
-                                    {['NAME_COLOR', 'TITLE', 'BANNER'].includes(item.itemDetails?.itemType || '') ? 'Equip' : 'Use Item'}
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <p className="text-slate-500 text-center py-4 italic">Your inventory is empty. Visit the XP Store!</p>
                 )}
             </div>
 
-            {/* SECTION 2: BADGES */}
+            {/* BADGES SECTION */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <h3 className="text-lg font-bold text-white mb-4 text-center">Badge Collection</h3>
                 {allBadges.length > 0 ? (
@@ -137,7 +140,6 @@ const BadgeShowcase: React.FC = () => {
                 )}
             </div>
 
-            {/* SECTION 3: STREAK TIERS */}
             <StreakShowcase />
         </div>
     );

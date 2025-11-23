@@ -80,7 +80,6 @@ export default function AdminPage() {
   const [newActionName, setNewActionName] = useState("");
   const [newActionXp, setNewActionXp] = useState(10);
   
-  // BADGE STATE
   const [editBadgeName, setEditBadgeName] = useState<string | null>(null);
   const [newBadgeName, setNewBadgeName] = useState("");
   const [newBadgeDesc, setNewBadgeDesc] = useState("");
@@ -88,7 +87,6 @@ export default function AdminPage() {
   const [newBadgeColor, setNewBadgeColor] = useState("#ffffff");
   const [badgeIconType, setBadgeIconType] = useState<'PRESET' | 'EMOJI'>('PRESET'); 
 
-  // QUEST STATE
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [questTitle, setQuestTitle] = useState("");
   const [questDescription, setQuestDescription] = useState("");
@@ -96,7 +94,6 @@ export default function AdminPage() {
   const [questBadgeReward, setQuestBadgeReward] = useState<string | null>(null);
   const [questTasks, setQuestTasks] = useState<Partial<QuestTask>[]>([]);
 
-  // STORE ITEM STATE
   const [editingItem, setEditingItem] = useState<StoreItem | null>(null);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
@@ -110,7 +107,6 @@ export default function AdminPage() {
   const [metaText, setMetaText] = useState("");
   const [metaUrl, setMetaUrl] = useState("");
 
-  // USER EDIT STATE
   const [editXp, setEditXp] = useState(0);
   const [editStreak, setEditStreak] = useState(0);
   const [editFreezes, setEditFreezes] = useState(0);
@@ -131,7 +127,6 @@ export default function AdminPage() {
   const handleAwardXp = async () => { if (targetUser) { const result = await handleRecordAction(targetUser.id, actionType, "manual"); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification(`Awarded ${result?.xpGained ?? 0} XP.`); } };
   const handleAwardBadgeClick = async () => { if (targetUser && badgeToAward) { await handleAwardBadge(targetUser.id, badgeToAward); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification(`Badge awarded.`); } };
 
-  // REWARD HANDLERS
   const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); };
   const handleRewardSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (editRewardAction) { await handleUpdateReward(editRewardAction, { xpGained: newActionXp }); showNotification("Reward updated."); } else { await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp }); showNotification("Reward added."); } cancelEditReward(); };
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
@@ -139,115 +134,31 @@ export default function AdminPage() {
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); };
   const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive } as any); };
 
-  // BADGE HANDLERS
-  const cancelEditBadge = () => { 
-    setEditBadgeName(null); 
-    setNewBadgeName(""); 
-    setNewBadgeDesc(""); 
-    setBadgeIconType('PRESET'); 
-    setNewBadgeIcon(iconMapKeys[0]);
-  };
-
-  const handleAddOrEditBadge = async (e: React.FormEvent) => { 
-    e.preventDefault(); 
-    const badgeData = { description: newBadgeDesc, icon: newBadgeIcon, color: newBadgeColor }; 
-    if (editBadgeName) { 
-        await handleUpdateBadge(editBadgeName, badgeData); 
-        showNotification("Badge updated."); 
-    } else { 
-        await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); 
-        showNotification("Badge added."); 
-    } 
-    cancelEditBadge(); 
-  };
-
-  const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { 
-    setEditBadgeName(badgeName); 
-    setNewBadgeName(badgeName); 
-    setNewBadgeDesc(config.description); 
-    setNewBadgeColor(config.color); 
-    if (iconMapKeys.includes(config.icon)) {
-        setBadgeIconType('PRESET');
-        setNewBadgeIcon(config.icon);
-    } else {
-        setBadgeIconType('EMOJI');
-        setNewBadgeIcon(config.icon);
-    }
-  };
-
+  const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
+  const handleAddOrEditBadge = async (e: React.FormEvent) => { e.preventDefault(); const badgeData = { description: newBadgeDesc, icon: newBadgeIcon, color: newBadgeColor }; if (editBadgeName) { await handleUpdateBadge(editBadgeName, badgeData); showNotification("Badge updated."); } else { await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); showNotification("Badge added."); } cancelEditBadge(); };
+  const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); } else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon); } };
   const handleDeleteBadgeClick = async (name: string) => { if(window.confirm(`Archive/Delete "${name}"?`)) { await handleDeleteBadge(name); showNotification("Badge processed."); }};
   const handleRestoreBadgeClick = async (name: string) => { await handleRestoreBadge(name); showNotification("Restored."); };
   const handleToggleBadgeActive = async (name: string, isActive: boolean) => { await handleUpdateBadge(name, { isActive }); };
 
-  // QUEST HANDLERS
   const resetQuestForm = () => { setEditingQuest(null); setQuestTitle(""); setQuestDescription(""); setQuestXpReward(100); setQuestBadgeReward(null); setQuestTasks([{ actionType: (Object.keys(rewardsConfig)[0] as ActionType) || "watch_content", targetCount: 1, description: "" }]); };
   useEffect(() => { if (Object.keys(rewardsConfig).length > 0 && questTasks.length === 0) resetQuestForm(); }, [rewardsConfig]);
   const handleEditQuestClick = (q: Quest) => { setEditingQuest(q); setQuestTitle(q.title); setQuestDescription(q.description ?? ""); setQuestXpReward(q.xpReward); setQuestBadgeReward(q.badgeReward ?? null); setQuestTasks(q.tasks || []); };
   const handleUpdateTask = (idx: number, field: keyof QuestTask, val: any) => { const t = [...questTasks]; (t[idx] as any)[field] = val; setQuestTasks(t); };
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
-  
-  // FIX: Converted null to undefined
-  const handleQuestSubmit = async (e: React.FormEvent) => { 
-      e.preventDefault(); 
-      const q = { 
-          title: questTitle, 
-          description: questDescription, 
-          xpReward: questXpReward, 
-          badgeRewardId: questBadgeReward ?? undefined, 
-          tasks: questTasks as QuestTask[] 
-      }; 
-      if (editingQuest) await handleUpdateQuest(editingQuest.id, q); 
-      else await handleCreateQuest(q); 
-      showNotification("Quest saved."); 
-      resetQuestForm(); 
-  };
-
+  const handleQuestSubmit = async (e: React.FormEvent) => { e.preventDefault(); const q = { title: questTitle, description: questDescription, xpReward: questXpReward, badgeRewardId: questBadgeReward ?? undefined, tasks: questTasks as QuestTask[] }; if (editingQuest) await handleUpdateQuest(editingQuest.id, q); else await handleCreateQuest(q); showNotification("Quest saved."); resetQuestForm(); };
   const handleDeleteQuestClick = async (q: Quest) => { if(window.confirm(`Archive/Delete quest "${q.title}"?`)) { await handleDeleteQuest(q.id); showNotification("Quest processed."); }};
   const handleRestoreQuestClick = async (q: Quest) => { if(handleRestoreQuest) { await handleRestoreQuest(q.id); showNotification("Quest restored."); }};
   const handleToggleQuestClick = async (q: Quest) => { await handleToggleQuest(q.id, !q.isActive); };
 
-  // ITEM HANDLERS
-  const resetItemForm = () => { 
-      setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); 
-      setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined);
-      setMetaColor("#FF0000"); setMetaText(""); setMetaUrl("");
-  };
-
-  const handleEditItemClick = (i: StoreItem) => { 
-      setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); 
-      setItemDuration(i.durationHours); setItemModifier(i.modifier);
-      if (i.metadata?.color) setMetaColor(i.metadata.color);
-      if (i.metadata?.text) setMetaText(i.metadata.text);
-      if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl);
-  };
-
-  const handleItemSubmit = async (e: React.FormEvent) => { 
-      e.preventDefault(); 
-      
-      const metadata: any = {};
-      if (itemType === 'NAME_COLOR') metadata.color = metaColor;
-      if (itemType === 'TITLE') metadata.text = metaText;
-      if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl;
-
-      const i = { 
-          name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, 
-          durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, 
-          modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined,
-          metadata 
-      }; 
-      
-      if(editingItem) await handleUpdateStoreItem(editingItem.id, i); 
-      else await handleCreateStoreItem(i); 
-      
-      showNotification("Item saved."); resetItemForm(); 
-  };
-
+  const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#FF0000"); setMetaText(""); setMetaUrl(""); };
+  const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); };
+  const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR') metadata.color = metaColor; if (itemType === 'TITLE') metadata.text = metaText; if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if(editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); };
   const handleDeleteItemClick = async (i: StoreItem) => { if(window.confirm("Delete item?")) { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); }};
   const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); };
   const handleToggleStoreItem = async (id: string, isActive: boolean) => { await handleToggleStoreItemActive(id, isActive); };
 
-  // USER HANDLERS
   const handleAdminStatUpdate = async () => { if(!targetUser) return; await adminUpdateUserStats(targetUser.id, editXp, editStreak, editFreezes); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Stats updated."); };
   const handleAdminRoleUpdate = async () => { if(!targetUser) return; await adminUpdateUserRole(targetUser.id, editRole); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Role updated."); };
   const handleAdminBan = async (h: number|null) => { if(!targetUser) return; if(window.confirm(`Confirm ban?`)) { await adminBanUser(targetUser.id, h); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Ban status updated."); }};
@@ -266,11 +177,18 @@ export default function AdminPage() {
 
   const popularEmojis = ["🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🔥", "🚀", "💎", "💰", "🛡️", "⚔️", "🏹", "🧪", "📜", "❤️", "⭐", "👑", "💀", "⚡", "🦄", "🐲", "👾", "🍄", "🎓", "🎟️", "🎨", "🎵", "📣", "🤝", "🌍", "🎁", "💡", "⚙️", "🔒", "🔑"];
 
+  // Helper to render icon preview
+  const RenderIconPreview = ({ iconName, color }: { iconName: string, color?: string }) => {
+      const IconComponent = iconMap[iconName] || iconMap['Snowflake'];
+      return <IconComponent className="w-5 h-5" style={{ color: color || '#a855f7' }} />;
+  };
+
   return (
     <div className="space-y-6 pb-20">
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
+      {/* ... (Header and Tabs - Keeping Same) ... */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-700 pb-8">
         <div className="flex items-center gap-5">
            {community?.logoUrl ? (
@@ -281,20 +199,9 @@ export default function AdminPage() {
              </div>
            )}
            <div>
-             <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">
-               {community?.name || "Admin Dashboard"}
-             </h1>
+             <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">{community?.name || "Admin Dashboard"}</h1>
              <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 shadow-sm">
-               <span className="flex items-center gap-1.5 text-green-400">
-                 <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>
-                 Active
-               </span>
-               <span className="text-slate-600">|</span>
-               <span className="text-slate-200 font-semibold">{allUsers.length} Players</span>
-               <span className="text-slate-600">|</span>
-               <span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>
-                 {community?.tier || "Free"} Plan
-               </span>
+               <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600">|</span><span className="text-slate-200 font-semibold">{allUsers.length} Players</span><span className="text-slate-600">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
              </div>
              <p className="text-slate-400 text-sm mt-3">Manage your gamification economy.</p>
            </div>
@@ -308,7 +215,7 @@ export default function AdminPage() {
         <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} label="Settings" icon={<SparklesIcon className="w-5 h-5"/>} />
       </div>
 
-      {/* USERS TAB */}
+      {/* USERS TAB (Omitted for brevity, same as before) */}
       {activeTab === 'users' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
@@ -376,8 +283,9 @@ export default function AdminPage() {
       {/* ENGAGEMENT TAB */}
       {activeTab === 'engagement' && (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* Rewards Column */}
+            {/* ... (Engagement Tab Code) ... */}
+            {/* For brevity, I'm pasting the minimal wrapper, assume same content as before */}
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
@@ -408,8 +316,6 @@ export default function AdminPage() {
                         })}
                     </div>
                  </div>
-                
-                {/* Quests Column */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage Quests</h3>
@@ -455,8 +361,6 @@ export default function AdminPage() {
                     ) : (<div className="h-full flex flex-col justify-center"><FeatureLock title="Quests System" description="Requires Pro." requiredTier="Pro" /></div>)}
                 </div>
             </div>
-
-            {/* Badges (Full Width) */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">Manage Badges</h3>
@@ -530,7 +434,7 @@ export default function AdminPage() {
                                 <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" rows={2} />
                              </div>
 
-                             {/* 🟢 NEW: Dynamic Type Selector */}
+                             {/* Dynamic Type Selector */}
                              <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Item Type</label>
@@ -544,13 +448,19 @@ export default function AdminPage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
-                                    <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
-                                        {iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}
-                                    </select>
+                                    <div className="flex gap-2 items-center">
+                                        {/* 🟢 NEW: Icon Preview */}
+                                        <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
+                                            <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
+                                        </div>
+                                        <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full h-10">
+                                            {iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
                              </div>
 
-                             {/* 🟢 NEW: Conditional Fields based on Type */}
+                             {/* Conditional Fields */}
                              <div className="bg-slate-900/50 p-3 rounded border border-slate-700 mb-4">
                                 {itemType === 'TIMED_EFFECT' && (
                                     <div className="flex gap-2">
@@ -591,12 +501,8 @@ export default function AdminPage() {
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            {/* 🟢 FIX: Restore Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
-                                                {(() => {
-                                                    const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
-                                                    return <IconComponent className="w-4 h-4 text-purple-400" />;
-                                                })()}
+                                                <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                             </div>
                                             <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
                                             <p className="font-bold text-sm text-white">{item.name}</p>
