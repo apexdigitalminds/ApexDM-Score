@@ -174,9 +174,31 @@ export const AppProvider = ({
       return res; 
   };
 
-  const claimQuestReward = async (id: number) => { const res = await api.claimQuestReward(id); if (res.success) await fetchUserQuestProgress(); return res; };
+  const claimQuestReward = async (id: number) => {
+    const res = await api.claimQuestReward(id);
+    if (res.success) {
+        // REFRESH STATE: Immediately get new XP/Badges
+        await fetchUserQuestProgress();
+        if (selectedUser) {
+            const freshUser = await api.getUserById(selectedUser.id);
+            if (freshUser) setSelectedUser(freshUser);
+        }
+        await fetchBadges(); // In case a badge was unlocked
+    }
+    return res;
+};
   const activateInventoryItem = async (id: string) => { return await api.activateInventoryItem(id); };
-  const handleBuyStoreItem = async (uid: string, iid: string) => { return await api.buyStoreItem(uid, iid); };
+  const handleBuyStoreItem = async (userId: string, itemId: string) => {
+    const result = await api.buyStoreItem(userId, itemId);
+    if (result.success) {
+        // REFRESH STATE: Immediately get new XP/Inventory
+        const freshUser = await api.getUserById(userId);
+        if (freshUser) setSelectedUser(freshUser);
+        await fetchStoreItems(); // In case of stock limits
+        // If you have an inventory state, refresh it here too
+    }
+    return result;
+};
   const refreshAnalytics = async (range: "7d" | "30d" = "30d") => { const data = await api.getAnalyticsData(range); setAnalyticsData(data); };
 
   // -------------------------------
