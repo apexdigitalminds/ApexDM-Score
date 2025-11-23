@@ -926,7 +926,8 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
             return null;
         }
     },
-    updateUserProfile: async (updates: { avatarUrl?: string }, userId?: string) => {
+// UPDATED: Accepts optional username
+    updateUserProfile: async (updates: { avatarUrl?: string; username?: string }, userId?: string) => {
         let targetId = userId;
         if (!targetId) {
             const { data: { user } } = await supabase.auth.getUser();
@@ -934,8 +935,16 @@ updateReward: async (actionType: string, data: { xpGained?: number, isActive?: b
         }
         if (!targetId) return false;
 
-        const { error } = await supabase.from('profiles').update({ avatar_url: updates.avatarUrl }).eq('id', targetId);
-        if (error) return false;
+        // Construct the update object dynamically
+        const dbUpdates: any = {};
+        if (updates.avatarUrl) dbUpdates.avatar_url = updates.avatarUrl;
+        if (updates.username) dbUpdates.username = updates.username;
+
+        const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', targetId);
+        if (error) {
+            console.error("Profile update failed:", error.message);
+            return false;
+        }
         return true;
     },
 uploadAvatar: async (file: File, userId?: string) => {

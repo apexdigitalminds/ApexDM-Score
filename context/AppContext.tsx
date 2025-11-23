@@ -147,14 +147,32 @@ export const AppProvider = ({
   };
 
   const handleRecordAction = async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord' = "manual") => { try { const result = await api.recordAction(userId, actionType, source); if (selectedUser && userId === selectedUser.id) await fetchUserQuestProgress(); return result; } catch (err) { return null; } };
-  const handleAwardBadge = async (userId: string, badgeName: string) => { const res = await api.awardBadge(userId, badgeName); return res ? { success: false, message: "Failed" } : { success: true, message: "Awarded" }; };
+  const handleAwardBadge = async (userId: string, badgeName: string) => { 
+      const res = await api.awardBadge(userId, badgeName); 
+      // REFRESH: Fetch latest data so the UI updates immediately
+      await fetchAllUsers();
+      if (selectedUser && userId === selectedUser.id) {
+          const freshUser = await api.getUserById(userId);
+          setSelectedUser(freshUser);
+      }
+      return res ? { success: false, message: "Failed" } : { success: true, message: "Awarded" }; 
+  };
   const handleTriggerWebhook = async (userId: string, actionType: string) => { return await api.triggerWebhook(userId, actionType); };
   
   const adminUpdateUserRole = async (userId: string, role: "member" | "admin") => { return await api.adminUpdateUserRole(userId, role); };
   const adminBanUser = async (userId: string, h: number | null) => { return await api.adminBanUser(userId, h); };
   const adminGetUserEmail = async (userId: string) => { return await api.adminGetUserEmail(userId); };
   const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
-  const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { return await api.adminUpdateUserStats(userId, xp, streak, freezes); };
+ const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { 
+      const res = await api.adminUpdateUserStats(userId, xp, streak, freezes); 
+      // REFRESH: Fetch latest data so the UI updates immediately
+      await fetchAllUsers(); 
+      if (selectedUser && userId === selectedUser.id) {
+          const freshUser = await api.getUserById(userId);
+          setSelectedUser(freshUser);
+      }
+      return res; 
+  };
 
   const claimQuestReward = async (id: number) => { const res = await api.claimQuestReward(id); if (res.success) await fetchUserQuestProgress(); return res; };
   const activateInventoryItem = async (id: string) => { return await api.activateInventoryItem(id); };
