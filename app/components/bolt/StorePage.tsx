@@ -9,7 +9,6 @@ import LockedPageMockup from './LockedPageMockup';
 const StoreItemCard: React.FC<{
     item: StoreItem;
     userXP: number;
-    userFreezes?: number;
     onPurchase: (itemId: string) => void;
     isPurchasing: boolean;
 }> = ({ item, userXP, onPurchase, isPurchasing }) => {
@@ -22,11 +21,20 @@ const StoreItemCard: React.FC<{
                 <IconComponent className="w-20 h-20 text-white/80" />
             </div>
             <div className="p-6 flex flex-col flex-grow">
-                <h3 className="text-xl font-bold text-white mb-2">{item.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                    {/* 🟢 FIX: Small Icon next to Name */}
+                    <IconComponent className="w-5 h-5 text-purple-400" />
+                    <h3 className="text-xl font-bold text-white">{item.name}</h3>
+                </div>
+                
                 <p className="text-slate-400 text-sm mb-4 flex-grow">
                     {item.description}
                      {item.itemType === 'TIMED_EFFECT' && item.durationHours && (
                         <span className="block mt-2 font-semibold text-purple-300">Lasts for {item.durationHours} hours.</span>
+                    )}
+                     {/* 🟢 Visual Tag for Cosmetics */}
+                     {['NAME_COLOR', 'TITLE', 'BANNER'].includes(item.itemType) && (
+                        <span className="block mt-2 text-xs font-bold text-blue-300 uppercase tracking-wide">Cosmetic Item</span>
                     )}
                 </p>
                 <div className="flex justify-between items-center mb-4">
@@ -45,15 +53,12 @@ const StoreItemCard: React.FC<{
     );
 };
 
-
 const StorePage: React.FC = () => {
   const { selectedUser, storeItems, handleBuyStoreItem, isFeatureEnabled } = useApp();
   
-  // 1. Hooks must be declared FIRST
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
 
-  // 2. The Lock Check happens HERE
   if (!isFeatureEnabled('store')) {
       return (
           <LockedPageMockup 
@@ -65,7 +70,6 @@ const StorePage: React.FC = () => {
       );
   }
 
-  // ProtectedRoute ensures user is not null
   const user = selectedUser!;
 
   const handlePurchase = async (itemId: string) => {
