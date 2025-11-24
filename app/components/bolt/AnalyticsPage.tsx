@@ -59,22 +59,20 @@ const AnalyticsPage: React.FC = () => {
         }))
       : [];
 
-    const questAnalyticsData = data
-      ? (data.questAnalytics as unknown as any[])
-          .filter((item: any) => typeof item.questId === 'string') 
-          .map((item: any) => ({
-            questId: item.questId,
-            title: item.title,
-            participationRate: item.participationRate,
-            completionRate: item.completionRate,
+const questAnalyticsData = data && Array.isArray(data.questAnalytics)
+      ? data.questAnalytics.map((item: any) => ({
+            questId: item.questId || 'unknown',
+            title: item.title || 'Unknown Quest',
+            participationRate: item.participationRate || 0,
+            completionRate: item.completionRate || 0,
           }))
       : [];
       
-    const storeAnalyticsData = data
+const storeAnalyticsData = data && data.storeAnalytics
       ? { 
           ...data.storeAnalytics, 
           totalSpent: data.storeAnalytics.xpSpent, 
-          items: data.storeAnalytics.items 
+          items: data.storeAnalytics.items || [] 
         }
       : null;
 

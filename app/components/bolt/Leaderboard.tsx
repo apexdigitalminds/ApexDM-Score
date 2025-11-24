@@ -23,13 +23,11 @@ const UserRow: React.FC<{
     const titlePos = user.metadata?.titlePosition || 'prefix';
     const pulseColor = user.metadata?.avatarPulseColor;
 
-    return (
+return (
       <Link
         href={`/profile/${user.id}`}
         className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-          isCurrent 
-            ? 'bg-purple-500/20 ring-2 ring-purple-500' 
-            : 'bg-slate-700/50 hover:bg-slate-700'
+          isCurrent ? 'bg-purple-500/20 ring-2 ring-purple-500' : 'bg-slate-700/50 hover:bg-slate-700'
         }`}
       >
         <div className="flex items-center gap-4">
@@ -37,7 +35,6 @@ const UserRow: React.FC<{
             {index + 1}
           </span>
           
-          {/* 🟢 AVATAR PULSE */}
           <div 
             className={`relative rounded-full ${pulseColor ? 'animate-pulse' : ''}`}
             style={pulseColor ? { boxShadow: `0 0 10px ${pulseColor}` } : {}}
@@ -45,13 +42,20 @@ const UserRow: React.FC<{
               <Avatar src={user.avatarUrl} alt={user.username} className="w-8 h-8 rounded-full" />
           </div>
 
-          {/* 🟢 NAME COLOR & TITLE */}
-          <span className="font-medium flex items-center gap-1" style={{ color: nameColor }}>
-            {title && titlePos === 'prefix' && <span className="text-xs opacity-70">[{title}]</span>}
-            {user.username}
-            {title && titlePos === 'suffix' && <span className="text-xs opacity-70">[{title}]</span>}
-            {isCurrent && <span className="text-xs opacity-50 ml-1">(You)</span>}
-          </span>
+          <div className="flex items-center gap-1 text-sm">
+             {/* Prefix - Always Gray */}
+             {title && titlePos === 'prefix' && <span className="text-slate-400 font-normal">[{title}]</span>}
+             
+             {/* Username - Colored */}
+             <span className="font-bold" style={{ color: nameColor }}>
+                {user.username}
+             </span>
+
+             {/* Suffix - Always Gray */}
+             {title && titlePos === 'suffix' && <span className="text-slate-400 font-normal">[{title}]</span>}
+             
+             {isCurrent && <span className="text-slate-500 text-xs ml-1">(You)</span>}
+          </div>
         </div>
         
         {mode === 'xp' ? (
@@ -59,7 +63,7 @@ const UserRow: React.FC<{
         ) : (
             <span className="font-bold text-orange-400 text-sm flex items-center gap-1">
                 <FireIcon className="w-4 h-4" />
-                {user.streak} Days
+                {user.streak}
             </span>
         )}
       </Link>

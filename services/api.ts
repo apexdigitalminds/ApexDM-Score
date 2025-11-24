@@ -429,7 +429,21 @@ deleteBadge: async (name: string, isArchive: boolean) => {
         if (error) return { success: false, message: error.message };
         return { success: true, message: "Equipped successfully!" };
     },
+unequipCosmetic: async (userId: string, type: 'NAME_COLOR' | 'TITLE' | 'BANNER' | 'FRAME' | 'AVATAR_PULSE'): Promise<{ success: boolean; message: string }> => {
+        const { data: profile } = await supabase.from('profiles').select('metadata').eq('id', userId).single();
+        const currentMeta = profile?.metadata || {};
 
+        // Remove specific key based on type
+        if (type === 'NAME_COLOR') delete currentMeta.nameColor;
+        if (type === 'TITLE') { delete currentMeta.title; delete currentMeta.titlePosition; }
+        if (type === 'BANNER') delete currentMeta.bannerUrl;
+        if (type === 'FRAME') delete currentMeta.frameUrl;
+        if (type === 'AVATAR_PULSE') delete currentMeta.avatarPulseColor;
+
+        const { error } = await supabase.from('profiles').update({ metadata: currentMeta }).eq('id', userId);
+        if (error) return { success: false, message: error.message };
+        return { success: true, message: "Unequipped successfully!" };
+    },
     claimQuestReward: async (progressId: number) => {
         // (Claim logic omitted for brevity, same as before)
         return { success: true, message: "Claimed." };

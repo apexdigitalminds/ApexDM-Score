@@ -443,6 +443,7 @@ export default function AdminPage() {
                                         <option value="INSTANT">Instant Consumable</option>
                                         <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
                                         <option value="NAME_COLOR">Name Color (Cosmetic)</option>
+                                        <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
                                         <option value="TITLE">Title / Prefix (Cosmetic)</option>
                                         <option value="BANNER">Profile Banner (Cosmetic)</option>
                                     </select>
