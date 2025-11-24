@@ -47,11 +47,13 @@ export type ItemType =
   | 'NAME_COLOR'     
   | 'TITLE'          
   | 'BANNER'         
-  | 'FRAME';         
+  | 'FRAME'
+  | 'AVATAR_PULSE';         
 
 export interface ItemMetadata {
   color?: string;       
-  text?: string;        
+  text?: string;
+  titlePosition?: 'prefix' | 'suffix';        
   imageUrl?: string;    
   [key: string]: any;   
 }
@@ -133,8 +135,10 @@ export interface Profile {
   metadata?: {
       nameColor?: string;
       title?: string;
+      titlePosition?: 'prefix' | 'suffix';
       bannerUrl?: string;
       frameUrl?: string;
+      avatarPulseColor?: string;
       [key: string]: any;
   };
 }

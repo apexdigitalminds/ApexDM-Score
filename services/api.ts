@@ -417,9 +417,13 @@ deleteBadge: async (name: string, isArchive: boolean) => {
         const currentMeta = profile?.metadata || {};
 
         if (item.itemType === 'NAME_COLOR') currentMeta.nameColor = item.metadata?.color;
-        if (item.itemType === 'TITLE') currentMeta.title = item.metadata?.text;
+        if (item.itemType === 'TITLE') {
+            currentMeta.title = item.metadata?.text;
+            currentMeta.titlePosition = item.metadata?.titlePosition || 'prefix';
+        }
         if (item.itemType === 'BANNER') currentMeta.bannerUrl = item.metadata?.imageUrl;
         if (item.itemType === 'FRAME') currentMeta.frameUrl = item.metadata?.imageUrl;
+        if (item.itemType === 'AVATAR_PULSE') currentMeta.avatarPulseColor = item.metadata?.color;
 
         const { error } = await supabase.from('profiles').update({ metadata: currentMeta }).eq('id', userId);
         if (error) return { success: false, message: error.message };

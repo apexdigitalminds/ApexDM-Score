@@ -103,9 +103,10 @@ export default function AdminPage() {
   const [itemType, setItemType] = useState<ItemType>("INSTANT");
   const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
   const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
-  const [metaColor, setMetaColor] = useState("#FF0000");
+  const [metaColor, setMetaColor] = useState("#ffffffff");
   const [metaText, setMetaText] = useState("");
   const [metaUrl, setMetaUrl] = useState("");
+  const [metaPosition, setMetaPosition] = useState<'prefix' | 'suffix'>('prefix');
 
   const [editXp, setEditXp] = useState(0);
   const [editStreak, setEditStreak] = useState(0);
@@ -152,9 +153,9 @@ export default function AdminPage() {
   const handleRestoreQuestClick = async (q: Quest) => { if(handleRestoreQuest) { await handleRestoreQuest(q.id); showNotification("Quest restored."); }};
   const handleToggleQuestClick = async (q: Quest) => { await handleToggleQuest(q.id, !q.isActive); };
 
-  const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#FF0000"); setMetaText(""); setMetaUrl(""); };
-  const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); };
-  const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR') metadata.color = metaColor; if (itemType === 'TITLE') metadata.text = metaText; if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if(editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); };
+  const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#ffffffff"); setMetaPosition("prefix"); setMetaText(""); setMetaUrl(""); };
+  const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition); };
+  const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR'|| itemType === 'AVATAR_PULSE') metadata.color = metaColor; if (itemType === 'TITLE') metadata.text = metaText; metadata.titlePosition = metaPosition; if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if(editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); };
   const handleDeleteItemClick = async (i: StoreItem) => { if(window.confirm("Delete item?")) { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); }};
   const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); };
   const handleToggleStoreItem = async (id: string, isActive: boolean) => { await handleToggleStoreItemActive(id, isActive); };
@@ -468,24 +469,37 @@ export default function AdminPage() {
                                         <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
                                     </div>
                                 )}
-                                {itemType === 'NAME_COLOR' && (
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Select Color</label>
-                                        <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-full cursor-pointer" />
-                                    </div>
-                                )}
-                                {itemType === 'TITLE' && (
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Title Text (e.g. "The Wizard")</label>
-                                        <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
-                                    </div>
-                                )}
-                                {(itemType === 'BANNER' || itemType === 'FRAME') && (
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Image URL</label>
-                                        <input type="text" value={metaUrl} onChange={e => setMetaUrl(e.target.value)} placeholder="https://..." className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
-                                    </div>
-                                )}
+{(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') && (
+      <div>
+          <label className="block text-xs text-slate-400 mb-1">Select Color</label>
+          <div className="flex gap-2 items-center">
+              <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-10 cursor-pointer border-none bg-transparent" />
+              <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-24" />
+          </div>
+      </div>
+  )}
+{itemType === 'TITLE' && (
+      <div className="flex gap-2">
+          <div className="flex-grow">
+              <label className="block text-xs text-slate-400 mb-1">Title Text</label>
+              <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. The Wizard" />
+          </div>
+          <div>
+              <label className="block text-xs text-slate-400 mb-1">Position</label>
+              <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
+                  <option value="prefix">Prefix (Start)</option>
+                  <option value="suffix">Suffix (End)</option>
+              </select>
+          </div>
+      </div>
+  )}
+{(itemType === 'BANNER' || itemType === 'FRAME') && (
+      <div>
+          <label className="block text-xs text-slate-400 mb-1">Image URL</label>
+          <input type="text" value={metaUrl} onChange={e => setMetaUrl(e.target.value)} placeholder="https://..." className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+          {itemType === 'BANNER' && <p className="text-[10px] text-slate-500 mt-1">Recommended Size: 1200x300px (JPG/PNG)</p>}
+      </div>
+  )}
                                 {itemType === 'INSTANT' && <p className="text-xs text-slate-500 italic">Standard consumable item.</p>}
                              </div>
 

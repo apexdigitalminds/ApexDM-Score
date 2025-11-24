@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
-import type { Action, ActionType, UserInventoryItem, ActiveEffect } from '@/types';
+import type { Action, ActionType } from '@/types';
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
 import Leaderboard from './Leaderboard';
-import { SnowflakeIcon, iconMap, SparklesIcon, ClockIcon } from './icons';
-import Countdown from './Countdown';
+import { SnowflakeIcon } from './icons';
 import ActionButton from './ActionButton';
+import InventorySection from './InventorySection'; // 🟢 NEW IMPORT
 
 const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
     return (
@@ -38,35 +38,16 @@ const DashboardPage: React.FC = () => {
         getUserActions, 
         handleRecordAction, 
         rewardsConfig,
-        getUserInventory,
-        getActiveEffects,
-        activateInventoryItem,
-        getUserItemUsage, 
-        storeItems, 
     } = useApp();
 
     const [userActions, setUserActions] = useState<Action[]>([]);
-    const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
-    const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
-    const [usageHistory, setUsageHistory] = useState<any[]>([]); 
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
 
     const fetchData = async () => {
         if (selectedUser) {
-            // Safe check for getUserItemUsage in case Context isn't fully reloaded
-            const historyPromise = getUserItemUsage ? getUserItemUsage(selectedUser.id) : Promise.resolve([]);
-            
-            const [actions, inv, effects, history] = await Promise.all([
-                getUserActions(selectedUser.id),
-                getUserInventory(selectedUser.id),
-                getActiveEffects(selectedUser.id),
-                historyPromise
-            ]);
+            const actions = await getUserActions(selectedUser.id);
             setUserActions(actions);
-            setInventory(inv);
-            setActiveEffects(effects);
-            setUsageHistory(history || []);
         }
     };
 
@@ -89,34 +70,6 @@ const DashboardPage: React.FC = () => {
             fetchData(); 
         }
     };
-
-    const handleActivate = async (inventoryId: string) => {
-        const result = await activateInventoryItem(inventoryId);
-        showNotification(result.message);
-        if (result.success) {
-            fetchData();
-        }
-    };
-
-    // GROUPING LOGIC
-    const groupedInventory = React.useMemo(() => {
-        const groups: Record<string, { count: number, items: UserInventoryItem[] }> = {};
-        
-        inventory.forEach(item => {
-            if (!item.isActive) { 
-                const key = item.itemId;
-                if (!groups[key]) {
-                    groups[key] = { count: 0, items: [] };
-                }
-                groups[key].count++;
-                groups[key].items.push(item);
-            }
-        });
-
-        return Object.values(groups);
-    }, [inventory]);
-
-    const featuredItem = storeItems.find(i => i.isActive && i.cost > 0);
 
     if (isLoading || !selectedUser) {
         return <div className="text-center p-8">Loading user data...</div>;
@@ -157,6 +110,9 @@ const DashboardPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* 🟢 NEW: Dedicated Inventory Section */}
+            <InventorySection />
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     <Leaderboard users={allUsers} currentUserId={currentUser.id} />
@@ -186,8 +142,8 @@ const DashboardPage: React.FC = () => {
                 </div>
             )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-slate-800 p-6 rounded-2xl shadow-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                      <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
                      <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm">
@@ -213,104 +169,6 @@ const DashboardPage: React.FC = () => {
                             <p className="text-slate-500 text-center py-4">No actions yet.</p>
                         )}
                     </div>
-                </div>
-            </div>
-
-             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                <h3 className="text-lg font-bold text-white mb-4">Inventory & Active Effects</h3>
-                <div className="space-y-4">
-                    
-                    {/* 1. Active Effects Section */}
-                    {activeEffects.map(effect => (
-                        <div key={effect.id} className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
-                            <div className="flex items-center gap-3">
-                                <SparklesIcon className="w-6 h-6 text-green-400"/>
-                                {/* FIX: Default modifier to 1 if missing */}
-                                <p className="font-semibold text-white">{effect.modifier || 1}x XP Boost Active</p>
-                            </div>
-                            <div className="text-sm text-slate-300">
-                                Expires in: <span className="font-bold">
-                                    {effect.expiresAt ? <Countdown expiry={effect.expiresAt} /> : 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* 2. Grouped Inventory Section */}
-                    {groupedInventory.map((group) => {
-                        const representative = group.items[0]; 
-                        const Icon = iconMap[representative.itemDetails?.icon ?? ''] || SparklesIcon;
-                        
-                        return (
-                            <div key={representative.itemId} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg border border-slate-700 hover:border-purple-500/50 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <Icon className="w-8 h-8 text-purple-400"/>
-                                        {/* Count Badge */}
-                                        {group.count > 1 && (
-                                            <span className="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
-                                                x{group.count}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-white">{representative.itemDetails?.name ?? 'Unknown Item'}</p>
-<p className="text-xs text-slate-400 break-words pr-4">
-    {representative.itemDetails?.description || 'Use this item to gain effects.'}
-</p>
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={() => handleActivate(representative.id)} 
-                                    className="text-sm bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all transform hover:scale-105 active:scale-95"
-                                >
-                                    Use Item
-                                </button>
-                            </div>
-                        );
-                    })}
-                    
-                    {/* Empty State */}
-                    {inventory.length === 0 && activeEffects.length === 0 && (
-                        <div className="text-center py-6 bg-slate-700/30 rounded-xl border border-dashed border-slate-600">
-                            <p className="text-slate-400 mb-2">Your inventory is empty.</p>
-                            {featuredItem ? (
-                                <div className="flex flex-col items-center gap-2">
-                                    <p className="text-sm text-slate-500">Save up to buy:</p>
-                                    <div className="flex items-center gap-2 text-purple-300 font-semibold">
-                                        <SparklesIcon className="w-4 h-4" /> 
-                                        {featuredItem.name} ({featuredItem.cost} XP)
-                                    </div>
-                                    <Link href="/store" className="mt-2 text-sm bg-slate-600 hover:bg-slate-500 text-white px-4 py-1.5 rounded-full transition-colors">
-                                        Visit Store &rarr;
-                                    </Link>
-                                </div>
-                            ) : (
-                                <Link href="/store" className="text-purple-400 hover:text-purple-300 text-sm font-semibold">
-                                    Visit the XP Store
-                                </Link>
-                            )}
-                        </div>
-                    )}
-
-                    {/* 3. Item Usage History */}
-                    {usageHistory.length > 0 && (
-                        <div className="mt-6 pt-4 border-t border-slate-700">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                                <ClockIcon className="w-3 h-3"/> Item Usage History
-                            </h4>
-                            <div className="space-y-2">
-                                {usageHistory.map((log) => (
-                                    <div key={log.id} className="flex justify-between text-xs bg-slate-900/30 p-2 rounded">
-                                        <span className="text-slate-300 font-medium">{log.item_name}</span>
-                                        <span className="text-slate-500">
-                                            {new Date(log.used_at).toLocaleDateString()} {new Date(log.used_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
