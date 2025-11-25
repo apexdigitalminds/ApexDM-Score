@@ -86,6 +86,9 @@ const InventorySection: React.FC = () => {
     const consumables = inventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
     const wearables = inventory.filter(i => !['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
 
+    // Check if any cosmetic is currently equipped
+    const hasEquippedCosmetics = selectedUser?.metadata?.nameColor || selectedUser?.metadata?.title || selectedUser?.metadata?.avatarPulseColor || selectedUser?.metadata?.bannerUrl;
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 relative">
             {toast && (
@@ -100,39 +103,69 @@ const InventorySection: React.FC = () => {
                     <SparklesIcon className="w-5 h-5 text-yellow-400" /> Active & Equipped
                 </h3>
                 
-                <div className="space-y-3 flex-grow">
-                    {activeEffects.map(effect => (
-                        <div key={effect.id} className="flex justify-between items-center bg-green-900/20 border border-green-500/30 p-3 rounded-lg">
-                            <span className="text-sm font-bold text-green-100">{effect.modifier}x XP Boost</span>
-                            <span className="text-xs text-green-300">
-                                Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Unknown'}
-                            </span>
-                        </div>
-                    ))}
-
-                    {selectedUser?.metadata?.nameColor && (
-                        <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: selectedUser.metadata.nameColor }}></div>
-                                <span className="text-sm text-slate-300">Name Color</span>
-                            </div>
-                            <button onClick={() => handleUnequip('NAME_COLOR')} className="text-xs text-red-400 hover:underline">Unequip</button>
-                        </div>
-                    )}
-                    {selectedUser?.metadata?.title && (
-                         <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                            <div className="flex items-center gap-2"><span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">TITLE</span><span className="text-sm text-white font-bold">{selectedUser.metadata.title}</span></div>
-                            <button onClick={() => handleUnequip('TITLE')} className="text-xs text-red-400 hover:underline">Unequip</button>
-                        </div>
-                    )}
-                    {selectedUser?.metadata?.avatarPulseColor && (
-                        <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: selectedUser.metadata.avatarPulseColor, boxShadow: `0 0 5px ${selectedUser.metadata.avatarPulseColor}` }}></div><span className="text-sm text-slate-300">Avatar Pulse</span></div>
-                           <button onClick={() => handleUnequip('AVATAR_PULSE')} className="text-xs text-red-400 hover:underline">Unequip</button>
-                       </div>
-                    )}
+                <div className="space-y-6 flex-grow">
                     
-                    {/* Item History Section Added Back Here */}
+                    {/* 1. Active Effects Subsection */}
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Active Effects</h4>
+                        {activeEffects.length > 0 ? (
+                            <div className="space-y-2">
+                                {activeEffects.map(effect => (
+                                    <div key={effect.id} className="flex justify-between items-center bg-green-900/20 border border-green-500/30 p-3 rounded-lg">
+                                        <span className="text-sm font-bold text-green-100">{effect.modifier}x XP Boost</span>
+                                        <span className="text-xs text-green-300">
+                                            Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Unknown'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-slate-500 text-xs italic">No active effects.</p>
+                        )}
+                    </div>
+
+                    {/* 2. Equipped Cosmetics Subsection */}
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Equipped Cosmetics</h4>
+                        {hasEquippedCosmetics ? (
+                            <div className="space-y-2">
+                                {selectedUser?.metadata?.nameColor && (
+                                    <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: selectedUser.metadata.nameColor }}></div>
+                                            <span className="text-sm text-slate-300">Name Color</span>
+                                        </div>
+                                        <button onClick={() => handleUnequip('NAME_COLOR')} className="text-xs text-red-400 hover:underline">Unequip</button>
+                                    </div>
+                                )}
+                                {selectedUser?.metadata?.title && (
+                                    <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
+                                        <div className="flex items-center gap-2"><span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">TITLE</span><span className="text-sm text-white font-bold">{selectedUser.metadata.title}</span></div>
+                                        <button onClick={() => handleUnequip('TITLE')} className="text-xs text-red-400 hover:underline">Unequip</button>
+                                    </div>
+                                )}
+                                {selectedUser?.metadata?.avatarPulseColor && (
+                                    <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: selectedUser.metadata.avatarPulseColor, boxShadow: `0 0 5px ${selectedUser.metadata.avatarPulseColor}` }}></div><span className="text-sm text-slate-300">Avatar Pulse</span></div>
+                                    <button onClick={() => handleUnequip('AVATAR_PULSE')} className="text-xs text-red-400 hover:underline">Unequip</button>
+                                </div>
+                                )}
+                                {selectedUser?.metadata?.bannerUrl && (
+                                    <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <img src={selectedUser.metadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
+                                            <span className="text-sm text-slate-300">Profile Banner</span>
+                                        </div>
+                                        <button onClick={() => handleUnequip('BANNER')} className="text-xs text-red-400 hover:underline">Unequip</button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-slate-500 text-xs italic">No cosmetics equipped.</p>
+                        )}
+                    </div>
+                    
+                    {/* Item History */}
                     {history.length > 0 && (
                         <div className="mt-6 pt-4 border-t border-slate-700">
                              <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Recent Usage</h4>
