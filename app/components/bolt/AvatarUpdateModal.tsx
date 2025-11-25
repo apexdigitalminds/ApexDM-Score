@@ -26,41 +26,45 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
     const [error, setError] = useState('');
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
 
-    // Username State
-    const [newUsername, setNewUsername] = useState('');
+    // 🟢 FIX: Track if avatar was actually changed
+    const [isAvatarDirty, setIsAvatarDirty] = useState(false);
 
-    // DiceBear State
+    const [newUsername, setNewUsername] = useState('');
     const [avatarStyle, setAvatarStyle] = useState(avatarStyles[0].id);
     const [avatarGridSeeds, setAvatarGridSeeds] = useState<string[]>([]);
     const [selectedAvatarSeed, setSelectedAvatarSeed] = useState('');
-
-    // Upload State
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     const generateSeeds = () => {
         const newSeeds = Array.from({ length: 6 }, () => Math.random().toString(36).substring(7));
         setAvatarGridSeeds(newSeeds);
-        setSelectedAvatarSeed(newSeeds[0]);
+        // Don't auto-select first one to avoid accidental overwrite, let user click
     };
 
     useEffect(() => {
         if (isOpen && selectedUser) {
             setError('');
             setIsLoading(false);
+            setIsAvatarDirty(false); // Reset dirty state
             setSelectedFile(null);
-            setPreviewUrl(null);
+            // 🟢 FIX: Show current avatar as preview
+            setPreviewUrl(selectedUser.avatarUrl || null);
             setNewUsername(selectedUser.username || '');
             generateSeeds();
-            
-            // Load Inventory for Cosmetics tab
-            getUserInventory(selectedUser.id).then(items => setInventory(items));
+            getUserInventory(selectedUser.id).then(setInventory);
         }
     }, [isOpen, selectedUser]);
 
     useEffect(() => {
+        // Generate seeds when style changes, but don't auto-select
         generateSeeds();
     }, [avatarStyle]);
+
+    const handleSelectSeed = (seed: string) => {
+        setSelectedAvatarSeed(seed);
+        setIsAvatarDirty(true); // 🟢 User explicitly chose a DiceBear
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -76,44 +80,42 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
             setError('');
             setSelectedFile(file);
             setPreviewUrl(URL.createObjectURL(file));
+            setIsAvatarDirty(true); // 🟢 User explicitly chose a File
         }
     };
     
-    // 🟢 NEW: Equip Handler
     const handleEquip = async (item: StoreItem) => {
         if (!selectedUser) return;
         setIsLoading(true);
         try {
             const result = await api.equipCosmetic(selectedUser.id, item);
             if (result.success) {
-                await fetchAllUsers(); // Refresh profile display
-                // Don't close modal so they can see it worked? Or close? Let's keep open.
+                await fetchAllUsers(); 
                 alert("Equipped!");
             } else {
                 setError(result.message);
             }
-        } catch (err) {
-            setError("Failed to equip item.");
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (err) { setError("Failed to equip item."); }
+        finally { setIsLoading(false); }
     };
 
     const handleSave = async () => {
         if (!selectedUser) return;
-        
         setIsLoading(true);
         setError('');
 
         let avatarUrlToSave: string | undefined = undefined;
         
         try {
-            if (activeTab === 'select') {
-                avatarUrlToSave = `https://api.dicebear.com/8.x/${avatarStyle}/svg?seed=${encodeURIComponent(selectedAvatarSeed)}`;
-            } else if (activeTab === 'upload' && selectedFile) {
-                const uploadedUrl = await api.uploadAvatar(selectedFile, selectedUser.id);
-                if (!uploadedUrl) throw new Error('Failed to upload image.');
-                avatarUrlToSave = uploadedUrl;
+            // 🟢 FIX: Only process avatar if dirty
+            if (isAvatarDirty) {
+                if (activeTab === 'select' && selectedAvatarSeed) {
+                    avatarUrlToSave = `https://api.dicebear.com/8.x/${avatarStyle}/svg?seed=${encodeURIComponent(selectedAvatarSeed)}`;
+                } else if (activeTab === 'upload' && selectedFile) {
+                    const uploadedUrl = await api.uploadAvatar(selectedFile, selectedUser.id);
+                    if (!uploadedUrl) throw new Error('Failed to upload image.');
+                    avatarUrlToSave = uploadedUrl;
+                }
             }
 
             const updates: { avatarUrl?: string; username?: string } = {};
@@ -145,20 +147,11 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
 
     if (!isOpen) return null;
 
-    // Filter inventory for cosmetics
-    const cosmetics = inventory.filter(i => 
-        ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME'].includes(i.itemDetails?.itemType || '')
-    );
+    const cosmetics = inventory.filter(i => ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME'].includes(i.itemDetails?.itemType || ''));
 
     return (
-        <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={onClose}
-        >
-            <div 
-                className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 w-full max-w-md text-white p-6 max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-slate-800 rounded-2xl shadow-lg border border-slate-700 w-full max-w-md text-white p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">Edit Profile</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
@@ -168,21 +161,14 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
                 
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-slate-400 mb-2">Display Name</label>
-                    <input 
-                        type="text" 
-                        value={newUsername}
-                        onChange={(e) => setNewUsername(e.target.value)}
-                        className="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                        placeholder="Enter username"
-                    />
+                    <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all" placeholder="Enter username" />
                 </div>
 
                 <h3 className="text-sm font-medium text-slate-400 mb-3">Profile Customization</h3>
-
                 <div className="flex border-b border-slate-700 mb-4 text-sm">
                     <button onClick={() => setActiveTab('select')} className={`flex-1 py-2 font-semibold transition-colors ${activeTab === 'select' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}>Avatar Library</button>
                     <button onClick={() => setActiveTab('upload')} className={`flex-1 py-2 font-semibold transition-colors ${activeTab === 'upload' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}>Upload</button>
-                    <button onClick={() => setActiveTab('cosmetics')} className={`flex-1 py-2 font-semibold transition-colors ${activeTab === 'cosmetics' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}>Inventory</button>
+                    <button onClick={() => setActiveTab('cosmetics')} className={`flex-1 py-2 font-semibold transition-colors ${activeTab === 'cosmetics' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}>Cosmetics</button>
                 </div>
                 
                 <div className="space-y-4 min-h-[200px]">
@@ -195,7 +181,7 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
                             </div>
                             <div className="grid grid-cols-3 gap-4">
                                 {avatarGridSeeds.map(seed => (
-                                <button type="button" key={seed} onClick={() => setSelectedAvatarSeed(seed)} className={`rounded-full p-1 transition-all duration-200 ${selectedAvatarSeed === seed ? 'ring-2 ring-purple-500 bg-purple-500/20' : ''}`}>
+                                <button type="button" key={seed} onClick={() => handleSelectSeed(seed)} className={`rounded-full p-1 transition-all duration-200 ${selectedAvatarSeed === seed && isAvatarDirty ? 'ring-2 ring-purple-500 bg-purple-500/20' : ''}`}>
                                     <img src={`https://api.dicebear.com/8.x/${avatarStyle}/svg?seed=${encodeURIComponent(seed)}`} alt="Avatar" className="w-full h-full rounded-full bg-slate-700/50"/>
                                 </button>
                                 ))}
@@ -212,30 +198,18 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
                                     <input id="dropzone-file" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                                 </label>
                             </div> 
+                            {selectedFile && <p className="text-center text-sm text-slate-400">Selected: {selectedFile.name}</p>}
                         </div>
                     )}
 
-                    {/* 🟢 COSMETICS TAB */}
                     {activeTab === 'cosmetics' && (
                         <div className="space-y-2">
-                            {cosmetics.length === 0 ? (
-                                <p className="text-slate-500 text-center italic py-8">You don't own any cosmetics yet. Visit the XP Store!</p>
-                            ) : (
-                                cosmetics.map(ci => (
-                                    <div key={ci.id} className="flex justify-between items-center bg-slate-700/30 p-3 rounded border border-slate-700">
-                                        <div>
-                                            <p className="font-bold text-sm">{ci.itemDetails?.name}</p>
-                                            <span className="text-xs text-slate-400 uppercase">{ci.itemDetails?.itemType.replace('_', ' ')}</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => ci.itemDetails && handleEquip(ci.itemDetails)}
-                                            className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded transition-colors"
-                                        >
-                                            Equip
-                                        </button>
-                                    </div>
-                                ))
-                            )}
+                            {cosmetics.length === 0 ? <p className="text-slate-500 text-center italic py-8">You don't own any cosmetics yet.</p> : cosmetics.map(ci => (
+                                <div key={ci.id} className="flex justify-between items-center bg-slate-700/30 p-3 rounded border border-slate-700">
+                                    <div><p className="font-bold text-sm">{ci.itemDetails?.name}</p><span className="text-xs text-slate-400 uppercase">{ci.itemDetails?.itemType.replace('_', ' ')}</span></div>
+                                    <button onClick={() => ci.itemDetails && handleEquip(ci.itemDetails)} className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded transition-colors">Equip</button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -243,7 +217,7 @@ const AvatarUpdateModal: React.FC<AvatarUpdateModalProps> = ({ isOpen, onClose }
                 {activeTab !== 'cosmetics' && (
                     <div className="flex gap-4 mt-8 pt-4 border-t border-slate-700">
                         <button onClick={onClose} className="flex-1 bg-slate-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-600 transition-colors">Cancel</button>
-                        <button onClick={handleSave} disabled={isLoading} className="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-600 disabled:cursor-wait">{isLoading ? 'Saving...' : 'Save Changes'}</button>
+                        <button onClick={handleSave} disabled={isLoading} className="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-500 disabled:cursor-wait">{isLoading ? 'Saving...' : 'Save Changes'}</button>
                     </div>
                 )}
             </div>

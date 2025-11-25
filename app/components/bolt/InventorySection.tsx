@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import type { UserInventoryItem } from '@/types';
 import { api } from '@/services/api';
-// FIX: Removed unused ArchiveBoxIcon and XMarkIcon imports
-import { SparklesIcon } from './icons';
+import { SparklesIcon, ClockIcon } from './icons';
 
 // Helper Icon for Backpack
 const ChestIcon = ({ className }: { className?: string }) => (
@@ -16,29 +15,32 @@ const ChestIcon = ({ className }: { className?: string }) => (
 );
 
 const InventorySection: React.FC = () => {
-    const { getUserInventory, selectedUser, activateInventoryItem, activeEffects, fetchAllUsers } = useApp();
+    const { getUserInventory, selectedUser, activateInventoryItem, activeEffects, fetchAllUsers, fetchActiveEffects, refreshSelectedUser, getUserItemUsage } = useApp();
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{msg: string, type: 'success'|'error'} | null>(null);
-
-    useEffect(() => {
-        if (selectedUser) {
-            getUserInventory(selectedUser.id).then(setInventory);
-        }
-    }, [selectedUser, getUserInventory]);
 
     const showToast = (msg: string, type: 'success'|'error' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
 
-    const handleRefresh = async () => {
+    const refreshData = async () => {
         if (selectedUser) {
-            const items = await getUserInventory(selectedUser.id);
+            const [items, logs] = await Promise.all([
+                getUserInventory(selectedUser.id),
+                getUserItemUsage(selectedUser.id)
+            ]);
             setInventory(items);
-            await fetchAllUsers(); // Refreshes global user state (metadata)
+            setHistory(logs || []);
+            await fetchAllUsers(); 
+            await refreshSelectedUser();
+            await fetchActiveEffects();
         }
     };
+
+    useEffect(() => { refreshData(); }, [selectedUser]);
 
     const handleEquip = async (item: UserInventoryItem) => {
         if (!item.itemDetails || !selectedUser) return;
@@ -47,7 +49,7 @@ const InventorySection: React.FC = () => {
             const result = await api.equipCosmetic(selectedUser.id, item.itemDetails);
             if (result.success) {
                 showToast("Equipped successfully!");
-                await handleRefresh();
+                await refreshData();
             } else {
                 showToast(result.message, 'error');
             }
@@ -55,14 +57,14 @@ const InventorySection: React.FC = () => {
         setIsLoading(false);
     };
 
-    const handleUnequip = async (type: 'NAME_COLOR' | 'TITLE' | 'BANNER' | 'FRAME' | 'AVATAR_PULSE') => {
+    const handleUnequip = async (type: any) => {
         if (!selectedUser) return;
         setIsLoading(true);
         try {
             const result = await api.unequipCosmetic(selectedUser.id, type);
             if (result.success) {
                 showToast("Unequipped.");
-                await handleRefresh();
+                await refreshData();
             }
         } catch (e) { showToast("Failed to unequip.", 'error'); }
         setIsLoading(false);
@@ -74,12 +76,15 @@ const InventorySection: React.FC = () => {
         const result = await activateInventoryItem(item.id);
         if (result.success) {
              showToast(result.message);
-             await handleRefresh();
+             await refreshData();
         } else {
              showToast(result.message, 'error');
         }
         setIsLoading(false);
     };
+
+    const consumables = inventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
+    const wearables = inventory.filter(i => !['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 relative">
@@ -90,111 +95,101 @@ const InventorySection: React.FC = () => {
             )}
 
             {/* LEFT: Active & Equipped */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700">
+            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <SparklesIcon className="w-5 h-5 text-yellow-400" />
-                    Active & Equipped
+                    <SparklesIcon className="w-5 h-5 text-yellow-400" /> Active & Equipped
                 </h3>
                 
-                <div className="space-y-3">
-                    {/* Active Buffs */}
+                <div className="space-y-3 flex-grow">
                     {activeEffects.map(effect => (
                         <div key={effect.id} className="flex justify-between items-center bg-green-900/20 border border-green-500/30 p-3 rounded-lg">
                             <span className="text-sm font-bold text-green-100">{effect.modifier}x XP Boost</span>
-                            <span className="text-xs text-green-300">Active</span>
+                            <span className="text-xs text-green-300">
+                                Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Unknown'}
+                            </span>
                         </div>
                     ))}
 
-                    {/* Equipped Cosmetics */}
                     {selectedUser?.metadata?.nameColor && (
                         <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: selectedUser.metadata.nameColor }}></div>
                                 <span className="text-sm text-slate-300">Name Color</span>
                             </div>
-                            <button onClick={() => handleUnequip('NAME_COLOR')} className="text-xs text-red-400 hover:text-red-300 hover:underline">Unequip</button>
+                            <button onClick={() => handleUnequip('NAME_COLOR')} className="text-xs text-red-400 hover:underline">Unequip</button>
                         </div>
                     )}
-                    
                     {selectedUser?.metadata?.title && (
-                        <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">TITLE</span>
-                                <span className="text-sm text-white font-bold">{selectedUser.metadata.title}</span>
-                            </div>
-                            <button onClick={() => handleUnequip('TITLE')} className="text-xs text-red-400 hover:text-red-300 hover:underline">Unequip</button>
+                         <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
+                            <div className="flex items-center gap-2"><span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded">TITLE</span><span className="text-sm text-white font-bold">{selectedUser.metadata.title}</span></div>
+                            <button onClick={() => handleUnequip('TITLE')} className="text-xs text-red-400 hover:underline">Unequip</button>
                         </div>
                     )}
-
                     {selectedUser?.metadata?.avatarPulseColor && (
                         <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: selectedUser.metadata.avatarPulseColor, boxShadow: `0 0 5px ${selectedUser.metadata.avatarPulseColor}` }}></div>
-                                <span className="text-sm text-slate-300">Avatar Pulse</span>
-                            </div>
-                            <button onClick={() => handleUnequip('AVATAR_PULSE')} className="text-xs text-red-400 hover:text-red-300 hover:underline">Unequip</button>
-                        </div>
-                    )}
-
-                    {selectedUser?.metadata?.bannerUrl && (
-                         <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <img src={selectedUser.metadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
-                                <span className="text-sm text-slate-300">Profile Banner</span>
-                            </div>
-                            <button onClick={() => handleUnequip('BANNER')} className="text-xs text-red-400 hover:text-red-300 hover:underline">Unequip</button>
-                        </div>
+                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: selectedUser.metadata.avatarPulseColor, boxShadow: `0 0 5px ${selectedUser.metadata.avatarPulseColor}` }}></div><span className="text-sm text-slate-300">Avatar Pulse</span></div>
+                           <button onClick={() => handleUnequip('AVATAR_PULSE')} className="text-xs text-red-400 hover:underline">Unequip</button>
+                       </div>
                     )}
                     
-                    {activeEffects.length === 0 && !selectedUser?.metadata?.nameColor && !selectedUser?.metadata?.title && !selectedUser?.metadata?.bannerUrl && !selectedUser?.metadata?.avatarPulseColor && (
-                        <p className="text-slate-500 text-sm italic text-center py-4">No active effects or cosmetics.</p>
+                    {/* Item History Section Added Back Here */}
+                    {history.length > 0 && (
+                        <div className="mt-6 pt-4 border-t border-slate-700">
+                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Recent Usage</h4>
+                             <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                                 {history.map((log: any) => (
+                                     <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/30 p-1.5 rounded">
+                                         <span className="text-slate-300">{log.item_name}</span>
+                                         <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
+                                     </div>
+                                 ))}
+                             </div>
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* RIGHT: Backpack */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700">
+            {/* RIGHT: Backpack (Split) */}
+            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <ChestIcon className="w-5 h-5 text-amber-400" />
-                    Backpack
+                    <ChestIcon className="w-5 h-5 text-amber-400" /> Backpack
                 </h3>
                 
-                {inventory.length > 0 ? (
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                        {inventory.map(item => {
-                             const type = (item.itemDetails?.itemType || '').toUpperCase();
-                             const isCosmetic = ['NAME_COLOR', 'TITLE', 'BANNER', 'FRAME', 'AVATAR_PULSE'].includes(type);
-                             
-                             return (
-                                <div key={item.id} className="flex justify-between items-center bg-slate-700/50 p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors">
+                {/* Consumables */}
+                <div className="mb-4">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Consumables</h4>
+                    {consumables.length > 0 ? (
+                        <div className="space-y-2">
+                            {consumables.map(item => (
+                                <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center">
                                     <div>
                                         <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
-                                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">{type.replace('_', ' ')}</p>
+                                        <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
                                     </div>
-                                    {isCosmetic ? (
-                                         <button 
-                                            onClick={() => handleEquip(item)}
-                                            disabled={isLoading}
-                                            className="px-3 py-1.5 rounded text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-                                        >
-                                            Equip
-                                        </button>
-                                    ) : (
-                                        <button 
-                                            onClick={() => handleUseItem(item)}
-                                            disabled={isLoading}
-                                            className="px-3 py-1.5 rounded text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-colors"
-                                        >
-                                            Use
-                                        </button>
-                                    )}
+                                    <button onClick={() => handleUseItem(item)} disabled={isLoading} className="px-3 py-1.5 rounded text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white">Use</button>
                                 </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <p className="text-slate-500 text-sm italic text-center py-4">Empty. Visit the Store to buy items.</p>
-                )}
+                            ))}
+                        </div>
+                    ) : <p className="text-slate-500 text-xs italic">No consumables.</p>}
+                </div>
+
+                {/* Wearables */}
+                <div>
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Wearables</h4>
+                    {wearables.length > 0 ? (
+                        <div className="space-y-2">
+                            {wearables.map(item => (
+                                <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center">
+                                    <div>
+                                        <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
+                                        <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
+                                    </div>
+                                    <button onClick={() => handleEquip(item)} disabled={isLoading} className="px-3 py-1.5 rounded text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white">Equip</button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-slate-500 text-xs italic">No wearables.</p>}
+                </div>
             </div>
         </div>
     );

@@ -16,6 +16,8 @@ export interface AppContextValue {
   getUserItemUsage: (userId: string) => Promise<any[]>;
   getAllUserActions: (userId: string) => Promise<Action[]>;
   fetchAllUsers: () => Promise<void>;
+  refreshSelectedUser: () => Promise<void>;
+  fetchActiveEffects: () => Promise<void>;
   
   // Admin Actions
   adminUpdateUserRole: (userId: string, role: "member" | "admin") => Promise<{ success: boolean; message: string }>;
@@ -327,6 +329,7 @@ export const AppProvider = ({
         selectedUser, isLoading, community, isWhopConnected, 
         allUsers, getUserById: api.getUserById, getUserActions: api.getUserActions, getAllUserActions: api.getAllUserActions, fetchAllUsers,
         adminUpdateUserRole, adminBanUser, adminGetUserEmail, adminUpdateCommunityTier, adminUpdateUserStats,
+        refreshSelectedUser, fetchActiveEffects,
         rewardsConfig, badgesConfig, questsAdmin, storeItems,
         fetchRewards, fetchBadges, fetchQuests, fetchStoreItems, fetchUserQuestProgress,
         handleAddReward, handleUpdateReward, handleDeleteReward, handleRestoreReward,

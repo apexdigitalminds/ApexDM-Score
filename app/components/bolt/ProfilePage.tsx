@@ -24,7 +24,6 @@ const ProfilePage: React.FC = () => {
 
     useEffect(() => {
         const fetchProfileData = async () => {
-            // If no userId param, assume current user
             const targetId = userId || selectedUser?.id;
             
             if (targetId) {
@@ -51,10 +50,12 @@ const ProfilePage: React.FC = () => {
         })
         : null;
 
-    // 🟢 COSMETIC LOGIC
-    const nameColor = profile.metadata?.nameColor || '#FFFFFF'; // Default White
+    // COSMETIC LOGIC
+    const nameColor = profile.metadata?.nameColor || '#FFFFFF';
     const titlePrefix = profile.metadata?.title ? `[${profile.metadata.title}] ` : '';
     const bannerUrl = profile.metadata?.bannerUrl;
+    // 🟢 FIX: Get Pulse Color
+    const pulseColor = profile.metadata?.avatarPulseColor;
 
     return (
         <div className="space-y-6">
@@ -63,7 +64,6 @@ const ProfilePage: React.FC = () => {
                 onClose={() => setIsAvatarModalOpen(false)}
             />
             
-            {/* 🟢 PROFILE HEADER (With Banner Support) */}
             <div className={`relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden ${bannerUrl ? 'pt-32' : 'p-6'}`}>
                 {bannerUrl && (
                     <div 
@@ -74,15 +74,22 @@ const ProfilePage: React.FC = () => {
                 
                 <div className={`relative flex flex-col sm:flex-row items-center gap-6 ${bannerUrl ? 'px-6 pb-6' : ''}`}>
                     <div className="relative group">
-                        <Avatar 
-                            src={profile.avatarUrl} 
-                            alt={profile.username}
-                            className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover bg-slate-800"
-                        />
+                        {/* 🟢 FIX: Applied Pulse Wrapper */}
+                        <div 
+                            className={`relative rounded-full ${pulseColor ? 'animate-pulse' : ''}`}
+                            style={pulseColor ? { boxShadow: `0 0 15px ${pulseColor}` } : {}}
+                        >
+                            <Avatar 
+                                src={profile.avatarUrl} 
+                                alt={profile.username}
+                                className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover bg-slate-800"
+                            />
+                        </div>
+                        
                         {isOwnProfile && (
                             <button 
                                 onClick={() => setIsAvatarModalOpen(true)}
-                                className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             >
                                 <CameraIcon className="w-8 h-8 text-white" />
                             </button>
