@@ -23,6 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
     // FIX: Check if any active effect is an XP Boost
+    const hasPulse = activeEffects && activeEffects.length > 0 && activeEffects.some(e => e.effectType === 'XP_BOOST');
     const isBoosted = activeEffects ? activeEffects.some(e => e.effectType === 'XP_BOOST') : false;
 
     const showQuests = isFeatureEnabled('quests');
