@@ -21,7 +21,7 @@ import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
-// 🟢 NEW: Professional Toggle Switch Component
+// 🟢 PROFESSIONAL TOGGLE SWITCH
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
     <div 
         onClick={() => onChange(!checked)}
@@ -59,7 +59,6 @@ const TabButton: React.FC<{
 );
 
 export default function AdminPage() {
-  // ... (Keep all existing state hooks and handlers: activeTab, targetUser, forms etc.)
   const {
     allUsers, rewardsConfig, badgesConfig, isWhopConnected, community, questsAdmin, storeItems,
     selectedUser: adminUser, handleRecordAction, handleAwardBadge, handleAddReward, handleUpdateReward, handleDeleteReward, handleRestoreReward,
@@ -124,9 +123,12 @@ export default function AdminPage() {
   const [itemType, setItemType] = useState<ItemType>("INSTANT");
   const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
   const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
+  
+  // 🟢 UPDATED: Default color to White
   const [metaColor, setMetaColor] = useState("#ffffff");
   const [metaText, setMetaText] = useState("");
   const [metaUrl, setMetaUrl] = useState("");
+  // 🟢 NEW: Position State
   const [metaPosition, setMetaPosition] = useState<'prefix' | 'suffix'>('prefix');
 
   // USER EDIT STATE
@@ -174,6 +176,7 @@ export default function AdminPage() {
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
   
+  // FIX: Converted null to undefined
   const handleQuestSubmit = async (e: React.FormEvent) => { 
       e.preventDefault(); 
       const q = { 
@@ -279,7 +282,7 @@ export default function AdminPage() {
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
-      {/* ... (Header and Navigation - unchanged) ... */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-700 pb-8">
         <div className="flex items-center gap-5">
            {community?.logoUrl ? (
@@ -299,6 +302,7 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-700 pb-1">
         <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5"/>} />
         <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5"/>} locked={!isFeatureEnabled('quests')} />
@@ -380,8 +384,8 @@ export default function AdminPage() {
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400">Show Archived</span>
-                            <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
+                             <span className="text-xs text-slate-400">Show Archived</span>
+                             <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
                         </div>
                     </div>
                      <form onSubmit={handleRewardSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
@@ -417,16 +421,12 @@ export default function AdminPage() {
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage Quests</h3>
                         {isFeatureEnabled('quests') ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400">Show Archived</span>
-                                <ToggleSwitch checked={showArchivedQuests} onChange={setShowArchivedQuests} />
-                            </div>
+                             <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer"/><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
                         ) : <span className=""></span>}
                     </div>
                     {isFeatureEnabled('quests') ? (
                         <>
                              <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
-                                {/* ... Quest Form inputs ... */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                                     <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
                                     <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
@@ -463,7 +463,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            {/* BADGES (Updated for new logic) */}
+            {/* BADGES */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">Manage Badges</h3>
@@ -500,7 +500,6 @@ export default function AdminPage() {
                         <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
                              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">{isEmoji ? (<span className="text-xl select-none">{b.icon}</span>) : (<BadgeIcon className="w-6 h-6" style={{ color: b.color }} />)}</div><div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={b.isActive !== false ? "text-green-400" : "text-slate-500"}>{b.isActive !== false ? "Active" : "Draft"}</span>}</div></div></div>
                             <div className="flex gap-2 items-center">
-                                {/* 🟢 FIX: New Toggle Logic for Badges */}
                                 {!b.isArchived && (
                                     <ToggleSwitch checked={b.isActive !== false} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                 )}
@@ -643,16 +642,13 @@ export default function AdminPage() {
                         
                         {/* List of Items */}
                         <div className="flex-grow overflow-y-auto pr-2 space-y-2">
-                            {storeItems.filter(i => showArchivedStore ? i.isArchived : !i.isArchived).map(item => (
+                            {filteredStore.map(item => (
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            {/* 🟢 FIX: Restore Icon Display */}
+                                            {/* Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
-                                                {(() => {
-                                                    const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
-                                                    return <IconComponent className="w-4 h-4 text-purple-400" />;
-                                                })()}
+                                                <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                             </div>
                                             <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
                                             <p className="font-bold text-sm text-white">{item.name}</p>
