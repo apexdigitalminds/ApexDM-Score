@@ -4,7 +4,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from 'next/headers';
-// FIX: Import the configured SDK instance instead of creating a new incomplete one
 import { whopsdk } from "@/lib/whop-sdk"; 
 
 export const metadata: Metadata = {
@@ -23,16 +22,29 @@ export default async function RootLayout({
   
   // --- SERVER-SIDE AUTHENTICATION ---
   let verifiedUserId: string | undefined;
+  let verifiedRole: "admin" | "member" = "member"; 
   const experienceId = "no_experience"; 
 
   try {
-    // Use the robust SDK instance (with App ID and API Key)
-    const { userId } = await whopsdk.verifyUserToken(await headers());
-    verifiedUserId = userId;
-    console.log("✅ Server Auth Success for:", userId);
+    // 🟢 FIX: Cast to 'any' to access 'roles' property if TS definition is missing it
+    const tokenPayload = await whopsdk.verifyUserToken(await headers()) as any;
+    verifiedUserId = tokenPayload.userId;
+    const roles = tokenPayload.roles || [];
+
+    // Check if user is Owner, Admin, or Staff
+    const isAdmin = roles.some((r: string) => 
+        ['owner', 'admin', 'staff', 'moderator'].includes(r)
+    );
+
+    if (isAdmin) {
+        verifiedRole = "admin";
+        console.log(`✅ User ${verifiedUserId} identified as ADMIN via Whop Roles`);
+    } else {
+        console.log(`✅ User ${verifiedUserId} authenticated as MEMBER`);
+    }
+
   } catch (e) {
     console.error("❌ Server Auth Failed:", e);
-    // If verifiedUserId stays undefined, the client will be GUEST
   }
   
   return (
@@ -42,6 +54,7 @@ export default async function RootLayout({
           <AppProvider 
             verifiedUserId={verifiedUserId || 'GUEST'} 
             experienceId={experienceId}
+            verifiedRole={verifiedRole} 
           >
             {children}
           </AppProvider>

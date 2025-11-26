@@ -91,11 +91,13 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 export const AppProvider = ({ 
     children, 
     verifiedUserId, 
-    experienceId 
+    experienceId,
+    verifiedRole = "member" // 🟢 NEW: Default to member
 }: { 
     children: ReactNode, 
     verifiedUserId: string, 
-    experienceId: string 
+    experienceId: string,
+    verifiedRole?: "admin" | "member" // 🟢 Typed
 }) => {
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
@@ -133,13 +135,29 @@ export const AppProvider = ({
       }
   };
 
-  // --- REWARDS CONFIG ---
+  // 🟢 NEW: Daily Login Logic
+  const checkDailyLogin = async (user: Profile) => {
+      const today = new Date().toDateString();
+      const lastDate = user.last_action_date ? new Date(user.last_action_date).toDateString() : null;
+
+      if (lastDate !== today) {
+          console.log("📅 First login of the day! Awarding XP...");
+          const result = await api.recordAction(user.id, 'daily_login', 'manual');
+          
+          // If successful, update the local state immediately so we don't retry
+          if (result) {
+              await refreshSelectedUser();
+              // Optional: You could trigger a toast here if you moved toast logic to context
+          }
+      }
+  };
+
+  // --- HANDLERS ---
   const handleAddReward = async (reward: Partial<Reward>) => { if (!reward.actionType || reward.xpGained == null) return; await api.createReward(reward.actionType, reward.xpGained); await fetchRewards(); };
   const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean }) => { await api.updateReward(actionType, data); await fetchRewards(); };
   const handleDeleteReward = async (actionType: string) => { await api.deleteReward(actionType, true); await fetchRewards(); };
   const handleRestoreReward = async (actionType: string) => { await api.restoreReward(actionType); await fetchRewards(); };
 
-  // --- BADGES CONFIG ---
   const handleAddBadge = async (badge: Partial<Badge>) => { if (!badge.name) return; const config = { name: badge.name, description: badge.description || '', icon: badge.icon || '', color: badge.color || '' }; await api.createBadge(badge.name, config); await fetchBadges(); };
   const handleUpdateBadge = async (badgeName: string, data: Partial<Badge> & { isActive?: boolean }) => { const config = { name: data.name ?? badgeName, description: data.description ?? "", icon: data.icon ?? "", color: data.color ?? "#ffffff" }; await api.updateBadge(badgeName, { ...config, isActive: data.isActive }); await fetchBadges(); };
   
@@ -154,7 +172,6 @@ export const AppProvider = ({
       return { success: result.success, message: result.success ? "Badge restored" : "Failed to restore badge" }; 
   };
 
-  // --- QUESTS CONFIG ---
   const handleCreateQuest = async (quest: Partial<Quest>) => { const success = await api.createQuest(quest as any); if (success) await fetchQuests(); return success; };
   const handleUpdateQuest = async (id: string, quest: Partial<Quest>) => { const success = await api.updateQuest(id, quest as any); if (success) await fetchQuests(); return success; };
   const handleToggleQuest = async (id: string, isActive: boolean) => { await api.updateQuestActiveStatus(id, isActive); await fetchQuests(); };
@@ -170,7 +187,6 @@ export const AppProvider = ({
       return { success: result.success, message: result.success ? "Quest restored" : "Failed to restore quest" }; 
   };
 
-  // --- STORE CONFIG ---
   const handleCreateStoreItem = async (item: Partial<StoreItem>) => { const success = await api.createStoreItem(item as any); if (success) await fetchStoreItems(); return success; };
   const handleUpdateStoreItem = async (id: string, item: Partial<StoreItem>) => { const success = await api.updateStoreItem(id, item as any); if (success) await fetchStoreItems(); return success; };
   const handleToggleStoreItemActive = async (id: string, isActive: boolean) => { await api.updateStoreItemActiveStatus(id, isActive); await fetchStoreItems(); };
@@ -214,7 +230,7 @@ export const AppProvider = ({
       return res ? { success: false, message: "Failed" } : { success: true, message: "Awarded" }; 
   };
   
-  // 🟢 FIX: Use (api as any) to bypass typescript argument count error
+  // FIX: Use (api as any) to bypass typescript argument count error
   const handleTriggerWebhook = async (userId: string, actionType: string) => { 
       return await (api as any).triggerWebhook(userId, actionType); 
   };
@@ -228,7 +244,7 @@ export const AppProvider = ({
       return { success: res.success, message: res.success ? "User ban status updated" : "Failed to update ban" };
   };
   
-  // 🟢 FIX: Use (api as any) to bypass typescript argument count error
+  // FIX: Use (api as any) to bypass typescript argument count error
   const adminGetUserEmail = async (userId: string) => { 
       return await (api as any).adminGetUserEmail(userId); 
   };
@@ -292,17 +308,18 @@ export const AppProvider = ({
     return false;
   };
 
+  // 🟢 AUTH & INIT LOGIC
   useEffect(() => {
     const initAuth = async () => {
       console.log("🟢 AppProvider Mounted via layout prop");
       console.log("👉 Verified User ID:", verifiedUserId);
+      console.log("👉 Verified Role:", verifiedRole);
 
       let user = null;
 
       if (verifiedUserId && verifiedUserId !== "GUEST") {
-         console.log("🔍 Fetching user profile for:", verifiedUserId);
-         user = await api.getUserByWhopId(verifiedUserId);
-         console.log("✅ User profile result:", user);
+         // 🟢 PASS ROLE TO API for Syncing
+         user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
       } else if (process.env.NODE_ENV === 'development') {
           console.log("⚠️ No valid verifiedUserId found (or GUEST).");
       }
@@ -316,10 +333,13 @@ export const AppProvider = ({
       if (user) {
           fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems();
           fetchActiveEffects();
+          
+          // 🟢 TRIGGER DAILY LOGIN
+          checkDailyLogin(user);
       }
     };
     initAuth();
-  }, [verifiedUserId]);
+  }, [verifiedUserId, verifiedRole]); // Add verifiedRole to dependency
 
   useEffect(() => { if (selectedUser) fetchUserQuestProgress(); }, [selectedUser]);
 
@@ -329,7 +349,6 @@ export const AppProvider = ({
         selectedUser, isLoading, community, isWhopConnected, 
         allUsers, getUserById: api.getUserById, getUserActions: api.getUserActions, getAllUserActions: api.getAllUserActions, fetchAllUsers,
         adminUpdateUserRole, adminBanUser, adminGetUserEmail, adminUpdateCommunityTier, adminUpdateUserStats,
-        refreshSelectedUser, fetchActiveEffects,
         rewardsConfig, badgesConfig, questsAdmin, storeItems,
         fetchRewards, fetchBadges, fetchQuests, fetchStoreItems, fetchUserQuestProgress,
         handleAddReward, handleUpdateReward, handleDeleteReward, handleRestoreReward,
@@ -341,6 +360,7 @@ export const AppProvider = ({
         isFeatureEnabled, analyticsData, refreshAnalytics, getUserItemUsage: api.getUserItemUsage,
         handleToggleWhiteLabel,
         activeEffects,
+        refreshSelectedUser, fetchActiveEffects, // Exposed utils
       }}
     >
       {children}

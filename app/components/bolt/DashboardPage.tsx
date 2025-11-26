@@ -11,6 +11,7 @@ import Leaderboard from './Leaderboard';
 import { SnowflakeIcon } from './icons';
 import ActionButton from './ActionButton';
 import InventorySection from './InventorySection'; // 🟢 NEW IMPORT
+import { ArrowPathIcon } from './icons'; // Ensure you have a refresh icon or similar
 
 const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
     return (
@@ -39,7 +40,20 @@ const DashboardPage: React.FC = () => {
         handleRecordAction, 
         rewardsConfig,
     } = useApp();
+    const [isSyncing, setIsSyncing] = useState(false);
 
+const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+        const res = await fetch('/api/sync', { method: 'POST' });
+        const data = await res.json();
+        showNotification(data.message); // Reuse your existing notification helper
+        if (data.success) fetchData(); // Refresh dashboard if sync found new stuff
+    } catch (e) {
+        showNotification("Sync failed. Try again later.");
+    }
+    setIsSyncing(false);
+};
     const [userActions, setUserActions] = useState<Action[]>([]);
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
@@ -50,7 +64,20 @@ const DashboardPage: React.FC = () => {
             setUserActions(actions);
         }
     };
-
+<div className="flex justify-between items-start">
+    <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        {/* ... */}
+    </div>
+    <button 
+        onClick={handleSync} 
+        disabled={isSyncing}
+        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+    >
+        <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+        {isSyncing ? 'Syncing...' : 'Sync Progress'}
+    </button>
+</div>
     useEffect(() => {
         fetchData();
     }, [selectedUser]);
