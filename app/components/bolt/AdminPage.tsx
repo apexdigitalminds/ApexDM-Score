@@ -25,32 +25,15 @@ import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, Shoppi
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
     <div 
         onClick={() => onChange(!checked)}
-        className={`relative w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
+        className={`relative w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
             checked ? 'bg-green-500' : 'bg-slate-600'
         }`}
     >
-        {/* Knob */}
         <div 
-            className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-300 ${
-                checked ? 'translate-x-7' : 'translate-x-0'
+            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                checked ? 'translate-x-6' : 'translate-x-0'
             }`}
         ></div>
-        
-        {/* Label text */}
-        <span 
-            className={`absolute text-[10px] font-bold text-white pointer-events-none transition-opacity duration-300 ${
-                checked ? 'left-2 opacity-100' : 'left-2 opacity-0'
-            }`}
-        >
-            ON
-        </span>
-        <span 
-            className={`absolute text-[10px] font-bold text-slate-300 pointer-events-none transition-opacity duration-300 ${
-                !checked ? 'right-2 opacity-100' : 'right-2 opacity-0'
-            }`}
-        >
-            OFF
-        </span>
     </div>
 );
 
@@ -76,6 +59,7 @@ const TabButton: React.FC<{
 );
 
 export default function AdminPage() {
+  // ... (Keep all existing state hooks and handlers: activeTab, targetUser, forms etc.)
   const {
     allUsers, rewardsConfig, badgesConfig, isWhopConnected, community, questsAdmin, storeItems,
     selectedUser: adminUser, handleRecordAction, handleAwardBadge, handleAddReward, handleUpdateReward, handleDeleteReward, handleRestoreReward,
@@ -264,7 +248,7 @@ export default function AdminPage() {
   const isSelf = targetUser?.id === adminUser?.id;
   const isDev = process.env.NODE_ENV === 'development';
 
-  // 🟢 FIX: STABLE SORTING to prevent list jumping
+  // 🟢 FIX: STABLE SORTING
   const filteredRewards = Object.entries(rewardsConfig)
       .filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
@@ -277,9 +261,10 @@ export default function AdminPage() {
       .filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
+  // 🟢 FIX: Store Sorting
   const filteredStore = storeItems
-      .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived);
-      // storeItems from API is usually sorted, but sorting here adds safety
+      .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived)
+      .sort((a, b) => a.name.localeCompare(b.name)); 
 
   const popularEmojis = ["🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🔥", "🚀", "💎", "💰", "🛡️", "⚔️", "🏹", "🧪", "📜", "❤️", "⭐", "👑", "💀", "⚡", "🦄", "🐲", "👾", "🍄", "🎓", "🎟️", "🎨", "🎵", "📣", "🤝", "🌍", "🎁", "💡", "⚙️", "🔒", "🔑"];
 
@@ -337,7 +322,6 @@ export default function AdminPage() {
                             <div><h3 className="text-xl font-bold text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-600 text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
                             {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
                         </div>
-                        {/* ... (User Actions) ... */}
                         <div className="space-y-4">
                              <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
                                 <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase">Manual Awards</label>
@@ -350,7 +334,6 @@ export default function AdminPage() {
                                     <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
                                 </div>
                              </div>
-                             {/* ... Stats ... */}
                              <div className="grid grid-cols-3 gap-2 text-center">
                                 <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
                                 <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
@@ -358,7 +341,6 @@ export default function AdminPage() {
                              </div>
                              <button onClick={handleAdminStatUpdate} className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white py-2 rounded transition-colors text-sm font-semibold">Save Stats</button>
                              <div className="border-t border-slate-700 pt-4">
-                                 {/* ... History & Bans ... */}
                                  <div className="mb-4">
                                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Item History</h4>
                                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
@@ -372,6 +354,7 @@ export default function AdminPage() {
                                          )}
                                      </div>
                                  </div>
+                                 {isDev && <button onClick={handlePasswordReset} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">Reset Password (Dev Only)</button>}
                                  <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
                                  <div className="grid grid-cols-2 gap-2">
                                      <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
@@ -382,7 +365,9 @@ export default function AdminPage() {
                     </div>
                 )}
             </div>
-            <div className="lg:col-span-3"><Leaderboard users={allUsers} currentUserId={targetUserId || ''} /></div>
+            <div className="lg:col-span-3">
+                <Leaderboard users={allUsers} currentUserId={targetUserId || ''} />
+            </div>
         </div>
       )}
 
@@ -394,7 +379,6 @@ export default function AdminPage() {
                  <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
-                        {/* 🟢 FIX: Professional Toggle */}
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-slate-400">Show Archived</span>
                             <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
@@ -578,6 +562,7 @@ export default function AdminPage() {
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                     <div className="flex gap-2 items-center">
+                                        {/* 🟢 NEW: Icon Preview */}
                                         <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
                                             <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                         </div>
@@ -613,6 +598,7 @@ export default function AdminPage() {
                                           </div>
                                           <div>
                                               <label className="block text-xs text-slate-400 mb-1">Position</label>
+                                              {/* Title Position */}
                                               <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
                                                   <option value="prefix">Prefix (Start)</option>
                                                   <option value="suffix">Suffix (End)</option>
@@ -623,6 +609,7 @@ export default function AdminPage() {
                                 {(itemType === 'BANNER' || itemType === 'FRAME') && (
                                       <div>
                                           <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
+                                          {/* File Upload for Banner */}
                                           {metaUrl && (
                                               <div className="mb-2">
                                                   <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600"/>
@@ -635,6 +622,7 @@ export default function AdminPage() {
                                               onChange={async (e) => {
                                                   const file = e.target.files?.[0];
                                                   if (file) {
+                                                      // Using admin's ID for upload path
                                                       const url = await api.uploadAvatar(file, adminUser?.id); 
                                                       if (url) setMetaUrl(url);
                                                   }
@@ -653,13 +641,18 @@ export default function AdminPage() {
                             </div>
                         </form>
                         
+                        {/* List of Items */}
                         <div className="flex-grow overflow-y-auto pr-2 space-y-2">
-                            {filteredStore.map(item => (
+                            {storeItems.filter(i => showArchivedStore ? i.isArchived : !i.isArchived).map(item => (
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
+                                            {/* 🟢 FIX: Restore Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
-                                                <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
+                                                {(() => {
+                                                    const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
+                                                    return <IconComponent className="w-4 h-4 text-purple-400" />;
+                                                })()}
                                             </div>
                                             <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
                                             <p className="font-bold text-sm text-white">{item.name}</p>
