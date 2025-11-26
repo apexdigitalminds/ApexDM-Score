@@ -21,9 +21,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    // 🟢 FIX: Force boolean check on array length to ensure reactivity
-    const hasPulse = activeEffects && activeEffects.length > 0 && activeEffects.some(e => e.effectType === 'XP_BOOST');
-    const isBoosted = hasPulse;
+    // 🟢 FIX: Check Metadata for the Pulse cosmetic to ensure instant reactivity
+    const pulseColor = selectedUser?.metadata?.avatarPulseColor;
+    const isBoosted = !!pulseColor; // If color exists, pulse is active
 
     const showQuests = isFeatureEnabled('quests');
     const showStore = isFeatureEnabled('store');
@@ -87,7 +87,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
                                         {/* 🟢 PULSE AVATAR CONTAINER */}
-                                        <div className={`relative rounded-full transition-all duration-300 ${isBoosted ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)] animate-pulse' : ''}`}>
+                                        <div 
+                                            className={`relative rounded-full transition-all duration-300 ${isBoosted ? 'animate-pulse' : ''}`}
+                                            style={isBoosted ? { 
+                                                boxShadow: `0 0 15px 2px ${pulseColor}`, // Glow effect
+                                                border: `2px solid ${pulseColor}`      // Colored border
+                                            } : {}}
+                                        >
                                             <Avatar 
                                                 src={selectedUser.avatarUrl} 
                                                 alt={selectedUser.username || "User"} 
