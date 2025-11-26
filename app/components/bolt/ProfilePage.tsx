@@ -51,10 +51,10 @@ const ProfilePage: React.FC = () => {
         : null;
 
     // COSMETIC LOGIC
-    const nameColor = profile.metadata?.nameColor || '#FFFFFF';
-    const titlePrefix = profile.metadata?.title ? `[${profile.metadata.title}] ` : '';
+const nameColor = profile.metadata?.nameColor || '#FFFFFF';
+    const title = profile.metadata?.title;
+    const titlePos = profile.metadata?.titlePosition || 'prefix'; // Default to prefix
     const bannerUrl = profile.metadata?.bannerUrl;
-    // 🟢 FIX: Get Pulse Color
     const pulseColor = profile.metadata?.avatarPulseColor;
 
     return (
@@ -96,10 +96,18 @@ const ProfilePage: React.FC = () => {
                         )}
                     </div>
                     
-                    <div className="text-center sm:text-left">
-                        <h1 className="text-3xl font-bold" style={{ color: nameColor }}>
-                            <span className="text-xl opacity-70 mr-2 font-normal text-slate-300">{titlePrefix}</span>
+<div className="text-center sm:text-left">
+                        <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={{ color: nameColor }}>
+                            {/* 🟢 FIX: Handle Suffix Logic */}
+                            {title && titlePos === 'prefix' && (
+                                <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
+                            )}
+                            
                             {profile.username}
+                            
+                            {title && titlePos === 'suffix' && (
+                                <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
+                            )}
                         </h1>
                         
                         {registrationDate && <p className="text-slate-400">Member since {registrationDate}</p>}

@@ -83,8 +83,29 @@ const InventorySection: React.FC = () => {
         setIsLoading(false);
     };
 
+// Helper to check if an item is currently equipped
+    const isEquipped = (item: UserInventoryItem) => {
+        const meta = item.itemDetails?.metadata;
+        const userMeta = selectedUser?.metadata;
+        if (!meta || !userMeta) return false;
+
+        switch (item.itemDetails?.itemType) {
+            case 'NAME_COLOR': return meta.color === userMeta.nameColor;
+            case 'TITLE': return meta.text === userMeta.title; // Position might vary, but text is unique identifier
+            case 'BANNER': return meta.imageUrl === userMeta.bannerUrl;
+            case 'FRAME': return meta.imageUrl === userMeta.frameUrl;
+            case 'AVATAR_PULSE': return meta.color === userMeta.avatarPulseColor;
+            default: return false;
+        }
+    };
+
     const consumables = inventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
-    const wearables = inventory.filter(i => !['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
+    
+    // 🟢 FIX: Only show wearables that are NOT equipped
+    const wearables = inventory.filter(i => 
+        !['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || '') && 
+        !isEquipped(i)
+    );
 
     // Check if any cosmetic is currently equipped
     const hasEquippedCosmetics = selectedUser?.metadata?.nameColor || selectedUser?.metadata?.title || selectedUser?.metadata?.avatarPulseColor || selectedUser?.metadata?.bannerUrl;

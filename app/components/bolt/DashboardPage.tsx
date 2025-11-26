@@ -107,6 +107,23 @@ const handleSync = async () => {
 
     return (
         <div className="space-y-6">
+            {/* 🟢 HEADER ROW */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+                    <p className="text-slate-400">Your hub for stats and inventory.</p>
+                </div>
+                
+                {/* 🟢 FIX: Button is always visible to everyone */}
+                <button 
+                    onClick={handleSync} 
+                    disabled={isSyncing}
+                    className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 shadow-md border border-slate-600"
+                >
+                    <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? 'Syncing...' : 'Sync Progress'}
+                </button>
+            </div>
             {xpGained && <XpNotification amount={xpGained} />}
              {notification && (
                 <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600">
