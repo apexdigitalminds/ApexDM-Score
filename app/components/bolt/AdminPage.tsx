@@ -21,6 +21,39 @@ import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
+// 🟢 NEW: Professional Toggle Switch Component
+const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
+    <div 
+        onClick={() => onChange(!checked)}
+        className={`relative w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
+            checked ? 'bg-green-500' : 'bg-slate-600'
+        }`}
+    >
+        {/* Knob */}
+        <div 
+            className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-300 ${
+                checked ? 'translate-x-7' : 'translate-x-0'
+            }`}
+        ></div>
+        
+        {/* Label text */}
+        <span 
+            className={`absolute text-[10px] font-bold text-white pointer-events-none transition-opacity duration-300 ${
+                checked ? 'left-2 opacity-100' : 'left-2 opacity-0'
+            }`}
+        >
+            ON
+        </span>
+        <span 
+            className={`absolute text-[10px] font-bold text-slate-300 pointer-events-none transition-opacity duration-300 ${
+                !checked ? 'right-2 opacity-100' : 'right-2 opacity-0'
+            }`}
+        >
+            OFF
+        </span>
+    </div>
+);
+
 const TabButton: React.FC<{ 
   active: boolean; 
   onClick: () => void; 
@@ -104,7 +137,6 @@ export default function AdminPage() {
   const [itemCost, setItemCost] = useState(500);
   const [itemIcon, setItemIcon] = useState("Snowflake");
   
-  // New Store Fields
   const [itemType, setItemType] = useState<ItemType>("INSTANT");
   const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
   const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
@@ -140,7 +172,7 @@ export default function AdminPage() {
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
   const handleDeleteRewardClick = async (actionType: string) => { if (window.confirm(`Archive/Delete "${actionType}"?`)) { await handleDeleteReward(actionType); showNotification("Reward processed."); } };
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); };
-  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive }); };
+  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive } as any); };
 
   // BADGE HANDLERS
   const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
@@ -232,22 +264,22 @@ export default function AdminPage() {
   const isSelf = targetUser?.id === adminUser?.id;
   const isDev = process.env.NODE_ENV === 'development';
 
-  // 🟢 FIX: STABLE SORTING (Crucial for toggle stability)
+  // 🟢 FIX: STABLE SORTING to prevent list jumping
   const filteredRewards = Object.entries(rewardsConfig)
       .filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived)
-      .sort((a, b) => a[0].localeCompare(b[0])); // Alphabetical sort by Key
+      .sort((a, b) => a[0].localeCompare(b[0]));
 
   const filteredQuests = questsAdmin
       .filter((q: Quest) => showArchivedQuests ? q.isArchived : !q.isArchived)
-      .sort((a, b) => (a.title || "").localeCompare(b.title || "")); // Sort by Title
+      .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
 
   const filteredBadges = Object.entries(badgesConfig)
       .filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived)
-      .sort((a, b) => a[0].localeCompare(b[0])); // Alphabetical sort by Name
+      .sort((a, b) => a[0].localeCompare(b[0]));
 
   const filteredStore = storeItems
       .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived);
-      // Note: storeItems is already sorted by Cost/Name in API, but re-sorting here wouldn't hurt if API order flips.
+      // storeItems from API is usually sorted, but sorting here adds safety
 
   const popularEmojis = ["🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🔥", "🚀", "💎", "💰", "🛡️", "⚔️", "🏹", "🧪", "📜", "❤️", "⭐", "👑", "💀", "⚡", "🦄", "🐲", "👾", "🍄", "🎓", "🎟️", "🎨", "🎵", "📣", "🤝", "🌍", "🎁", "💡", "⚙️", "🔒", "🔑"];
 
@@ -262,7 +294,7 @@ export default function AdminPage() {
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
-      {/* Header */}
+      {/* ... (Header and Navigation - unchanged) ... */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-700 pb-8">
         <div className="flex items-center gap-5">
            {community?.logoUrl ? (
@@ -282,7 +314,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-700 pb-1">
         <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5"/>} />
         <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5"/>} locked={!isFeatureEnabled('quests')} />
@@ -306,6 +337,7 @@ export default function AdminPage() {
                             <div><h3 className="text-xl font-bold text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-600 text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
                             {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
                         </div>
+                        {/* ... (User Actions) ... */}
                         <div className="space-y-4">
                              <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
                                 <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase">Manual Awards</label>
@@ -318,6 +350,7 @@ export default function AdminPage() {
                                     <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
                                 </div>
                              </div>
+                             {/* ... Stats ... */}
                              <div className="grid grid-cols-3 gap-2 text-center">
                                 <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
                                 <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
@@ -325,6 +358,7 @@ export default function AdminPage() {
                              </div>
                              <button onClick={handleAdminStatUpdate} className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white py-2 rounded transition-colors text-sm font-semibold">Save Stats</button>
                              <div className="border-t border-slate-700 pt-4">
+                                 {/* ... History & Bans ... */}
                                  <div className="mb-4">
                                      <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Item History</h4>
                                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
@@ -338,7 +372,6 @@ export default function AdminPage() {
                                          )}
                                      </div>
                                  </div>
-                                 {isDev && <button onClick={handlePasswordReset} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">Reset Password (Dev Only)</button>}
                                  <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
                                  <div className="grid grid-cols-2 gap-2">
                                      <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
@@ -349,9 +382,7 @@ export default function AdminPage() {
                     </div>
                 )}
             </div>
-            <div className="lg:col-span-3">
-                <Leaderboard users={allUsers} currentUserId={targetUserId || ''} />
-            </div>
+            <div className="lg:col-span-3"><Leaderboard users={allUsers} currentUserId={targetUserId || ''} /></div>
         </div>
       )}
 
@@ -363,7 +394,11 @@ export default function AdminPage() {
                  <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
-                        <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedRewards} onChange={() => setShowArchivedRewards(!showArchivedRewards)} className="sr-only peer"/><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
+                        {/* 🟢 FIX: Professional Toggle */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">Show Archived</span>
+                            <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
+                        </div>
                     </div>
                      <form onSubmit={handleRewardSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
                         <div className="flex gap-2 mb-2">
@@ -382,7 +417,9 @@ export default function AdminPage() {
                                 <div key={key} className={`flex justify-between items-center p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
                                     <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-white'}`}>{key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
                                     <div className="flex gap-2 items-center">
-                                         {!r.isArchived && <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={r.isActive} onChange={() => handleToggleRewardActive(key, !r.isActive)} /><div className="w-8 h-4 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500"></div></label>}
+                                         {!r.isArchived && (
+                                             <ToggleSwitch checked={r.isActive} onChange={(val) => handleToggleRewardActive(key, val)} />
+                                         )}
                                         {r.isArchived ? <button onClick={() => handleRestoreRewardClick(key)} className="text-green-400 hover:text-green-300 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditRewardClick(key, r)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteRewardClick(key)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                     </div>
                                 </div>
@@ -396,12 +433,16 @@ export default function AdminPage() {
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage Quests</h3>
                         {isFeatureEnabled('quests') ? (
-                             <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer"/><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400">Show Archived</span>
+                                <ToggleSwitch checked={showArchivedQuests} onChange={setShowArchivedQuests} />
+                            </div>
                         ) : <span className=""></span>}
                     </div>
                     {isFeatureEnabled('quests') ? (
                         <>
                              <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                {/* ... Quest Form inputs ... */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                                     <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
                                     <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
@@ -427,7 +468,7 @@ export default function AdminPage() {
                                     <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
                                         <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
                                         <div className="flex gap-2 items-center">
-                                            {!q.isArchived && <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={q.isActive} onChange={() => handleToggleQuestClick(q)} /><div className="w-8 h-4 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500"></div></label>}
+                                            {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
                                             {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
                                         </div>
                                     </div>
@@ -438,11 +479,14 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            {/* BADGES */}
+            {/* BADGES (Updated for new logic) */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">Manage Badges</h3>
-                     <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedBadges} onChange={() => setShowArchivedBadges(!showArchivedBadges)} className="sr-only peer"/><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">Show Archived</span>
+                        <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
+                    </div>
                 </div>
                 <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4 border border-slate-600">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -471,7 +515,13 @@ export default function AdminPage() {
                         return (
                         <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
                              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">{isEmoji ? (<span className="text-xl select-none">{b.icon}</span>) : (<BadgeIcon className="w-6 h-6" style={{ color: b.color }} />)}</div><div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={b.isActive !== false ? "text-green-400" : "text-slate-500"}>{b.isActive !== false ? "Active" : "Draft"}</span>}</div></div></div>
-                            <div className="flex gap-2 items-center">{!b.isArchived && <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={b.isActive !== false} onChange={() => handleToggleBadgeActive(name, !(b.isActive !== false))} /><div className="w-8 h-4 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500"></div></label>}{b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 text-xs font-bold">Delete</button></>}</div>
+                            <div className="flex gap-2 items-center">
+                                {/* 🟢 FIX: New Toggle Logic for Badges */}
+                                {!b.isArchived && (
+                                    <ToggleSwitch checked={b.isActive !== false} onChange={(val) => handleToggleBadgeActive(name, val)} />
+                                )}
+                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                            </div>
                         </div>
                     )})}
                 </div>
@@ -485,17 +535,17 @@ export default function AdminPage() {
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">XP Store Management</h3>
                      {isFeatureEnabled('store') ? (
-                         <label className="flex items-center cursor-pointer text-xs">
-                            <input type="checkbox" checked={showArchivedStore} onChange={() => setShowArchivedStore(!showArchivedStore)} className="sr-only peer"/>
-                            <span className="text-slate-400 mr-2">Show Archived</span>
-                            <div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div>
-                        </label>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">Show Archived</span>
+                            <ToggleSwitch checked={showArchivedStore} onChange={setShowArchivedStore} />
+                        </div>
                      ) : null}
                 </div>
 
                 {isFeatureEnabled('store') ? (
                     <>
-                        <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                        {/* ... Store Form (Unchanged) ... */}
+                         <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
                              <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Item Name</label>
@@ -520,7 +570,7 @@ export default function AdminPage() {
                                         <option value="INSTANT">Instant Consumable</option>
                                         <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
                                         <option value="NAME_COLOR">Name Color (Cosmetic)</option>
-                                        <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
+                                        <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option> 
                                         <option value="TITLE">Title / Prefix (Cosmetic)</option>
                                         <option value="BANNER">Profile Banner (Cosmetic)</option>
                                     </select>
@@ -528,7 +578,6 @@ export default function AdminPage() {
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                     <div className="flex gap-2 items-center">
-                                        {/* Icon Preview */}
                                         <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
                                             <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                         </div>
@@ -564,7 +613,6 @@ export default function AdminPage() {
                                           </div>
                                           <div>
                                               <label className="block text-xs text-slate-400 mb-1">Position</label>
-                                              {/* Title Position */}
                                               <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
                                                   <option value="prefix">Prefix (Start)</option>
                                                   <option value="suffix">Suffix (End)</option>
@@ -575,7 +623,6 @@ export default function AdminPage() {
                                 {(itemType === 'BANNER' || itemType === 'FRAME') && (
                                       <div>
                                           <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
-                                          {/* File Upload for Banner */}
                                           {metaUrl && (
                                               <div className="mb-2">
                                                   <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600"/>
@@ -588,7 +635,6 @@ export default function AdminPage() {
                                               onChange={async (e) => {
                                                   const file = e.target.files?.[0];
                                                   if (file) {
-                                                      // Using admin's ID for upload path
                                                       const url = await api.uploadAvatar(file, adminUser?.id); 
                                                       if (url) setMetaUrl(url);
                                                   }
@@ -607,18 +653,13 @@ export default function AdminPage() {
                             </div>
                         </form>
                         
-                        {/* List of Items */}
                         <div className="flex-grow overflow-y-auto pr-2 space-y-2">
-                            {storeItems.filter(i => showArchivedStore ? i.isArchived : !i.isArchived).map(item => (
+                            {filteredStore.map(item => (
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            {/* Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
-                                                {(() => {
-                                                    const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
-                                                    return <IconComponent className="w-4 h-4 text-purple-400" />;
-                                                })()}
+                                                <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                             </div>
                                             <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
                                             <p className="font-bold text-sm text-white">{item.name}</p>
@@ -626,7 +667,7 @@ export default function AdminPage() {
                                         <p className="text-xs text-slate-400">{item.cost} XP</p>
                                     </div>
                                     <div className="flex gap-2 items-center">
-                                         {!item.isArchived && <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={item.isActive} onChange={() => handleToggleStoreItem(item.id, !item.isActive)} /><div className="w-8 h-4 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500"></div></label>}
+                                         {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
                                         {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 text-xs font-bold">Delete</button></>}
                                     </div>
                                 </div>
@@ -663,7 +704,7 @@ export default function AdminPage() {
             {isFeatureEnabled('white_label') ? (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/30">
                     <h3 className="text-lg font-bold text-white mb-4">White-Label Branding</h3>
-                    <div className="space-y-4"><label className="flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={community?.whiteLabelEnabled ?? false} onChange={(e) => handleToggleWhiteLabel(e.target.checked)} /><div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative mr-3"></div><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></label><p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p></div>
+                    <div className="space-y-4"><div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabel(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div><p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p></div>
                 </div>
             ) : <FeatureLock title="White-Label Branding" description="Remove branding." requiredTier="Elite"><div className="space-y-6 pt-2"><div className="flex items-center justify-between"><div className="h-6 w-32 bg-slate-600 rounded"></div><div className="h-6 w-12 bg-purple-600/30 rounded-full"></div></div><div className="h-px w-full bg-slate-700"></div><div className="h-4 w-3/4 bg-slate-700 rounded"></div><div className="h-4 w-1/2 bg-slate-700 rounded"></div></div></FeatureLock>}
 

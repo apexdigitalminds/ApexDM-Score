@@ -58,7 +58,7 @@ const badgeFromSupabase = (data: any): Badge => ({
   icon: data.icon,
   color: data.color,
   communityId: data.community_id ?? "",
-  isActive: !data.is_archived,
+  isActive: !data.is_active,
   isArchived: data.is_archived
 });
 
@@ -205,7 +205,7 @@ export const api = {
         const communityId = await getCommunityId();
         const { data, error } = await supabase.from('badges').select('*').eq('community_id', communityId);
         if (error || !data) return {};
-        return data.reduce((acc, b) => ({ ...acc, [b.name]: { name: b.name, description: b.description, icon: b.icon, color: b.color, isArchived: b.is_archived } }), {} as any);
+        return data.reduce((acc, b) => ({ ...acc, [b.name]: { name: b.name, description: b.description, icon: b.icon, color: b.color, isActive: b.is_active, isArchived: b.is_archived } }), {} as any);
     },
 
     getCommunityInfo: async (): Promise<Community | null> => {
@@ -313,7 +313,7 @@ export const api = {
     updateBadge: async (name: string, config: any) => {
         const communityId = await getCommunityId();
         const updates: any = { description: config.description, icon: config.icon, color: config.color };
-        if (config.isActive !== undefined) updates.is_archived = !config.isActive;
+        if (config.isActive !== undefined) updates.is_active = !config.isActive;
         await supabase.from('badges').update(updates).eq('name', name).eq('community_id', communityId);
     },
     deleteBadge: async (name: string, isArchive: boolean) => {
