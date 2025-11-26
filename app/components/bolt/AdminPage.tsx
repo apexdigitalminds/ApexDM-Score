@@ -140,7 +140,7 @@ export default function AdminPage() {
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
   const handleDeleteRewardClick = async (actionType: string) => { if (window.confirm(`Archive/Delete "${actionType}"?`)) { await handleDeleteReward(actionType); showNotification("Reward processed."); } };
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); };
-  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive } as any); };
+  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive }); };
 
   // BADGE HANDLERS
   const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
@@ -157,6 +157,7 @@ export default function AdminPage() {
   const handleUpdateTask = (idx: number, field: keyof QuestTask, val: any) => { const t = [...questTasks]; (t[idx] as any)[field] = val; setQuestTasks(t); };
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
+  
   const handleQuestSubmit = async (e: React.FormEvent) => { 
       e.preventDefault(); 
       const q = { 
@@ -231,10 +232,22 @@ export default function AdminPage() {
   const isSelf = targetUser?.id === adminUser?.id;
   const isDev = process.env.NODE_ENV === 'development';
 
-  const filteredRewards = Object.entries(rewardsConfig).filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived);
-  const filteredQuests = questsAdmin.filter((q: Quest) => showArchivedQuests ? q.isArchived : !q.isArchived);
-  const filteredBadges = Object.entries(badgesConfig).filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived);
-  const filteredStore = storeItems.filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived);
+  // 🟢 FIX: STABLE SORTING (Crucial for toggle stability)
+  const filteredRewards = Object.entries(rewardsConfig)
+      .filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived)
+      .sort((a, b) => a[0].localeCompare(b[0])); // Alphabetical sort by Key
+
+  const filteredQuests = questsAdmin
+      .filter((q: Quest) => showArchivedQuests ? q.isArchived : !q.isArchived)
+      .sort((a, b) => (a.title || "").localeCompare(b.title || "")); // Sort by Title
+
+  const filteredBadges = Object.entries(badgesConfig)
+      .filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived)
+      .sort((a, b) => a[0].localeCompare(b[0])); // Alphabetical sort by Name
+
+  const filteredStore = storeItems
+      .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived);
+      // Note: storeItems is already sorted by Cost/Name in API, but re-sorting here wouldn't hurt if API order flips.
 
   const popularEmojis = ["🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🔥", "🚀", "💎", "💰", "🛡️", "⚔️", "🏹", "🧪", "📜", "❤️", "⭐", "👑", "💀", "⚡", "🦄", "🐲", "👾", "🍄", "🎓", "🎟️", "🎨", "🎵", "📣", "🤝", "🌍", "🎁", "💡", "⚙️", "🔒", "🔑"];
 
@@ -507,7 +520,7 @@ export default function AdminPage() {
                                         <option value="INSTANT">Instant Consumable</option>
                                         <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
                                         <option value="NAME_COLOR">Name Color (Cosmetic)</option>
-                                        <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option> {/* 🟢 ADDED */}
+                                        <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
                                         <option value="TITLE">Title / Prefix (Cosmetic)</option>
                                         <option value="BANNER">Profile Banner (Cosmetic)</option>
                                     </select>
@@ -515,7 +528,7 @@ export default function AdminPage() {
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                     <div className="flex gap-2 items-center">
-                                        {/* 🟢 NEW: Icon Preview */}
+                                        {/* Icon Preview */}
                                         <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
                                             <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                         </div>
@@ -551,7 +564,7 @@ export default function AdminPage() {
                                           </div>
                                           <div>
                                               <label className="block text-xs text-slate-400 mb-1">Position</label>
-                                              {/* 🟢 ADDED: Title Position */}
+                                              {/* Title Position */}
                                               <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
                                                   <option value="prefix">Prefix (Start)</option>
                                                   <option value="suffix">Suffix (End)</option>
@@ -562,7 +575,7 @@ export default function AdminPage() {
                                 {(itemType === 'BANNER' || itemType === 'FRAME') && (
                                       <div>
                                           <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
-                                          {/* 🟢 ADDED: File Upload for Banner */}
+                                          {/* File Upload for Banner */}
                                           {metaUrl && (
                                               <div className="mb-2">
                                                   <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600"/>
@@ -600,7 +613,7 @@ export default function AdminPage() {
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            {/* 🟢 FIX: Restore Icon Display */}
+                                            {/* Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
                                                 {(() => {
                                                     const IconComponent = iconMap[item.icon] || iconMap['Sparkles'];
