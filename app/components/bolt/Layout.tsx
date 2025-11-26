@@ -13,7 +13,6 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    // FIX: Single destructuring line including activeEffects
     const { selectedUser, isFeatureEnabled, community, isLoading, activeEffects } = useApp();
     const router = useRouter();
     const pathname = usePathname(); 
@@ -22,9 +21,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    // FIX: Check if any active effect is an XP Boost
+    // 🟢 FIX: Force boolean check on array length to ensure reactivity
     const hasPulse = activeEffects && activeEffects.length > 0 && activeEffects.some(e => e.effectType === 'XP_BOOST');
-    const isBoosted = activeEffects ? activeEffects.some(e => e.effectType === 'XP_BOOST') : false;
+    const isBoosted = hasPulse;
 
     const showQuests = isFeatureEnabled('quests');
     const showStore = isFeatureEnabled('store');
@@ -87,8 +86,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         href={`/profile/${selectedUser.id}`} 
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        {/* FIX: Visual Pulse Wrapper */}
-                                        <div className={`relative rounded-full ${isBoosted ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)] animate-pulse' : ''}`}>
+                                        {/* 🟢 PULSE AVATAR CONTAINER */}
+                                        <div className={`relative rounded-full transition-all duration-300 ${isBoosted ? 'ring-2 ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)] animate-pulse' : ''}`}>
                                             <Avatar 
                                                 src={selectedUser.avatarUrl} 
                                                 alt={selectedUser.username || "User"} 
