@@ -28,7 +28,9 @@ import {
     adminDeleteQuestAction,
     adminRestoreQuestAction,
     adminToggleQuestAction,
-    recordActionServer
+    recordActionServer,
+    getAnalyticsDataServer, // 🟢 EXPORTED FROM ACTIONS
+    syncUserAction // 🟢 EXPORTED FROM ACTIONS
 } from '@/app/actions';
 
 import type {
@@ -168,17 +170,12 @@ export const api = {
         return profileFromSupabase(data);
     },
 
-getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member") => {
-        const { data: existingUser } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('whop_user_id', whopId).maybeSingle();
-        if (existingUser) return profileFromSupabase(existingUser);
-
-        try {
-            const communityId = await getCommunityId();
-            const { data: newUser } = await supabase.from('profiles').insert({
-                whop_user_id: whopId, community_id: communityId, username: `User_${whopId.substring(0, 6)}`, role: whopRole, xp: 0, streak: 0
-            }).select(PROFILE_COLUMNS).single();
-            return newUser ? profileFromSupabase(newUser) : null;
-        } catch (err) { return null; }
+    // 🟢 UPDATED: Use Server Action to sync/create user securely
+    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
+        // We call the Server Action which uses Service Role to check/create
+        const userData = await syncUserAction(whopId, whopRole);
+        if (userData) return profileFromSupabase(userData);
+        return null;
     },
 
     getCurrentUserProfile: async (): Promise<User | null> => {
@@ -223,9 +220,8 @@ getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member")
     },
 
     updateCommunityBranding: async (enabled: boolean) => { 
-        // For simplicity, assuming client-side write is blocked, using a server action would be better but for branding we didn't define one yet.
-        // If you locked down communities table, you need to add adminUpdateBrandingAction to actions.ts.
-        // For now, let's assume it's still open or add the action if it fails.
+        // Assuming this needs a server action eventually, but keeping client side read for now.
+        // Ideally move to adminUpdateCommunitySettingsAction.
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ white_label_enabled: enabled }).eq('id', communityId);
         return !error;
@@ -333,46 +329,9 @@ getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member")
     restoreQuest: async (id: string) => { return await adminRestoreQuestAction(id); },
     updateQuestActiveStatus: async (id: string, v: boolean) => { return await adminToggleQuestAction(id, v); },
 
-    // ANALYTICS (Restored)
+    // 🟢 ANALYTICS via Server Action
     getAnalyticsData: async (dateRange: '7d' | '30d'): Promise<AnalyticsData | null> => {
-        try {
-            const communityId = await getCommunityId();
-            if (!communityId) throw new Error("Community not found");
-    
-            const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            const dateLimit30d = new Date(new Date().setDate(now.getDate() - 30)).toISOString();
-            
-            const [ profilesResult, actionsResult, userBadgesResult, questsResult, userQuestProgressResult, userPurchasesResult ] = await Promise.all([
-                supabase.from('profiles').select(PROFILE_COLUMNS).eq('community_id', communityId),
-                supabase.from('actions_log').select('*').eq('community_id', communityId).gte('created_at', dateLimit30d),
-                supabase.from('user_badges').select('badges!inner(name, icon, color)').eq('community_id', communityId),
-                supabase.from('quests').select('*').eq('community_id', communityId),
-                supabase.from('user_quest_progress').select('*'),
-                supabase.from('user_inventory').select('store_items!inner(name, cost_xp)').eq('community_id', communityId),
-            ]);
-            
-            const allProfiles = profilesResult.data || [];
-            const allActions = (actionsResult.data || []).map(actionFromSupabase);
-            const allQuests = questsResult.data || [];
-            const allUserPurchases = userPurchasesResult.data || [];
-            const allUserQuestProgress = userQuestProgressFromSupabase(userQuestProgressResult.data || []);
-            
-            // Minimal mock of analytics processing to save space, but ensuring structure exists
-            // For full analytics, refer to previous implementation. 
-            // Critical: Return Valid Structure
-            return {
-                engagement: { activeMembers7d: 0, activeMembers30d: 0, avgDailyActions: 0, xpEarnedToday: 0 },
-                growth: { newMembers7d: 0, churnedMembers14d: 0 },
-                topPerformers: { byXp: [], byStreak: [] },
-                activityBreakdown: [],
-                streakHealth: { avgStreakLength: 0, percentWithActiveStreak: 0 },
-                topXpActions: [],
-                topBadges: [],
-                questAnalytics: [],
-                storeAnalytics: { totalItems: 0, xpSpent: 0, mostPopularItem: 'None', totalSpent: 0, items: [] },
-            };
-        } catch (error: any) { return null; }
+        return await getAnalyticsDataServer(dateRange);
     },
 
     uploadAvatar: async (file: File, userId?: string) => {
@@ -393,8 +352,7 @@ getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member")
     adminGetUserEmail: async () => null,
     adminUpdateCommunityTier: async (tier: any) => { return await adminUpdateCommunityTierAction(tier); },
     
-    // 🟢 FIX: Type casting
-triggerWebhook: async (userId: string, actionType: string) => {
+    triggerWebhook: async (userId: string, actionType: string) => {
          return api.recordAction(userId, actionType as ActionType, 'whop').then(result =>
             result ? `Webhook simulated.` : "Failed."
          );
