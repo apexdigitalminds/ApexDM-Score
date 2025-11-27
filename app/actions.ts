@@ -9,7 +9,7 @@ import {
     ActionType, 
     AnalyticsData, 
     Profile, 
-    User,
+    User, 
     Badge, 
     Quest 
 } from "@/types";
@@ -24,20 +24,30 @@ async function verifyUser() {
     
     if (!whopUserId) throw new Error("Unauthorized: No User ID");
 
-    // 🟢 CRITICAL FIX: Resolve Whop ID (String) -> Internal ID (UUID)
-    // We use maybeSingle() to avoid errors if user doesn't exist yet
-    const { data: profile, error } = await supabaseAdmin
+    // Resolve Whop ID (String) -> Internal ID (UUID)
+    const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id, role')
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
     if (!profile) {
-        // If called before syncUserAction has run
+        // Fallback: If profile not found, we can't verify admin status securely via DB
+        // But we can still check Whop roles.
+        const isWhopAdmin = roles && (
+            roles.includes("owner") || 
+            roles.includes("admin") || 
+            roles.includes("staff") || 
+            roles.includes("moderator")
+        );
+        
+        if (isWhopAdmin) {
+            // Allow if they are a Whop Admin (even if DB row missing, though rare)
+             return { userId: null, whopUserId, isAdmin: true };
+        }
         throw new Error("Profile not initialized. Please refresh.");
     }
     
-    // Check Whop Roles for Admin Status
     const isAdmin = roles && (
         roles.includes("owner") || 
         roles.includes("admin") || 
@@ -68,19 +78,15 @@ async function getCommunityId() {
     return community.id;
 }
 
-// --- AUTH & SYNC ACTIONS ---
-
-// 🟢 NEW: Securely Sync User (Create or Update Role)
+// --- AUTH & SYNC ---
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
-    // 1. Try to find user
     const { data: existingUser } = await supabaseAdmin
         .from('profiles')
-        .select('*') // Select all to return full profile
+        .select('*')
         .eq('whop_user_id', whopId)
         .maybeSingle();
 
     if (existingUser) {
-        // Sync Role if mismatch
         if (existingUser.role !== whopRole) {
             await supabaseAdmin.from('profiles').update({ role: whopRole }).eq('id', existingUser.id);
             existingUser.role = whopRole;
@@ -88,7 +94,6 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
         return existingUser;
     }
 
-    // 2. Create new user
     try {
         const communityId = await getCommunityId();
         const placeholderUsername = `User_${whopId.substring(0, 6)}`; 
@@ -117,9 +122,10 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
 
 export async function updateUserProfile(updates: any, targetId?: string) {
   const { userId, isAdmin } = await verifyUser();
+  if (!userId) throw new Error("User not found");
+
   const idToUpdate = targetId || userId;
 
-  // Security Check
   if (idToUpdate !== userId && !isAdmin) throw new Error("Forbidden");
 
   const safeUpdates: any = {};
@@ -133,16 +139,14 @@ export async function updateUserProfile(updates: any, targetId?: string) {
 
 export async function equipCosmeticAction(item: StoreItem) {
   const { userId } = await verifyUser();
+  if (!userId) throw new Error("User not found");
   
-  // 1. Verify Ownership
   const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', userId).eq('item_id', item.id).single();
   if (!ownership) return { success: false, message: "You do not own this item." };
 
-  // 2. Fetch Metadata
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
   const currentMeta = profile?.metadata || {};
 
-  // 3. Apply Cosmetic
   if (item.itemType === 'NAME_COLOR') currentMeta.nameColor = item.metadata?.color;
   if (item.itemType === 'TITLE') {
       currentMeta.title = item.metadata?.text;
@@ -158,7 +162,9 @@ export async function equipCosmeticAction(item: StoreItem) {
 }
 
 export async function unequipCosmeticAction(type: string) {
-  const { userId } = await verifyUser(); 
+  const { userId } = await verifyUser();
+  if (!userId) throw new Error("User not found");
+
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
   const currentMeta = profile?.metadata || {};
 
@@ -175,13 +181,15 @@ export async function unequipCosmeticAction(type: string) {
 
 export async function buyStoreItemAction(itemId: string) {
     const { userId } = await verifyUser();
+    if (!userId) throw new Error("User not found");
+
     const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: userId, p_item_id: itemId });
     if (error) return { success: false, message: error.message };
     return data;
 }
 
 export async function activateInventoryItemAction(inventoryId: string) {
-    const { userId } = await verifyUser(); // Just to auth
+    await verifyUser(); // Just auth check
     const { data, error } = await supabaseAdmin.rpc('activate_inventory_item', { p_inventory_id: inventoryId });
     if (error) return { success: false, message: error.message };
     return data;
@@ -189,6 +197,7 @@ export async function activateInventoryItemAction(inventoryId: string) {
 
 export async function claimQuestRewardAction(progressId: number) {
     const { userId } = await verifyUser();
+    if (!userId) throw new Error("User not found");
     
     const { data: updatedProgress, error } = await supabaseAdmin
         .from('user_quest_progress')
@@ -200,7 +209,7 @@ export async function claimQuestRewardAction(progressId: number) {
         .select()
         .single();
 
-    if (error || !updatedProgress) return { success: false, message: 'Error claiming reward or already claimed.' };
+    if (error || !updatedProgress) return { success: false, message: 'Error claiming reward.' };
 
     const { quest_id: questId } = updatedProgress;
     const { data: questData } = await supabaseAdmin.from('quests').select('xp_reward, badge_reward_id').eq('id', questId).single();
@@ -228,7 +237,6 @@ export async function adminUpdateUserStatsAction(targetUserId: string, xp: numbe
 
 export async function adminUpdateUserRoleAction(targetUserId: string, role: string) {
     const { userId, isAdmin } = await verifyUser();
-    // Allow self-update for sync or Admin override
     if (!isAdmin && userId !== targetUserId) throw new Error("Forbidden");
 
     const { error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', targetUserId);
@@ -260,6 +268,7 @@ export async function adminCreateStoreItemAction(itemData: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
     const { error } = await supabaseAdmin.from('store_items').insert({ ...itemData, community_id: communityId });
+    if (error) console.error(error);
     return !error;
 }
 export async function adminUpdateStoreItemAction(itemId: string, itemData: any) {
@@ -295,12 +304,8 @@ export async function adminUpdateRewardAction(actionType: string, data: any) {
     const updates: any = {};
     if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
     if (data.isActive !== undefined) updates.is_active = data.isActive;
-    
     const { error } = await supabaseAdmin.from('reward_actions').update(updates).eq('action_type', actionType);
-    
-    if (!error) {
-        revalidatePath('/admin');
-    }
+    if (!error) revalidatePath('/admin');
     return !error;
 }
 export async function adminDeleteRewardAction(actionType: string, isArchive: boolean) {
@@ -370,6 +375,7 @@ export async function adminCreateQuestAction(questData: any) {
     const { data: newQuest, error } = await supabaseAdmin.from('quests').insert({
         community_id: communityId, title: questData.title, description: questData.description, xp_reward: questData.xpReward, badge_reward_id: badgeId, is_active: true, 
     }).select().single();
+    if (error) console.error(error);
     if (error || !newQuest) return false;
 
     const tasksToInsert = (questData.tasks ?? []).map((task: any) => ({
@@ -404,10 +410,6 @@ export async function adminToggleQuestAction(questId: string, isActive: boolean)
 
 // SERVER-SIDE ACTION RECORDING
 export async function recordActionServer(userId: string, actionType: ActionType, source: string) {
-    // Can be triggered by Admin (manual) or Webhook (system)
-    // Ideally we check context, but Webhook doesn't have user context in headers.
-    // We trust the source logic.
-    
     const { data: rewardData } = await supabaseAdmin.from('reward_actions').select('xp_gained').eq('action_type', actionType).single();
     if (!rewardData) return null;
     let xp_to_add = rewardData.xp_gained;
@@ -425,22 +427,26 @@ export async function recordActionServer(userId: string, actionType: ActionType,
     return { xpGained: xp_to_add };
 }
 
-// 🟢 ANALYTICS (Server Side)
+// 🟢 ANALYTICS (Server Side - Robust)
 export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<AnalyticsData | null> {
     try {
+        // Verify admin access
         const { isAdmin } = await verifyUser();
         if (!isAdmin) return null;
 
-        const { data: community } = await supabaseAdmin.from('communities').select('id').single();
+        // Get Community
+        const { data: community } = await supabaseAdmin.from('communities').select('id').maybeSingle();
         if (!community) return null;
         const communityId = community.id;
 
+        // Dates
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         const dateLimit7d = new Date(new Date().setDate(now.getDate() - 7)).toISOString();
         const dateLimit14d = new Date(new Date().setDate(now.getDate() - 14)).toISOString();
         const dateLimit30d = new Date(new Date().setDate(now.getDate() - 30)).toISOString();
         
+        // Fetch ALL Data (Admin Power)
         const [
             profilesResult,
             actionsResult,
@@ -457,6 +463,7 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
             supabaseAdmin.from('user_inventory').select('store_items!inner(name, cost_xp)').eq('community_id', communityId),
         ]);
         
+        // Fallback to empty arrays if null
         const allProfiles = profilesResult.data || [];
         const allActions = actionsResult.data || [];
         const allQuests = questsResult.data || [];
@@ -466,16 +473,15 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         const totalUsers = allProfiles.length;
         if (totalUsers === 0) return null;
 
+        // Process Data
         const activeMembers7d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit7d).length;
         const activeMembers30d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit30d).length;
         
         const actionsToday = allActions.filter((a: any) => a.created_at && a.created_at >= todayStart);
         const xpEarnedToday = actionsToday.reduce((sum: number, a: any) => sum + (a.xp_gained || 0), 0);
 
-        const newMembers7d = 0; 
         const churnedMembers14d = allProfiles.filter((p: any) => !p.last_action_date || new Date(p.last_action_date).toISOString() < dateLimit14d).length;
 
-        // Helper to map DB profile to User type
         const mapUser = (p: any): Profile => ({
             id: p.id, username: p.username, avatarUrl: p.avatar_url, xp: p.xp, streak: p.streak,
             communityId: p.community_id, streakFreezes: p.streak_freezes, last_action_date: p.last_action_date, badges: [], role: p.role, level: 0, metadata: p.metadata
@@ -512,7 +518,6 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         const badgeCounts: Record<string, { name: string; icon: string; color: string; count: number }> = {};
         for (const userBadge of userBadgesResult.data || []) {
             const badge = userBadge.badges;
-            // Handle array vs object return from join
             const bData = Array.isArray(badge) ? badge[0] : badge;
             if(bData && bData.name) {
                 if (!badgeCounts[bData.name]) badgeCounts[bData.name] = { name: bData.name, icon: bData.icon, color: bData.color, count: 0 };
@@ -534,7 +539,6 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         
         const itemsCounter: Record<string, number> = {};
         for (const p of allUserPurchases) {
-            // Handle array vs object return
             const itemData = Array.isArray(p.store_items) ? p.store_items[0] : p.store_items;
             const iName = itemData?.name;
             if (iName) itemsCounter[iName] = (itemsCounter[iName] || 0) + 1;
@@ -549,12 +553,13 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
 
         return {
             engagement: { activeMembers7d, activeMembers30d, avgDailyActions: actionsToday.length, xpEarnedToday },
-            growth: { newMembers7d, churnedMembers14d },
+            growth: { newMembers7d: 0, churnedMembers14d },
             topPerformers, activityBreakdown, streakHealth, topXpActions, topBadges, questAnalytics,
             storeAnalytics: { totalItems, xpSpent, mostPopularItem, totalSpent: xpSpent, items: Object.entries(itemsCounter).map(([name, count]) => ({ name, count })) },
         };
     } catch (error: any) { 
         console.error("Server Analytics Error:", error);
+        // Return null so frontend shows "No Data" instead of crashing
         return null; 
     }
 }

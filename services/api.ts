@@ -29,15 +29,15 @@ import {
     adminRestoreQuestAction,
     adminToggleQuestAction,
     recordActionServer,
-    getAnalyticsDataServer, // 🟢 EXPORTED FROM ACTIONS
-    syncUserAction // 🟢 EXPORTED FROM ACTIONS
+    getAnalyticsDataServer, // 🟢 NOW EXPORTED & IMPORTED CORRECTLY
+    syncUserAction 
 } from '@/app/actions';
 
 import type {
     User, Action, Badge, RewardsConfig, BadgeConfig, BadgesConfig, Community, Quest, UserQuestProgress, QuestTask, AnalyticsData, StoreItem, UserInventoryItem, ActiveEffect, ActionType
 } from '@/types';
 
-// --- HELPERS ---
+// --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
     const badges: Badge[] = (data.user_badges || [])
         .map((join: any) => (join.badges ? badgeFromSupabase(join.badges) : null))
@@ -170,9 +170,8 @@ export const api = {
         return profileFromSupabase(data);
     },
 
-    // 🟢 UPDATED: Use Server Action to sync/create user securely
     getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
-        // We call the Server Action which uses Service Role to check/create
+        // 🟢 UPDATED: Calls the Server Action to sync
         const userData = await syncUserAction(whopId, whopRole);
         if (userData) return profileFromSupabase(userData);
         return null;
@@ -220,8 +219,7 @@ export const api = {
     },
 
     updateCommunityBranding: async (enabled: boolean) => { 
-        // Assuming this needs a server action eventually, but keeping client side read for now.
-        // Ideally move to adminUpdateCommunitySettingsAction.
+        // Client-side for now unless you want to lock communities table completely
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ white_label_enabled: enabled }).eq('id', communityId);
         return !error;
