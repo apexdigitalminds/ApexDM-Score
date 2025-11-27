@@ -4,27 +4,49 @@ import { headers } from "next/headers";
 import { whopsdk } from "@/lib/whop-sdk";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { StoreItem, ActionType } from "@/types";
+import { revalidatePath } from "next/cache"; // 🟢 NEW: For refreshing data
 
-// --- HELPER: Verify User ---
+// --- HELPER: Verify User & Resolve UUID ---
 async function verifyUser() {
   try {
     const payload = await whopsdk.verifyUserToken(await headers());
-    // Type assertion to handle potential missing type definition in SDK
     const token = payload as any;
-    const userId = token.userId;
+    const whopUserId = token.userId;
     const roles = token.roles || [];
     
-    if (!userId) throw new Error("Unauthorized");
+    if (!whopUserId) throw new Error("Unauthorized: No User ID");
+
+    // 🟢 CRITICAL FIX: Resolve Whop ID (String) -> Internal ID (UUID)
+    const { data: profile, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role')
+        .eq('whop_user_id', whopUserId)
+        .maybeSingle();
+
+    if (!profile) {
+        // If profile doesn't exist yet, we can't perform actions.
+        // The Client Side 'api.getUserByWhopId' usually handles creation, 
+        // but to be safe, we throw specific error here.
+        throw new Error("Profile not initialized. Please refresh the page.");
+    }
     
+    // Check Whop Roles
     const isAdmin = roles && (
         roles.includes("owner") || 
         roles.includes("admin") || 
         roles.includes("staff") || 
         roles.includes("moderator")
     );
-    return { userId, isAdmin };
-  } catch (error) {
-    throw new Error("Unauthorized");
+
+    return { 
+        userId: profile.id, // 🟢 This is now the UUID
+        whopUserId, 
+        isAdmin 
+    };
+
+  } catch (error: any) {
+    console.error("Verify User Error:", error.message);
+    throw new Error(error.message || "Unauthorized");
   }
 }
 
@@ -42,13 +64,11 @@ async function getCommunityId() {
 // --- USER ACTIONS ---
 
 export async function updateUserProfile(updates: any, targetId?: string) {
-  const { userId } = await verifyUser();
+  const { userId, isAdmin } = await verifyUser();
   const idToUpdate = targetId || userId;
-  // Basic security: users can only update themselves unless we add admin check here
-  if (idToUpdate !== userId) {
-      const { isAdmin } = await verifyUser(); 
-      if (!isAdmin) throw new Error("Forbidden");
-  }
+
+  // Security Check: Users can only update themselves
+  if (idToUpdate !== userId && !isAdmin) throw new Error("Forbidden");
 
   const safeUpdates: any = {};
   if (updates.avatarUrl) safeUpdates.avatar_url = updates.avatarUrl;
@@ -61,12 +81,16 @@ export async function updateUserProfile(updates: any, targetId?: string) {
 
 export async function equipCosmeticAction(item: StoreItem) {
   const { userId } = await verifyUser();
+  
+  // 1. Verify Ownership using UUID
   const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', userId).eq('item_id', item.id).single();
   if (!ownership) return { success: false, message: "You do not own this item." };
 
+  // 2. Fetch Metadata
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
   const currentMeta = profile?.metadata || {};
 
+  // 3. Apply Cosmetic
   if (item.itemType === 'NAME_COLOR') currentMeta.nameColor = item.metadata?.color;
   if (item.itemType === 'TITLE') {
       currentMeta.title = item.metadata?.text;
@@ -82,10 +106,11 @@ export async function equipCosmeticAction(item: StoreItem) {
 }
 
 export async function unequipCosmeticAction(type: string) {
-  const { userId } = await verifyUser();
+  const { userId } = await verifyUser(); // UUID
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
   const currentMeta = profile?.metadata || {};
 
+  // Delete keys
   if (type === 'NAME_COLOR') delete currentMeta.nameColor;
   if (type === 'TITLE') { delete currentMeta.title; delete currentMeta.titlePosition; }
   if (type === 'BANNER') delete currentMeta.bannerUrl;
@@ -98,21 +123,23 @@ export async function unequipCosmeticAction(type: string) {
 }
 
 export async function buyStoreItemAction(itemId: string) {
-    const { userId } = await verifyUser();
+    const { userId } = await verifyUser(); // UUID
+    // Now passing UUID to RPC function
     const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: userId, p_item_id: itemId });
     if (error) return { success: false, message: error.message };
     return data;
 }
 
 export async function activateInventoryItemAction(inventoryId: string) {
-    const { userId } = await verifyUser();
+    await verifyUser(); // Just auth check
+    // RPC handles logic
     const { data, error } = await supabaseAdmin.rpc('activate_inventory_item', { p_inventory_id: inventoryId });
     if (error) return { success: false, message: error.message };
     return data;
 }
 
 export async function claimQuestRewardAction(progressId: number) {
-    const { userId } = await verifyUser();
+    const { userId } = await verifyUser(); // UUID
     
     const { data: updatedProgress, error } = await supabaseAdmin
         .from('user_quest_progress')
@@ -124,18 +151,12 @@ export async function claimQuestRewardAction(progressId: number) {
         .select()
         .single();
 
-    if (error || !updatedProgress) {
-        // 🟢 FIX: Ensure message is always present
-        return { success: false, message: 'Error claiming reward or already claimed.' };
-    }
+    if (error || !updatedProgress) return { success: false, message: 'Error claiming reward or already claimed.' };
 
     const { quest_id: questId } = updatedProgress;
     const { data: questData } = await supabaseAdmin.from('quests').select('xp_reward, badge_reward_id').eq('id', questId).single();
 
-    if (!questData) {
-        // 🟢 FIX: Ensure message is always present
-        return { success: false, message: "Quest data not found." };
-    }
+    if (!questData) return { success: false, message: "Quest data missing." };
 
     await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: questData.xp_reward });
 
@@ -158,7 +179,7 @@ export async function adminUpdateUserStatsAction(targetUserId: string, xp: numbe
 
 export async function adminUpdateUserRoleAction(targetUserId: string, role: string) {
     const { userId, isAdmin } = await verifyUser();
-    // Allow update if admin OR if updating self (Sync)
+    // Allow self-update for sync
     if (!isAdmin && userId !== targetUserId) throw new Error("Forbidden");
 
     const { error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', targetUserId);
@@ -220,12 +241,18 @@ export async function adminAddRewardAction(actionType: string, xp: number) {
     const { error } = await supabaseAdmin.from('reward_actions').insert({ community_id: communityId, action_type: actionType, xp_gained: xp });
     return !error;
 }
+// 🟢 FIX: Reward Update
 export async function adminUpdateRewardAction(actionType: string, data: any) {
     await ensureAdmin();
     const updates: any = {};
     if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
     if (data.isActive !== undefined) updates.is_active = data.isActive;
+    
     const { error } = await supabaseAdmin.from('reward_actions').update(updates).eq('action_type', actionType);
+    
+    if (!error) {
+        revalidatePath('/admin'); // Force UI refresh
+    }
     return !error;
 }
 export async function adminDeleteRewardAction(actionType: string, isArchive: boolean) {
