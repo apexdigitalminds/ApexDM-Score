@@ -124,12 +124,18 @@ export async function claimQuestRewardAction(progressId: number) {
         .select()
         .single();
 
-    if (error || !updatedProgress) return { success: false, message: 'Error claiming reward.' };
+    if (error || !updatedProgress) {
+        // 🟢 FIX: Ensure message is always present
+        return { success: false, message: 'Error claiming reward or already claimed.' };
+    }
 
     const { quest_id: questId } = updatedProgress;
     const { data: questData } = await supabaseAdmin.from('quests').select('xp_reward, badge_reward_id').eq('id', questId).single();
 
-    if (!questData) return { success: false };
+    if (!questData) {
+        // 🟢 FIX: Ensure message is always present
+        return { success: false, message: "Quest data not found." };
+    }
 
     await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: questData.xp_reward });
 
