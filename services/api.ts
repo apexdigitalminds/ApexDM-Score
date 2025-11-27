@@ -168,33 +168,15 @@ export const api = {
         return profileFromSupabase(data);
     },
 
-    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
-        const { data: existingUser } = await supabase
-            .from('profiles')
-            .select(PROFILE_COLUMNS)
-            .eq('whop_user_id', whopId)
-            .maybeSingle();
-
-        if (existingUser) {
-            if (existingUser.role !== whopRole) {
-                await adminUpdateUserRoleAction(existingUser.id, whopRole); 
-                existingUser.role = whopRole;
-            }
-            return profileFromSupabase(existingUser);
-        }
+getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member") => {
+        const { data: existingUser } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('whop_user_id', whopId).maybeSingle();
+        if (existingUser) return profileFromSupabase(existingUser);
 
         try {
             const communityId = await getCommunityId();
-            const placeholderUsername = `User_${whopId.substring(0, 6)}`; 
             const { data: newUser } = await supabase.from('profiles').insert({
-                whop_user_id: whopId,
-                community_id: communityId,
-                username: placeholderUsername,
-                role: whopRole, 
-                xp: 0,
-                streak: 0
+                whop_user_id: whopId, community_id: communityId, username: `User_${whopId.substring(0, 6)}`, role: whopRole, xp: 0, streak: 0
             }).select(PROFILE_COLUMNS).single();
-            
             return newUser ? profileFromSupabase(newUser) : null;
         } catch (err) { return null; }
     },
@@ -412,7 +394,7 @@ export const api = {
     adminUpdateCommunityTier: async (tier: any) => { return await adminUpdateCommunityTierAction(tier); },
     
     // 🟢 FIX: Type casting
-    triggerWebhook: async (userId: string, actionType: string) => {
+triggerWebhook: async (userId: string, actionType: string) => {
          return api.recordAction(userId, actionType as ActionType, 'whop').then(result =>
             result ? `Webhook simulated.` : "Failed."
          );
