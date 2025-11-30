@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from 'next/headers';
 import { whopsdk } from "@/lib/whop-sdk"; 
-import { supabaseAdmin } from "@/lib/supabase-admin"; // 🟢 Use Admin Client
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const metadata: Metadata = {
   title: "ApexDM Score",
@@ -23,13 +23,23 @@ export default async function RootLayout({
   
   let verifiedUserId: string | undefined;
   let verifiedRole: "admin" | "member" = "member"; 
-  const experienceId = "no_experience"; 
+  
+  // 🟢 FIX: Dynamic IDs instead of hardcoded placeholders
+  let experienceId = ""; 
+  let companyId = "";
 
   try {
-    // 1. Verify Token (Now works thanks to Middleware!)
+    // 1. Verify Token
     const payload = await whopsdk.verifyUserToken(await headers());
-    const token = payload as any; // Bypass potential type mismatch
+    const token = payload as any; 
+    
     verifiedUserId = token.userId;
+    
+    // 🟢 FIX: Extract Context from Token
+    // Whop token usually contains these if opened inside an experience/company context
+    experienceId = token.experienceId || "";
+    companyId = token.companyId || "";
+    
     const roles = token.roles || [];
 
     // 2. Determine Role
@@ -38,7 +48,7 @@ export default async function RootLayout({
     );
     verifiedRole = isAdmin ? "admin" : "member";
 
-    // 3. 🟢 SECURE SYNC: Update DB immediately if role changed
+    // 3. Secure Role Sync
     if (verifiedUserId) {
         const { data: profile } = await supabaseAdmin
             .from('profiles')
@@ -55,7 +65,7 @@ export default async function RootLayout({
         }
     }
     
-    console.log(`✅ Auth Success: ${verifiedUserId} (${verifiedRole})`);
+    console.log(`✅ Auth Success: ${verifiedUserId} (${verifiedRole}) Exp: ${experienceId}`);
 
   } catch (e) {
     console.error("❌ Server Auth Failed (Layout):", e);
@@ -67,7 +77,7 @@ export default async function RootLayout({
         <WhopApp>
           <AppProvider 
             verifiedUserId={verifiedUserId || 'GUEST'} 
-            experienceId={experienceId}
+            experienceId={experienceId || 'no_experience'} // Fallback only if truly missing
             verifiedRole={verifiedRole} 
           >
             {children}

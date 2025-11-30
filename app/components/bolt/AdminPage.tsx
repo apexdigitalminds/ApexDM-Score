@@ -19,18 +19,22 @@ import type {
 import Leaderboard from "./Leaderboard";
 import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
+import ConfirmationModal from "./ConfirmationModal"; // 🟢 ADDED: New Professional Modal
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
-// 🟢 PROFESSIONAL TOGGLE SWITCH
+// 🟢 PROFESSIONAL TOGGLE SWITCH (Optimized for speed)
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
     <div 
-        onClick={() => onChange(!checked)}
-        className={`relative w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
+        onClick={(e) => {
+            e.stopPropagation();
+            onChange(!checked);
+        }}
+        className={`relative w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out ${
             checked ? 'bg-green-500' : 'bg-slate-600'
         }`}
     >
         <div 
-            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
                 checked ? 'translate-x-6' : 'translate-x-0'
             }`}
         ></div>
@@ -78,6 +82,17 @@ export default function AdminPage() {
   
   const [targetUserItemLogs, setTargetUserItemLogs] = useState<any[]>([]);
 
+  // 🟢 NEW: Modal State
+  const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        isDestructive?: boolean;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+
+  const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
+
   useEffect(() => { if (!targetUserId && allUsers.length > 0) setTargetUserId(allUsers[0].id); }, [allUsers, targetUserId]);
 
   useEffect(() => {
@@ -124,11 +139,9 @@ export default function AdminPage() {
   const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
   const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
   
-  // 🟢 UPDATED: Default color to White
   const [metaColor, setMetaColor] = useState("#ffffff");
   const [metaText, setMetaText] = useState("");
   const [metaUrl, setMetaUrl] = useState("");
-  // 🟢 NEW: Position State
   const [metaPosition, setMetaPosition] = useState<'prefix' | 'suffix'>('prefix');
 
   // USER EDIT STATE
@@ -156,7 +169,21 @@ export default function AdminPage() {
   const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); };
   const handleRewardSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (editRewardAction) { await handleUpdateReward(editRewardAction, { xpGained: newActionXp }); showNotification("Reward updated."); } else { await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp }); showNotification("Reward added."); } cancelEditReward(); };
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
-  const handleDeleteRewardClick = async (actionType: string) => { if (window.confirm(`Archive/Delete "${actionType}"?`)) { await handleDeleteReward(actionType); showNotification("Reward processed."); } };
+  
+  const handleDeleteRewardClick = (actionType: string) => { 
+      setModalConfig({
+          isOpen: true,
+          title: "Archive Reward?",
+          message: `Are you sure you want to archive "${actionType}"? Users won't earn XP for this anymore.`,
+          isDestructive: true,
+          onConfirm: async () => {
+              await handleDeleteReward(actionType); 
+              showNotification("Reward processed.");
+              closeModal();
+          }
+      });
+  };
+  
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); };
   const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive } as any); };
 
@@ -164,7 +191,21 @@ export default function AdminPage() {
   const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
   const handleAddOrEditBadge = async (e: React.FormEvent) => { e.preventDefault(); const badgeData = { description: newBadgeDesc, icon: newBadgeIcon, color: newBadgeColor }; if (editBadgeName) { await handleUpdateBadge(editBadgeName, badgeData); showNotification("Badge updated."); } else { await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); showNotification("Badge added."); } cancelEditBadge(); };
   const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); } else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon); } };
-  const handleDeleteBadgeClick = async (name: string) => { if(window.confirm(`Archive/Delete "${name}"?`)) { await handleDeleteBadge(name); showNotification("Badge processed."); }};
+  
+  const handleDeleteBadgeClick = (name: string) => { 
+      setModalConfig({
+          isOpen: true,
+          title: "Archive Badge?",
+          message: `Archive "${name}"? It will be hidden from new users.`,
+          isDestructive: true,
+          onConfirm: async () => {
+              await handleDeleteBadge(name); 
+              showNotification("Badge archived.");
+              closeModal();
+          }
+      });
+  };
+
   const handleRestoreBadgeClick = async (name: string) => { await handleRestoreBadge(name); showNotification("Restored."); };
   const handleToggleBadgeActive = async (name: string, isActive: boolean) => { await handleUpdateBadge(name, { isActive }); };
 
@@ -176,7 +217,6 @@ export default function AdminPage() {
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
   
-  // FIX: Converted null to undefined
   const handleQuestSubmit = async (e: React.FormEvent) => { 
       e.preventDefault(); 
       const q = { 
@@ -191,7 +231,21 @@ export default function AdminPage() {
       showNotification("Quest saved."); 
       resetQuestForm(); 
   };
-  const handleDeleteQuestClick = async (q: Quest) => { if(window.confirm(`Archive/Delete quest "${q.title}"?`)) { await handleDeleteQuest(q.id); showNotification("Quest processed."); }};
+
+  const handleDeleteQuestClick = (q: Quest) => { 
+      setModalConfig({
+          isOpen: true,
+          title: "Archive Quest",
+          message: `Are you sure you want to archive "${q.title}"?`,
+          isDestructive: true,
+          onConfirm: async () => {
+              await handleDeleteQuest(q.id); 
+              showNotification("Quest archived.");
+              closeModal();
+          }
+      });
+  };
+
   const handleRestoreQuestClick = async (q: Quest) => { if(handleRestoreQuest) { await handleRestoreQuest(q.id); showNotification("Quest restored."); }};
   const handleToggleQuestClick = async (q: Quest) => { await handleToggleQuest(q.id, !q.isActive); };
 
@@ -235,14 +289,43 @@ export default function AdminPage() {
       showNotification("Item saved."); resetItemForm(); 
   };
 
-  const handleDeleteItemClick = async (i: StoreItem) => { if(window.confirm("Delete item?")) { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); }};
+  const handleDeleteItemClick = (i: StoreItem) => { 
+      setModalConfig({
+          isOpen: true,
+          title: "Delete Item?",
+          message: `Are you sure you want to delete "${i.name}" from the store?`,
+          isDestructive: true,
+          onConfirm: async () => {
+              await handleDeleteStoreItem(i.id); 
+              showNotification("Item deleted.");
+              closeModal();
+          }
+      });
+  };
+
   const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); };
   const handleToggleStoreItem = async (id: string, isActive: boolean) => { await handleToggleStoreItemActive(id, isActive); };
 
   // USER HANDLERS
   const handleAdminStatUpdate = async () => { if(!targetUser) return; await adminUpdateUserStats(targetUser.id, editXp, editStreak, editFreezes); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Stats updated."); };
   const handleAdminRoleUpdate = async () => { if(!targetUser) return; await adminUpdateUserRole(targetUser.id, editRole); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Role updated."); };
-  const handleAdminBan = async (h: number|null) => { if(!targetUser) return; if(window.confirm(`Confirm ban?`)) { await adminBanUser(targetUser.id, h); setTimeout(async () => { await fetchAllUsers(); }, 500); showNotification("Ban status updated."); }};
+  
+  const handleAdminBan = (h: number|null) => { 
+      if(!targetUser) return; 
+      setModalConfig({
+          isOpen: true,
+          title: h ? "Ban User (24h)" : "Permaban User",
+          message: `Are you sure you want to ban ${targetUser.username}?`,
+          isDestructive: true,
+          onConfirm: async () => {
+             await adminBanUser(targetUser.id, h); 
+             setTimeout(async () => { await fetchAllUsers(); }, 500); 
+             showNotification("Ban status updated.");
+             closeModal();
+          }
+      });
+  };
+
   const handlePasswordReset = async () => { if(!targetUser) return; const e = await adminGetUserEmail(targetUser.id); if(e) alert(`Email: ${e}`); };
   const handleViewLogs = async () => { if(!targetUser) return; const l = await getAllUserActions(targetUser.id); setLogActions(l); setIsLogModalOpen(true); };
   const handleTierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => { const newTier = e.target.value as 'Core' | 'Pro' | 'Elite'; const success = await adminUpdateCommunityTier(newTier); showNotification(success ? `Tier changed.` : `Failed.`); };
@@ -251,7 +334,6 @@ export default function AdminPage() {
   const isSelf = targetUser?.id === adminUser?.id;
   const isDev = process.env.NODE_ENV === 'development';
 
-  // 🟢 FIX: STABLE SORTING
   const filteredRewards = Object.entries(rewardsConfig)
       .filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
@@ -264,14 +346,12 @@ export default function AdminPage() {
       .filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-  // 🟢 FIX: Store Sorting
   const filteredStore = storeItems
       .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived)
       .sort((a, b) => a.name.localeCompare(b.name)); 
 
   const popularEmojis = ["🏆", "🥇", "🥈", "🥉", "🏅", "🎖️", "🔥", "🚀", "💎", "💰", "🛡️", "⚔️", "🏹", "🧪", "📜", "❤️", "⭐", "👑", "💀", "⚡", "🦄", "🐲", "👾", "🍄", "🎓", "🎟️", "🎨", "🎵", "📣", "🤝", "🌍", "🎁", "💡", "⚙️", "🔒", "🔑"];
 
-  // Helper to render icon preview
   const RenderIconPreview = ({ iconName, color }: { iconName: string, color?: string }) => {
       const IconComponent = iconMap[iconName] || iconMap['Snowflake'];
       return <IconComponent className="w-5 h-5" style={{ color: color || '#a855f7' }} />;
@@ -279,6 +359,16 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* 🟢 NEW: Confirmation Modal */}
+      <ConfirmationModal 
+          isOpen={modalConfig.isOpen}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          onConfirm={modalConfig.onConfirm}
+          onCancel={closeModal}
+          isDestructive={modalConfig.isDestructive}
+      />
+
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
@@ -503,7 +593,7 @@ export default function AdminPage() {
                                 {!b.isArchived && (
                                     <ToggleSwitch checked={b.isActive !== false} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                 )}
-                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 text-xs font-bold">Delete</button><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 text-xs font-bold">Edit</button></>}
                             </div>
                         </div>
                     )})}
@@ -527,7 +617,6 @@ export default function AdminPage() {
 
                 {isFeatureEnabled('store') ? (
                     <>
-                        {/* ... Store Form (Unchanged) ... */}
                          <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
                              <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
@@ -561,7 +650,6 @@ export default function AdminPage() {
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                     <div className="flex gap-2 items-center">
-                                        {/* 🟢 NEW: Icon Preview */}
                                         <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
                                             <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                         </div>
@@ -597,7 +685,6 @@ export default function AdminPage() {
                                           </div>
                                           <div>
                                               <label className="block text-xs text-slate-400 mb-1">Position</label>
-                                              {/* Title Position */}
                                               <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
                                                   <option value="prefix">Prefix (Start)</option>
                                                   <option value="suffix">Suffix (End)</option>
@@ -608,7 +695,6 @@ export default function AdminPage() {
                                 {(itemType === 'BANNER' || itemType === 'FRAME') && (
                                       <div>
                                           <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
-                                          {/* File Upload for Banner */}
                                           {metaUrl && (
                                               <div className="mb-2">
                                                   <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600"/>
@@ -621,7 +707,6 @@ export default function AdminPage() {
                                               onChange={async (e) => {
                                                   const file = e.target.files?.[0];
                                                   if (file) {
-                                                      // Using admin's ID for upload path
                                                       const url = await api.uploadAvatar(file, adminUser?.id); 
                                                       if (url) setMetaUrl(url);
                                                   }
@@ -646,7 +731,6 @@ export default function AdminPage() {
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            {/* Icon Display */}
                                             <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
                                                 <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                             </div>
@@ -669,7 +753,7 @@ export default function AdminPage() {
              </div>
       )}
 
-      {/* SETTINGS TAB (Keeping existing logic) */}
+      {/* SETTINGS TAB */}
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
@@ -697,10 +781,52 @@ export default function AdminPage() {
                 </div>
             ) : <FeatureLock title="White-Label Branding" description="Remove branding." requiredTier="Elite"><div className="space-y-6 pt-2"><div className="flex items-center justify-between"><div className="h-6 w-32 bg-slate-600 rounded"></div><div className="h-6 w-12 bg-purple-600/30 rounded-full"></div></div><div className="h-px w-full bg-slate-700"></div><div className="h-4 w-3/4 bg-slate-700 rounded"></div><div className="h-4 w-1/2 bg-slate-700 rounded"></div></div></FeatureLock>}
 
-            {isDev && (
+{isDev && (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
                     <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-slate-400 mb-1">Simulate Tier</label><select value={community?.tier?.toLowerCase() || "core"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2"><option value="core">Core (Basic)</option><option value="pro">Pro (Quests)</option><option value="elite">Elite (Store)</option></select></div><div className="flex items-end"><button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="w-full bg-slate-700 text-white py-2 rounded hover:bg-slate-600 text-sm">Simulate Renewal (+XP)</button></div></div>
+                    <div className="space-y-4">
+                         {/* Tier Sim */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
+                                <select value={community?.tier?.toLowerCase() || "core"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
+                                    <option value="core">Core (Basic)</option>
+                                    <option value="pro">Pro (Quests)</option><option value="elite">Elite (Store)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        {/* Action Simulators */}
+                        <div>
+                            <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
+                            <div className="flex flex-wrap gap-2">
+                                <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                    Simulate Renewal
+                                </button>
+                                <button onClick={async () => { 
+                                    if(!targetUserId) return; 
+                                    await handleRecordAction(targetUserId, 'post_message', 'manual'); 
+                                    showNotification("Simulated: Post Message"); 
+                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                    Simulate Message
+                                </button>
+                                <button onClick={async () => { 
+                                    if(!targetUserId) return; 
+                                    await handleRecordAction(targetUserId, 'complete_module', 'manual'); 
+                                    showNotification("Simulated: Lesson Complete"); 
+                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                    Simulate Lesson
+                                </button>
+                                <button onClick={async () => { 
+                                    if(!targetUserId) return; 
+                                    await handleRecordAction(targetUserId, 'invite_friend', 'manual'); 
+                                    showNotification("Simulated: Invite"); 
+                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                    Simulate Invite
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

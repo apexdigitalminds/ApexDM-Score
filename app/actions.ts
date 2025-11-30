@@ -244,18 +244,47 @@ export async function adminUpdateCommunityTierAction(tier: any) {
     return !error;
 }
 
-// STORE ITEMS
+// --- 🛠️ FIXED: STORE ITEMS (CamelCase -> Snake_case Mapping) ---
 export async function adminCreateStoreItemAction(itemData: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
-    const { error } = await supabaseAdmin.from('store_items').insert({ ...itemData, community_id: communityId });
+    
+    // Explicit mapping to prevent data loss
+    const dbPayload = {
+        community_id: communityId,
+        name: itemData.name,
+        description: itemData.description,
+        cost_xp: itemData.cost, // FIXED
+        icon: itemData.icon,
+        item_type: itemData.itemType, // FIXED
+        is_available: itemData.isActive, // FIXED
+        duration_hours: itemData.durationHours, // FIXED
+        modifier: itemData.modifier,
+        metadata: itemData.metadata
+    };
+
+    const { error } = await supabaseAdmin.from('store_items').insert(dbPayload);
     return !error;
 }
+
 export async function adminUpdateStoreItemAction(itemId: string, itemData: any) {
     await ensureAdmin();
-    const { error } = await supabaseAdmin.from('store_items').update(itemData).eq('id', itemId);
+    
+    const updates: any = {};
+    if (itemData.name) updates.name = itemData.name;
+    if (itemData.description) updates.description = itemData.description;
+    if (itemData.cost) updates.cost_xp = itemData.cost; // FIXED
+    if (itemData.icon) updates.icon = itemData.icon;
+    if (itemData.itemType) updates.item_type = itemData.itemType; // FIXED
+    if (itemData.isActive !== undefined) updates.is_available = itemData.isActive; // FIXED
+    if (itemData.durationHours !== undefined) updates.duration_hours = itemData.durationHours; // FIXED
+    if (itemData.modifier !== undefined) updates.modifier = itemData.modifier;
+    if (itemData.metadata) updates.metadata = itemData.metadata;
+
+    const { error } = await supabaseAdmin.from('store_items').update(updates).eq('id', itemId);
     return !error;
 }
+
 export async function adminDeleteStoreItemAction(itemId: string) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('store_items').update({ is_archived: true, is_available: false }).eq('id', itemId);
@@ -283,7 +312,7 @@ export async function adminUpdateRewardAction(actionType: string, data: any) {
     await ensureAdmin();
     const updates: any = {};
     if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
-    if (data.isActive !== undefined) updates.is_active = data.isActive;
+    if (data.isActive !== undefined) updates.is_active = data.isActive; // FIXED
     const { error } = await supabaseAdmin.from('reward_actions').update(updates).eq('action_type', actionType);
     if (!error) revalidatePath('/admin');
     return !error;
@@ -308,6 +337,7 @@ export async function adminRestoreRewardAction(actionType: string) {
 export async function adminAddBadgeAction(name: string, config: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
+    // This allows emoji icons to pass through correctly via ...config
     const { error } = await supabaseAdmin.from('badges').insert({ community_id: communityId, name, ...config });
     return !error;
 }
@@ -318,7 +348,8 @@ export async function adminUpdateBadgeAction(name: string, config: any) {
     if (config.description !== undefined) updates.description = config.description;
     if (config.icon !== undefined) updates.icon = config.icon;
     if (config.color !== undefined) updates.color = config.color;
-    if (config.isActive !== undefined) updates.is_active = config.isActive;
+    if (config.isActive !== undefined) updates.is_active = config.isActive; // FIXED mapping
+    
     const { error } = await supabaseAdmin.from('badges').update(updates).eq('name', name).eq('community_id', communityId);
     return !error;
 }
@@ -343,29 +374,44 @@ export async function adminRestoreBadgeAction(name: string) {
     return { success: !error, message: error ? error.message : "Restored" };
 }
 
-// QUESTS
+// --- 🛠️ FIXED: QUESTS ---
 export async function adminCreateQuestAction(questData: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
     let badgeId = questData.badgeRewardId;
+    
+    // Resolve badge name to ID if needed
     if (!badgeId && questData.badgeReward) {
             const { data: badge } = await supabaseAdmin.from('badges').select('id').eq('name', questData.badgeReward).eq('community_id', communityId).single();
             if (badge) badgeId = badge.id;
     }
+    
     const { data: newQuest, error } = await supabaseAdmin.from('quests').insert({
-        community_id: communityId, title: questData.title, description: questData.description, xp_reward: questData.xpReward, badge_reward_id: badgeId, is_active: true, 
+        community_id: communityId, 
+        title: questData.title, 
+        description: questData.description, 
+        xp_reward: questData.xpReward, 
+        badge_reward_id: badgeId, 
+        is_active: true, 
     }).select().single();
-    if (error) console.error(error);
+    
     if (error || !newQuest) return false;
 
+    // FIX: Map 'actionType' -> 'action_type' and ENSURE DESCRIPTION IS NOT NULL
     const tasksToInsert = (questData.tasks ?? []).map((task: any) => ({
-        quest_id: newQuest.id, action_type: task.actionType, target_count: task.targetCount, description: task.description,
+        quest_id: newQuest.id, 
+        action_type: task.actionType, 
+        target_count: task.targetCount, 
+        description: task.description || "", // 🔴 CRITICAL FIX for Red Lines
     }));
+    
     await supabaseAdmin.from('quest_tasks').insert(tasksToInsert);
     return true;
 }
+
 export async function adminUpdateQuestAction(questId: string, questData: any) {
     await ensureAdmin();
+    // 🟢 TODO: Add Task Update Logic here in future if needed
     const { error } = await supabaseAdmin.from('quests').update({
         title: questData.title, description: questData.description, xp_reward: questData.xpReward
     }).eq('id', questId);
@@ -407,7 +453,7 @@ export async function recordActionServer(userId: string, actionType: ActionType,
     return { xpGained: xp_to_add };
 }
 
-// 🟢 ANALYTICS (Server Side - Robust)
+// 🟢 ANALYTICS (Server Side - Fixed)
 export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<AnalyticsData | null> {
     try {
         const { isAdmin, communityId: tokenCommunityId } = await verifyUser();
@@ -446,6 +492,7 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         const totalUsers = allProfiles.length;
         if (totalUsers === 0) return null;
 
+        // 🛠️ ANALYTICS CALCULATION FIXES
         const activeMembers7d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit7d).length;
         const activeMembers30d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit30d).length;
         
@@ -525,7 +572,12 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         const mostPopularItem = Object.entries(itemsCounter).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "None";
 
         return {
-            engagement: { activeMembers7d: allProfiles.length, activeMembers30d: allProfiles.length, avgDailyActions: actionsToday.length, xpEarnedToday },
+            engagement: { 
+                activeMembers7d, // 🟢 FIXED: Using calculated value 
+                activeMembers30d, 
+                avgDailyActions: actionsToday.length, 
+                xpEarnedToday 
+            },
             growth: { newMembers7d: 0, churnedMembers14d },
             topPerformers, activityBreakdown, streakHealth, topXpActions, topBadges, questAnalytics,
             storeAnalytics: { totalItems, xpSpent, mostPopularItem, totalSpent: xpSpent, items: Object.entries(itemsCounter).map(([name, count]) => ({ name, count })) },
