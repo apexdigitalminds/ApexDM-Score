@@ -45,34 +45,37 @@ const DashboardPage: React.FC = () => {
         rewardsConfig,
         getUserInventory,
         getActiveEffects,
-        getUserById // 🟢 Needed to fetch fresh metadata
+        getUserById,
+        // 🟢 IMPORTED: Context Refreshers to update Layout/Profile/Leaderboard
+        refreshSelectedUser,
+        fetchAllUsers
     } = useApp();
 
-    // Local State
     const [isSyncing, setIsSyncing] = useState(false);
     const [userActions, setUserActions] = useState<Action[]>([]);
     
     // Data States
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
     const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
-    const [currentMetadata, setCurrentMetadata] = useState<any>(null); // 🟢 New: Local metadata state
+    const [currentMetadata, setCurrentMetadata] = useState<any>(null); 
     
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
     
-    // NOTE: Removed 'refreshKey' for InventorySection to prevent state wiping.
-    // We rely on prop updates instead.
-
     // Helpers
     const showNotification = (message: string) => {
         setNotification(message);
         setTimeout(() => setNotification(''), 3000);
     };
 
-    // Refresh Logic
+    // 🟢 FIXED REFRESH LOGIC: Updates Global Context + Local Data + Server Data
     const triggerRefresh = async () => {
-        await fetchData(); 
-        router.refresh(); 
+        await Promise.all([
+            fetchData(),            // 1. Refresh Dashboard Local Data (Inventory/Effects)
+            refreshSelectedUser(),  // 2. Refresh Global Context (Updates Top Menu / Profile Page)
+            fetchAllUsers()         // 3. Refresh Global Leaderboard
+        ]);
+        router.refresh();           // 4. Refresh Server Components
     };
 
     const fetchData = async () => {
@@ -94,7 +97,7 @@ const DashboardPage: React.FC = () => {
                     setActiveEffects(effects);
                 }
 
-                // 4. 🟢 Fetch Fresh User Metadata (Crucial for Equip/Unequip reliability)
+                // 4. Fetch Fresh User Metadata
                 if (getUserById) {
                     const freshUser = await getUserById(selectedUser.id);
                     if (freshUser && freshUser.metadata) {
@@ -145,7 +148,6 @@ const DashboardPage: React.FC = () => {
     // Initial Load Effect
     useEffect(() => {
         fetchData();
-        // Initialize metadata from context initially
         if (selectedUser?.metadata) {
             setCurrentMetadata(selectedUser.metadata);
         }
@@ -208,7 +210,6 @@ const DashboardPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* 🟢 FIXED: Removed 'key' prop to maintain state, passing 'userMetadata' explicitly */}
             <InventorySection 
                 inventory={inventory}
                 activeEffects={activeEffects}
