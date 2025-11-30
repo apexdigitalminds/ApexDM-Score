@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; 
 import { useApp } from '@/context/AppContext';
-import type { Action, ActionType } from '@/types';
+import type { Action, ActionType, UserInventoryItem, ActiveEffect } from '@/types'; 
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
@@ -34,6 +35,7 @@ const StreakFreezeIndicator: React.FC<{ count: number }> = ({ count }) => (
 // --- Main Component ---
 
 const DashboardPage: React.FC = () => {
+    const router = useRouter();
     const { 
         isLoading, 
         selectedUser, 
@@ -41,13 +43,22 @@ const DashboardPage: React.FC = () => {
         getUserActions, 
         handleRecordAction, 
         rewardsConfig,
+        // 🟢 CORRECTLY IMPORTED from AppContext
+        getUserInventory,
+        getActiveEffects
     } = useApp();
 
     // Local State
     const [isSyncing, setIsSyncing] = useState(false);
     const [userActions, setUserActions] = useState<Action[]>([]);
+    
+    // 🟢 FIXED: Local state for Inventory & Effects (since they aren't on Profile)
+    const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
+    const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
+    
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Helpers
     const showNotification = (message: string) => {
@@ -55,10 +66,34 @@ const DashboardPage: React.FC = () => {
         setTimeout(() => setNotification(''), 3000);
     };
 
+    // 🟢 REFRESH LOGIC
+    const triggerRefresh = async () => {
+        setRefreshKey(prev => prev + 1); 
+        await fetchData(); 
+        router.refresh(); 
+    };
+
     const fetchData = async () => {
         if (selectedUser) {
-            const actions = await getUserActions(selectedUser.id);
-            setUserActions(actions);
+            try {
+                // 1. Fetch Actions
+                const actions = await getUserActions(selectedUser.id);
+                setUserActions(actions);
+
+                // 2. Fetch Inventory (Fixes 'property does not exist' error)
+                if (getUserInventory) {
+                    const items = await getUserInventory(selectedUser.id);
+                    setInventory(items);
+                }
+
+                // 3. Fetch Active Effects
+                if (getActiveEffects) {
+                    const effects = await getActiveEffects(selectedUser.id);
+                    setActiveEffects(effects);
+                }
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+            }
         }
     };
 
@@ -71,7 +106,7 @@ const DashboardPage: React.FC = () => {
             
             if (data.success) {
                 showNotification(data.message || "Sync successful!");
-                await fetchData(); // Refresh dashboard data
+                await triggerRefresh();
             } else {
                 showNotification(data.message || "Sync completed with no changes.");
             }
@@ -91,7 +126,7 @@ const DashboardPage: React.FC = () => {
             setXpGained(result.xpGained);
             showNotification(`+${result.xpGained} XP for ${actionType.replace(/_/g, ' ')}!`);
             setTimeout(() => setXpGained(null), 2000);
-            fetchData(); 
+            triggerRefresh(); 
         }
     };
 
@@ -163,13 +198,18 @@ const DashboardPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Inventory Section */}
-            <InventorySection />
+            {/* 🟢 FIXED: Passing local 'inventory' and 'activeEffects' state */}
+            <InventorySection 
+                key={refreshKey} 
+                inventory={inventory}
+                activeEffects={activeEffects}
+                onRefresh={triggerRefresh}
+            />
 
             {/* Leaderboard & Badges */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <Leaderboard users={allUsers} currentUserId={currentUser.id} />
+                    <Leaderboard key={`lb-${refreshKey}`} users={allUsers} currentUserId={currentUser.id} />
                 </div>
                 <div>
                     <BadgeDisplay badges={currentUser.badges ?? []} />

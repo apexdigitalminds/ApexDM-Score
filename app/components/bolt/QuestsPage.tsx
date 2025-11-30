@@ -43,6 +43,9 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                         const safeActionType = task.actionType || 'unknown';
                         const safeTarget = task.targetCount || 1;
                         
+                        // 🟢 FIXED: Auto-generate description if missing
+                        const description = task.description || `${safeActionType.replace(/_/g, ' ')} (${safeTarget}x)`;
+
                         const currentProgress = progress?.progress?.[safeActionType] || 0;
                         const taskComplete = currentProgress >= safeTarget;
                         const progressPercentage = Math.min((currentProgress / safeTarget) * 100, 100);
@@ -52,7 +55,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                                 <div className="flex justify-between items-center text-sm mb-1">
                                     <div className="flex items-center gap-2">
                                         <CheckCircleIcon className={`w-5 h-5 transition-colors ${taskComplete ? 'text-green-400' : 'text-slate-600'}`} />
-                                        <span className={`${taskComplete ? 'text-slate-300' : 'text-slate-400'}`}>{task.description}</span>
+                                        <span className={`${taskComplete ? 'text-slate-300' : 'text-slate-400'}`}>{description}</span>
                                     </div>
                                     <span className="font-mono text-slate-400">{currentProgress}/{safeTarget}</span>
                                 </div>
@@ -100,12 +103,9 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
 
 const QuestsPage: React.FC = () => {
     const { selectedUser, questsAdmin, userQuestProgress, claimQuestReward, isFeatureEnabled } = useApp();
-    
-    // 1. Hooks declared FIRST
     const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [claimingId, setClaimingId] = useState<string | null>(null);
 
-    // 2. The Lock Check happens HERE (Top level)
     if (!isFeatureEnabled('quests')) {
         return (
             <LockedPageMockup 

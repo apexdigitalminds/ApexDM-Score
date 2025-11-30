@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import type { UserInventoryItem, StoreItem } from '@/types';
+import type { UserInventoryItem } from '@/types';
 import { api } from '@/services/api';
 import { SparklesIcon, ClockIcon } from './icons';
 
-// Helper Icons (Defined inline to ensure no import errors)
+// Helper Icons
 const ChestIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
         <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
@@ -37,7 +37,16 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const { selectedUser, activateInventoryItem } = useApp();
     const [toast, setToast] = useState<{msg: string, type: 'success'|'error'} | null>(null);
     
-    // 🟢 SPEED FIX: Optimistic Loading States
+    // 🟢 OPTIMISTIC STATE: Stores a local copy of metadata to update UI immediately
+    const [localMetadata, setLocalMetadata] = useState<any>(null);
+    
+    // Sync local state with real user state when it changes
+    useEffect(() => {
+        if (selectedUser?.metadata) {
+            setLocalMetadata(selectedUser.metadata);
+        }
+    }, [selectedUser?.metadata]);
+
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
     const [unequippingType, setUnequippingType] = useState<string | null>(null);
 
@@ -49,8 +58,18 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const handleEquip = async (item: UserInventoryItem) => {
         if (!item.itemDetails || !selectedUser) return;
         
-        // ⚡ Optimistic: Hide item immediately
+        // ⚡ Optimistic: Update local metadata immediately so item disappears from list
         setProcessingIds(prev => new Set(prev).add(item.id));
+        const prevMetadata = { ...localMetadata };
+
+        // Determine what field to update based on type
+        const type = item.itemDetails.itemType;
+        const newMeta = { ...localMetadata };
+        if (type === 'NAME_COLOR') newMeta.nameColor = item.itemDetails.metadata?.color;
+        if (type === 'TITLE') newMeta.title = item.itemDetails.metadata?.text;
+        if (type === 'BANNER') newMeta.bannerUrl = item.itemDetails.metadata?.imageUrl;
+        if (type === 'AVATAR_PULSE') newMeta.avatarPulseColor = item.itemDetails.metadata?.color;
+        setLocalMetadata(newMeta);
 
         try {
             const result = await api.equipCosmetic(selectedUser.id, item.itemDetails);
@@ -59,26 +78,43 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 if (onRefresh) onRefresh();
             } else {
                 showToast(result.message, 'error');
-                // Revert if failed
+                // Revert
+                setLocalMetadata(prevMetadata);
                 setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
             }
         } catch (e) { 
             showToast("Failed to equip.", 'error'); 
+            setLocalMetadata(prevMetadata);
             setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
         }
     };
 
     const handleUnequip = async (type: string) => {
         if (!selectedUser) return;
-        setUnequippingType(type); // Show spinner on button
+        setUnequippingType(type); 
         
+        // ⚡ Optimistic: Clear the field locally immediately
+        const prevMetadata = { ...localMetadata };
+        const newMeta = { ...localMetadata };
+        if (type === 'NAME_COLOR') delete newMeta.nameColor;
+        if (type === 'TITLE') delete newMeta.title;
+        if (type === 'BANNER') delete newMeta.bannerUrl;
+        if (type === 'AVATAR_PULSE') delete newMeta.avatarPulseColor;
+        setLocalMetadata(newMeta);
+
         try {
             const result = await api.unequipCosmetic(selectedUser.id, type);
             if (result.success) {
                 showToast("Unequipped.");
                 if (onRefresh) onRefresh();
+            } else {
+                // Revert
+                setLocalMetadata(prevMetadata);
             }
-        } catch (e) { showToast("Failed to unequip.", 'error'); }
+        } catch (e) { 
+            showToast("Failed to unequip.", 'error');
+            setLocalMetadata(prevMetadata);
+        }
         
         setUnequippingType(null);
     };
@@ -86,7 +122,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const handleUseItem = async (item: UserInventoryItem) => {
         if (!item.itemDetails) return;
         
-        // ⚡ Optimistic: Hide item immediately
         setProcessingIds(prev => new Set(prev).add(item.id));
         
         const result = await activateInventoryItem(item.id);
@@ -99,17 +134,16 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         }
     };
 
-    // Filter items that are NOT processing (Visual Speed)
     const visibleInventory = inventory.filter(i => !processingIds.has(i.id));
 
     const consumables = visibleInventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
     
+    // 🟢 UPDATED: Filter using localMetadata (which updates instantly)
     const wearables = visibleInventory.filter(i => {
         const type = i.itemDetails?.itemType || '';
         if (['INSTANT', 'TIMED_EFFECT'].includes(type)) return false;
         
-        // Hide items if they are currently equipped (metadata check)
-        const meta = selectedUser?.metadata;
+        const meta = localMetadata; // Use optimistic state
         const itemMeta = i.itemDetails?.metadata;
         if (!meta || !itemMeta) return true;
 
@@ -151,13 +185,13 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         </div>
                     )}
 
-                    {/* Equipped Cosmetics */}
+                    {/* Equipped Cosmetics (Using localMetadata for instant feedback) */}
                     <div>
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Cosmetics</h4>
-                        {selectedUser?.metadata?.nameColor && (
+                        {localMetadata?.nameColor && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: selectedUser.metadata.nameColor }}></div>
+                                    <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: localMetadata.nameColor }}></div>
                                     <span className="text-sm text-slate-300">Name Color</span>
                                 </div>
                                 <button onClick={() => handleUnequip('NAME_COLOR')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
@@ -165,21 +199,21 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 </button>
                             </div>
                         )}
-                        {selectedUser?.metadata?.title && (
+                        {localMetadata?.title && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">TITLE</span>
-                                    <span className="text-sm text-white font-bold">{selectedUser.metadata.title}</span>
+                                    <span className="text-sm text-white font-bold">{localMetadata.title}</span>
                                 </div>
                                 <button onClick={() => handleUnequip('TITLE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
                                     {unequippingType === 'TITLE' ? '...' : 'Unequip'}
                                 </button>
                             </div>
                         )}
-                        {selectedUser?.metadata?.avatarPulseColor && (
+                        {localMetadata?.avatarPulseColor && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                             <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: selectedUser.metadata.avatarPulseColor, boxShadow: `0 0 5px ${selectedUser.metadata.avatarPulseColor}` }}></div>
+                                <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
                                 <span className="text-sm text-slate-300">Avatar Pulse</span>
                             </div>
                             <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
@@ -187,10 +221,10 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </button>
                         </div>
                         )}
-                        {selectedUser?.metadata?.bannerUrl && (
+                        {localMetadata?.bannerUrl && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
-                                    <img src={selectedUser.metadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
+                                    <img src={localMetadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
                                     <span className="text-sm text-slate-300">Banner</span>
                                 </div>
                                 <button onClick={() => handleUnequip('BANNER')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
@@ -199,7 +233,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </div>
                         )}
 
-                        {activeEffects.length === 0 && !selectedUser?.metadata?.nameColor && !selectedUser?.metadata?.title && !selectedUser?.metadata?.bannerUrl && !selectedUser?.metadata?.avatarPulseColor && (
+                        {activeEffects.length === 0 && !localMetadata?.nameColor && !localMetadata?.title && !localMetadata?.bannerUrl && !localMetadata?.avatarPulseColor && (
                             <p className="text-slate-500 text-sm italic text-center py-4">No active items.</p>
                         )}
                     </div>
