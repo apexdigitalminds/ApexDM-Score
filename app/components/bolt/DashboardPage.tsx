@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { useApp } from '@/context/AppContext';
-import type { Action, ActionType, UserInventoryItem, ActiveEffect } from '@/types'; 
+import type { Action, ActionType, UserInventoryItem, ActiveEffect, Profile } from '@/types'; 
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
@@ -43,22 +43,25 @@ const DashboardPage: React.FC = () => {
         getUserActions, 
         handleRecordAction, 
         rewardsConfig,
-        // 🟢 CORRECTLY IMPORTED from AppContext
         getUserInventory,
-        getActiveEffects
+        getActiveEffects,
+        getUserById // 🟢 Needed to fetch fresh metadata
     } = useApp();
 
     // Local State
     const [isSyncing, setIsSyncing] = useState(false);
     const [userActions, setUserActions] = useState<Action[]>([]);
     
-    // 🟢 FIXED: Local state for Inventory & Effects (since they aren't on Profile)
+    // Data States
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
     const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
+    const [currentMetadata, setCurrentMetadata] = useState<any>(null); // 🟢 New: Local metadata state
     
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
-    const [refreshKey, setRefreshKey] = useState(0);
+    
+    // NOTE: Removed 'refreshKey' for InventorySection to prevent state wiping.
+    // We rely on prop updates instead.
 
     // Helpers
     const showNotification = (message: string) => {
@@ -66,9 +69,8 @@ const DashboardPage: React.FC = () => {
         setTimeout(() => setNotification(''), 3000);
     };
 
-    // 🟢 REFRESH LOGIC
+    // Refresh Logic
     const triggerRefresh = async () => {
-        setRefreshKey(prev => prev + 1); 
         await fetchData(); 
         router.refresh(); 
     };
@@ -80,7 +82,7 @@ const DashboardPage: React.FC = () => {
                 const actions = await getUserActions(selectedUser.id);
                 setUserActions(actions);
 
-                // 2. Fetch Inventory (Fixes 'property does not exist' error)
+                // 2. Fetch Inventory 
                 if (getUserInventory) {
                     const items = await getUserInventory(selectedUser.id);
                     setInventory(items);
@@ -90,6 +92,16 @@ const DashboardPage: React.FC = () => {
                 if (getActiveEffects) {
                     const effects = await getActiveEffects(selectedUser.id);
                     setActiveEffects(effects);
+                }
+
+                // 4. 🟢 Fetch Fresh User Metadata (Crucial for Equip/Unequip reliability)
+                if (getUserById) {
+                    const freshUser = await getUserById(selectedUser.id);
+                    if (freshUser && freshUser.metadata) {
+                        setCurrentMetadata(freshUser.metadata);
+                    } else if (selectedUser.metadata) {
+                        setCurrentMetadata(selectedUser.metadata);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch dashboard data:", error);
@@ -118,7 +130,7 @@ const DashboardPage: React.FC = () => {
         }
     };
 
-    // Manual Action Handler (Dev/Admin)
+    // Manual Action Handler
     const handleAction = async (actionType: ActionType) => {
         if (!selectedUser) return;
         const result = await handleRecordAction(selectedUser.id, actionType, 'manual');
@@ -133,9 +145,12 @@ const DashboardPage: React.FC = () => {
     // Initial Load Effect
     useEffect(() => {
         fetchData();
+        // Initialize metadata from context initially
+        if (selectedUser?.metadata) {
+            setCurrentMetadata(selectedUser.metadata);
+        }
     }, [selectedUser]);
 
-    // Loading State
     if (isLoading || !selectedUser) {
         return <div className="text-center p-8 text-slate-400">Loading user data...</div>;
     }
@@ -152,7 +167,6 @@ const DashboardPage: React.FC = () => {
                     <p className="text-slate-400">Your hub for stats and inventory.</p>
                 </div>
                 
-                {/* Sync Button */}
                 <button 
                     onClick={handleSync} 
                     disabled={isSyncing}
@@ -163,16 +177,13 @@ const DashboardPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* Notifications */}
             {xpGained && <XpNotification amount={xpGained} />}
-            
             {notification && (
                 <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600 animate-pulse">
                     {notification}
                 </div>
             )}
 
-            {/* Animation Styles */}
             <style>{`
                 @keyframes fade-up-out {
                     0% { opacity: 0; transform: translate(-50%, 0); }
@@ -185,7 +196,6 @@ const DashboardPage: React.FC = () => {
                 }
             `}</style>
 
-            {/* Top Stats Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-2">
                     <XPProgress xp={currentUser.xp} />
@@ -198,25 +208,23 @@ const DashboardPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* 🟢 FIXED: Passing local 'inventory' and 'activeEffects' state */}
+            {/* 🟢 FIXED: Removed 'key' prop to maintain state, passing 'userMetadata' explicitly */}
             <InventorySection 
-                key={refreshKey} 
                 inventory={inventory}
                 activeEffects={activeEffects}
+                userMetadata={currentMetadata}
                 onRefresh={triggerRefresh}
             />
 
-            {/* Leaderboard & Badges */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <Leaderboard key={`lb-${refreshKey}`} users={allUsers} currentUserId={currentUser.id} />
+                    <Leaderboard users={allUsers} currentUserId={currentUser.id} />
                 </div>
                 <div>
                     <BadgeDisplay badges={currentUser.badges ?? []} />
                 </div>
             </div>
 
-            {/* Dev Tools (Admin Only & Dev Mode) */}
             {currentUser.role === 'admin' && isDev && (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-dashed border-slate-600">
                     <div className="flex justify-between items-center mb-4">
@@ -236,9 +244,7 @@ const DashboardPage: React.FC = () => {
                 </div>
             )}
             
-            {/* Info & Recent History */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* How to Earn */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                      <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
                      <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
@@ -252,7 +258,6 @@ const DashboardPage: React.FC = () => {
                      </div>
                 </div>
 
-                {/* Recent Actions */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                     <h3 className="text-lg font-bold text-white mb-4">Recent Actions</h3>
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">

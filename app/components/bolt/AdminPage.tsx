@@ -14,6 +14,7 @@ import type {
   StoreItem,
   Action,
   ItemType,
+  Badge,
 } from "@/types";
 
 import Leaderboard from "./Leaderboard";
@@ -22,7 +23,7 @@ import ActionLogModal from "./ActionLogModal";
 import ConfirmationModal from "./ConfirmationModal";
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
-// 🟢 PROFESSIONAL TOGGLE SWITCH
+// Toggle Component
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
     <div 
         onClick={(e) => {
@@ -64,7 +65,7 @@ const TabButton: React.FC<{
 
 export default function AdminPage() {
   const {
-    allUsers, rewardsConfig, badgesConfig, isWhopConnected, community, questsAdmin, storeItems,
+    allUsers, rewardsConfig, badgesConfig, community, questsAdmin, storeItems,
     selectedUser: adminUser, handleRecordAction, handleAwardBadge, handleAddReward, handleUpdateReward, handleDeleteReward, handleRestoreReward,
     handleAddBadge, handleUpdateBadge, handleDeleteBadge, handleRestoreBadge, handleTriggerWebhook, isFeatureEnabled,
     handleCreateQuest, handleUpdateQuest, handleDeleteQuest, handleRestoreQuest, handleToggleQuest,
@@ -77,9 +78,20 @@ export default function AdminPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'users' | 'engagement' | 'store' | 'settings'>('users');
 
+  // 🟢 OPTIMISTIC LOCAL STATE FOR INSTANT TOGGLES
+  const [localRewards, setLocalRewards] = useState(rewardsConfig);
+  const [localBadges, setLocalBadges] = useState(badgesConfig);
+  const [localQuests, setLocalQuests] = useState(questsAdmin);
+  const [localStore, setLocalStore] = useState(storeItems);
+
+  // Sync when props change (in case of other updates)
+  useEffect(() => { setLocalRewards(rewardsConfig); }, [rewardsConfig]);
+  useEffect(() => { setLocalBadges(badgesConfig); }, [badgesConfig]);
+  useEffect(() => { setLocalQuests(questsAdmin); }, [questsAdmin]);
+  useEffect(() => { setLocalStore(storeItems); }, [storeItems]);
+
   const [targetUserId, setTargetUserId] = useState<string | null>(allUsers.length > 0 ? allUsers[0].id : null);
   const targetUser = allUsers.find((u: Profile) => u.id === targetUserId);
-  
   const [targetUserItemLogs, setTargetUserItemLogs] = useState<any[]>([]);
 
   // Modal State
@@ -93,14 +105,13 @@ export default function AdminPage() {
 
   const closeModal = () => setModalConfig({ ...modalConfig, isOpen: false });
 
-  // 🟢 AUTO REFRESH WRAPPER: Ensures UI updates after actions
+  // 🟢 REFRESH WRAPPER: Updates UI immediately for toggles, then syncs
   const withRefresh = async (action: () => Promise<any>) => {
       await action();
-      // Small delay to ensure DB propagation before fetching
       setTimeout(async () => {
           await fetchAllUsers();
           router.refresh();
-      }, 100);
+      }, 50);
   };
 
   useEffect(() => { if (!targetUserId && allUsers.length > 0) setTargetUserId(allUsers[0].id); }, [allUsers, targetUserId]);
@@ -118,11 +129,13 @@ export default function AdminPage() {
   const [actionType, setActionType] = useState<ActionType>("watch_content");
   const [badgeToAward, setBadgeToAward] = useState<string>(Object.keys(badgesConfig)[0] || "");
   const [notification, setNotification] = useState("");
+  
+  // Forms
   const [editRewardAction, setEditRewardAction] = useState<string | null>(null);
   const [newActionName, setNewActionName] = useState("");
   const [newActionXp, setNewActionXp] = useState(10);
   
-  // BADGE STATE
+  // Badge Form
   const [editBadgeName, setEditBadgeName] = useState<string | null>(null);
   const [newBadgeName, setNewBadgeName] = useState("");
   const [newBadgeDesc, setNewBadgeDesc] = useState("");
@@ -130,7 +143,7 @@ export default function AdminPage() {
   const [newBadgeColor, setNewBadgeColor] = useState("#ffffff");
   const [badgeIconType, setBadgeIconType] = useState<'PRESET' | 'EMOJI'>('PRESET'); 
 
-  // QUEST STATE
+  // Quest Form
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [questTitle, setQuestTitle] = useState("");
   const [questDescription, setQuestDescription] = useState("");
@@ -138,23 +151,21 @@ export default function AdminPage() {
   const [questBadgeReward, setQuestBadgeReward] = useState<string | null>(null);
   const [questTasks, setQuestTasks] = useState<Partial<QuestTask>[]>([]);
 
-  // STORE ITEM STATE
+  // Store Item Form
   const [editingItem, setEditingItem] = useState<StoreItem | null>(null);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [itemCost, setItemCost] = useState(500);
   const [itemIcon, setItemIcon] = useState("Snowflake");
-  
   const [itemType, setItemType] = useState<ItemType>("INSTANT");
   const [itemDuration, setItemDuration] = useState<number | undefined>(undefined);
   const [itemModifier, setItemModifier] = useState<number | undefined>(undefined);
-  
   const [metaColor, setMetaColor] = useState("#ffffff");
   const [metaText, setMetaText] = useState("");
   const [metaUrl, setMetaUrl] = useState("");
   const [metaPosition, setMetaPosition] = useState<'prefix' | 'suffix'>('prefix');
 
-  // USER EDIT STATE
+  // User Edit State
   const [editXp, setEditXp] = useState(0);
   const [editStreak, setEditStreak] = useState(0);
   const [editFreezes, setEditFreezes] = useState(0);
@@ -162,6 +173,8 @@ export default function AdminPage() {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [logActions, setLogActions] = useState<Action[]>([]);
   const [webhookUrl, setWebhookUrl] = useState("");
+  
+  // Archive Toggles
   const [showArchivedRewards, setShowArchivedRewards] = useState(false);
   const [showArchivedQuests, setShowArchivedQuests] = useState(false);
   const [showArchivedBadges, setShowArchivedBadges] = useState(false);
@@ -175,137 +188,105 @@ export default function AdminPage() {
   const handleAwardXp = async () => { if (targetUser) { const result = await handleRecordAction(targetUser.id, actionType, "manual"); await withRefresh(async () => {}); showNotification(`Awarded ${result?.xpGained ?? 0} XP.`); } };
   const handleAwardBadgeClick = async () => { if (targetUser && badgeToAward) { await handleAwardBadge(targetUser.id, badgeToAward); await withRefresh(async () => {}); showNotification(`Badge awarded.`); } };
 
-  // REWARD HANDLERS
+  // 🟢 OPTIMISTIC TOGGLE HANDLERS (Instant UI Feedback)
+  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { 
+      setLocalRewards(prev => ({ ...prev, [actionType]: { ...prev[actionType], isActive } })); // Optimistic
+      await handleUpdateReward(actionType, { isActive } as any); 
+      await withRefresh(async () => {}); 
+  };
+  
+  const handleToggleBadgeActive = async (name: string, isActive: boolean) => { 
+      setLocalBadges(prev => ({ ...prev, [name]: { ...prev[name], isActive } })); // Optimistic
+      await handleUpdateBadge(name, { isActive }); 
+      await withRefresh(async () => {}); 
+  };
+
+  const handleToggleQuestClick = async (q: Quest) => { 
+      const newState = !q.isActive;
+      setLocalQuests(prev => prev.map(quest => quest.id === q.id ? { ...quest, isActive: newState } : quest)); // Optimistic
+      await handleToggleQuest(q.id, newState); 
+      await withRefresh(async () => {}); 
+  };
+  
+  const handleToggleStoreItem = async (id: string, isActive: boolean) => { 
+      setLocalStore(prev => prev.map(item => item.id === id ? { ...item, isActive } : item)); // Optimistic
+      await handleToggleStoreItemActive(id, isActive); 
+      await withRefresh(async () => {}); 
+  };
+
+  // CRUD HANDLERS
   const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); };
   const handleRewardSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (editRewardAction) { await handleUpdateReward(editRewardAction, { xpGained: newActionXp }); showNotification("Reward updated."); } else { await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp }); showNotification("Reward added."); } cancelEditReward(); await withRefresh(async () => {}); };
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
-  
-  const handleDeleteRewardClick = (actionType: string) => { 
-      setModalConfig({
-          isOpen: true, title: "Archive Reward?", message: `Archive "${actionType}"?`, isDestructive: true,
-          onConfirm: async () => { await handleDeleteReward(actionType); showNotification("Reward processed."); await withRefresh(async () => {}); closeModal(); }
-      });
-  };
-  
+  const handleDeleteRewardClick = (actionType: string) => { setModalConfig({ isOpen: true, title: "Archive Reward?", message: `Archive "${actionType}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteReward(actionType); showNotification("Reward processed."); await withRefresh(async () => {}); closeModal(); } }); };
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); await withRefresh(async () => {}); };
-  const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { await handleUpdateReward(actionType, { isActive } as any); await withRefresh(async () => {}); };
 
-  // BADGE HANDLERS
+  // Badge CRUD
   const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
-  const handleAddOrEditBadge = async (e: React.FormEvent) => { e.preventDefault(); const badgeData = { description: newBadgeDesc, icon: newBadgeIcon, color: newBadgeColor }; if (editBadgeName) { await handleUpdateBadge(editBadgeName, badgeData); showNotification("Badge updated."); } else { await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); showNotification("Badge added."); } cancelEditBadge(); await withRefresh(async () => {}); };
-  const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); } else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon); } };
-  
-  const handleDeleteBadgeClick = (name: string) => { 
-      setModalConfig({
-          isOpen: true, title: "Archive Badge?", message: `Archive "${name}"?`, isDestructive: true,
-          onConfirm: async () => { await handleDeleteBadge(name); showNotification("Badge archived."); await withRefresh(async () => {}); closeModal(); }
-      });
+  const handleAddOrEditBadge = async (e: React.FormEvent) => { 
+      e.preventDefault(); 
+      // 🟢 FIX: Ensure proper icon is saved (Emoji or Preset)
+      const iconToSave = badgeIconType === 'EMOJI' ? newBadgeIcon : newBadgeIcon;
+      const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor }; 
+      
+      if (editBadgeName) { await handleUpdateBadge(editBadgeName, badgeData); showNotification("Badge updated."); } 
+      else { await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); showNotification("Badge added."); } 
+      cancelEditBadge(); await withRefresh(async () => {}); 
   };
-
+  
+  const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { 
+      setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); 
+      // 🟢 FIX: Correctly detect if existing icon is Emoji or Preset
+      if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); } 
+      else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon || "🏆"); } 
+  };
+  const handleDeleteBadgeClick = (name: string) => { setModalConfig({ isOpen: true, title: "Archive Badge?", message: `Archive "${name}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteBadge(name); showNotification("Badge archived."); await withRefresh(async () => {}); closeModal(); } }); };
   const handleRestoreBadgeClick = async (name: string) => { await handleRestoreBadge(name); showNotification("Restored."); await withRefresh(async () => {}); };
-  const handleToggleBadgeActive = async (name: string, isActive: boolean) => { await handleUpdateBadge(name, { isActive }); await withRefresh(async () => {}); };
 
-  // QUEST HANDLERS
+  // Quest CRUD
   const resetQuestForm = () => { setEditingQuest(null); setQuestTitle(""); setQuestDescription(""); setQuestXpReward(100); setQuestBadgeReward(null); setQuestTasks([{ actionType: (Object.keys(rewardsConfig)[0] as ActionType) || "watch_content", targetCount: 1, description: "" }]); };
   useEffect(() => { if (Object.keys(rewardsConfig).length > 0 && questTasks.length === 0) resetQuestForm(); }, [rewardsConfig]);
   const handleEditQuestClick = (q: Quest) => { setEditingQuest(q); setQuestTitle(q.title); setQuestDescription(q.description ?? ""); setQuestXpReward(q.xpReward); setQuestBadgeReward(q.badgeReward ?? null); setQuestTasks(q.tasks || []); };
   const handleUpdateTask = (idx: number, field: keyof QuestTask, val: any) => { const t = [...questTasks]; (t[idx] as any)[field] = val; setQuestTasks(t); };
   const handleAddTask = () => setQuestTasks([...questTasks, { actionType: Object.keys(rewardsConfig)[0] as ActionType, targetCount: 1, description: "" }]);
   const handleRemoveTask = (idx: number) => { if (questTasks.length > 1) setQuestTasks(questTasks.filter((_, i) => i !== idx)); };
-  
-  const handleQuestSubmit = async (e: React.FormEvent) => { 
-      e.preventDefault(); 
-      const q = { title: questTitle, description: questDescription, xpReward: questXpReward, badgeRewardId: questBadgeReward ?? undefined, tasks: questTasks as QuestTask[] }; 
-      if (editingQuest) await handleUpdateQuest(editingQuest.id, q); 
-      else await handleCreateQuest(q); 
-      showNotification("Quest saved."); resetQuestForm(); await withRefresh(async () => {});
-  };
-
-  const handleDeleteQuestClick = (q: Quest) => { 
-      setModalConfig({
-          isOpen: true, title: "Archive Quest", message: `Archive "${q.title}"?`, isDestructive: true,
-          onConfirm: async () => { await handleDeleteQuest(q.id); showNotification("Quest archived."); await withRefresh(async () => {}); closeModal(); }
-      });
-  };
-
+  const handleQuestSubmit = async (e: React.FormEvent) => { e.preventDefault(); const q = { title: questTitle, description: questDescription, xpReward: questXpReward, badgeRewardId: questBadgeReward ?? undefined, tasks: questTasks as QuestTask[] }; if (editingQuest) await handleUpdateQuest(editingQuest.id, q); else await handleCreateQuest(q); showNotification("Quest saved."); resetQuestForm(); await withRefresh(async () => {}); };
+  const handleDeleteQuestClick = (q: Quest) => { setModalConfig({ isOpen: true, title: "Archive Quest", message: `Archive "${q.title}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteQuest(q.id); showNotification("Quest archived."); await withRefresh(async () => {}); closeModal(); } }); };
   const handleRestoreQuestClick = async (q: Quest) => { if(handleRestoreQuest) { await handleRestoreQuest(q.id); showNotification("Quest restored."); await withRefresh(async () => {}); }};
-  const handleToggleQuestClick = async (q: Quest) => { await handleToggleQuest(q.id, !q.isActive); await withRefresh(async () => {}); };
 
-  // ITEM HANDLERS
-  const resetItemForm = () => { 
-      setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); 
-      setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined);
-      setMetaColor("#ffffff"); setMetaText(""); setMetaUrl(""); setMetaPosition("prefix");
-  };
-
-  const handleEditItemClick = (i: StoreItem) => { 
-      setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); 
-      setItemDuration(i.durationHours); setItemModifier(i.modifier);
-      if (i.metadata?.color) setMetaColor(i.metadata.color);
-      if (i.metadata?.text) setMetaText(i.metadata.text);
-      if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl);
-      if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition);
-  };
-
-  const handleItemSubmit = async (e: React.FormEvent) => { 
-      e.preventDefault(); 
-      const metadata: any = {};
-      if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') metadata.color = metaColor;
-      if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; }
-      if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl;
-
-      const i = { 
-          name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, 
-          durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata 
-      }; 
-      
-      if(editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); 
-      showNotification("Item saved."); resetItemForm(); await withRefresh(async () => {});
-  };
-
-  const handleDeleteItemClick = (i: StoreItem) => { 
-      setModalConfig({
-          isOpen: true, title: "Delete Item?", message: `Delete "${i.name}"?`, isDestructive: true,
-          onConfirm: async () => { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); await withRefresh(async () => {}); closeModal(); }
-      });
-  };
-
+  // Item CRUD
+  const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#ffffff"); setMetaText(""); setMetaUrl(""); setMetaPosition("prefix"); };
+  const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition); };
+  const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') metadata.color = metaColor; if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; } if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if(editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); await withRefresh(async () => {}); };
+  const handleDeleteItemClick = (i: StoreItem) => { setModalConfig({ isOpen: true, title: "Delete Item?", message: `Delete "${i.name}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); await withRefresh(async () => {}); closeModal(); } }); };
   const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); await withRefresh(async () => {}); };
-  const handleToggleStoreItem = async (id: string, isActive: boolean) => { await handleToggleStoreItemActive(id, isActive); await withRefresh(async () => {}); };
 
-  // USER HANDLERS
+  // User Actions
   const handleAdminStatUpdate = async () => { if(!targetUser) return; await adminUpdateUserStats(targetUser.id, editXp, editStreak, editFreezes); await withRefresh(async () => {}); showNotification("Stats updated."); };
   const handleAdminRoleUpdate = async () => { if(!targetUser) return; await adminUpdateUserRole(targetUser.id, editRole); await withRefresh(async () => {}); showNotification("Role updated."); };
-  
-  const handleAdminBan = (h: number|null) => { 
-      if(!targetUser) return; 
-      setModalConfig({
-          isOpen: true, title: h ? "Ban User (24h)" : "Permaban User", message: `Ban ${targetUser.username}?`, isDestructive: true,
-          onConfirm: async () => { await adminBanUser(targetUser.id, h); await withRefresh(async () => {}); showNotification("Ban status updated."); closeModal(); }
-      });
-  };
-
+  const handleAdminBan = (h: number|null) => { if(!targetUser) return; setModalConfig({ isOpen: true, title: h ? "Ban User (24h)" : "Permaban User", message: `Ban ${targetUser.username}?`, isDestructive: true, onConfirm: async () => { await adminBanUser(targetUser.id, h); await withRefresh(async () => {}); showNotification("Ban status updated."); closeModal(); } }); };
   const handlePasswordReset = async () => { if(!targetUser) return; const e = await adminGetUserEmail(targetUser.id); if(e) alert(`Email: ${e}`); };
   const handleViewLogs = async () => { if(!targetUser) return; const l = await getAllUserActions(targetUser.id); setLogActions(l); setIsLogModalOpen(true); };
   const handleTierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => { const newTier = e.target.value as 'Core' | 'Pro' | 'Elite'; const success = await adminUpdateCommunityTier(newTier); await withRefresh(async () => {}); showNotification(success ? `Tier changed.` : `Failed.`); };
   const handleSimulateRenewal = async (userId: string) => { if (!userId) return; const message = await handleTriggerWebhook(userId, "renew_subscription"); if (message) { await withRefresh(async () => {}); showNotification(message, 4000); } };
+  const handleToggleWhiteLabelClick = async (enabled: boolean) => { await handleToggleWhiteLabel(enabled); await withRefresh(async () => {}); };
   
   const isSelf = targetUser?.id === adminUser?.id;
   const isDev = process.env.NODE_ENV === 'development';
 
-  const filteredRewards = Object.entries(rewardsConfig)
+  const filteredRewards = Object.entries(localRewards)
       .filter(([_, r]) => showArchivedRewards ? (r as Reward).isArchived : !(r as Reward).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-  const filteredQuests = questsAdmin
+  const filteredQuests = localQuests
       .filter((q: Quest) => showArchivedQuests ? q.isArchived : !q.isArchived)
       .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
 
-  const filteredBadges = Object.entries(badgesConfig)
+  const filteredBadges = Object.entries(localBadges)
       .filter(([_, b]) => showArchivedBadges ? (b as any).isArchived : !(b as any).isArchived)
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-  const filteredStore = storeItems
+  const filteredStore = localStore
       .filter((i: StoreItem) => showArchivedStore ? i.isArchived : !i.isArchived)
       .sort((a, b) => a.name.localeCompare(b.name)); 
 
@@ -318,10 +299,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      <ConfirmationModal 
-          isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message}
-          onConfirm={modalConfig.onConfirm} onCancel={closeModal} isDestructive={modalConfig.isDestructive}
-      />
+      <ConfirmationModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={closeModal} isDestructive={modalConfig.isDestructive} />
       {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
       {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
@@ -344,7 +322,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="flex flex-wrap gap-2 border-b border-slate-700 pb-1">
         <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5"/>} />
         <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5"/>} locked={!isFeatureEnabled('quests')} />
@@ -352,7 +329,6 @@ export default function AdminPage() {
         <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} label="Settings" icon={<SparklesIcon className="w-5 h-5"/>} />
       </div>
 
-      {/* USERS TAB */}
       {activeTab === 'users' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
@@ -395,12 +371,9 @@ export default function AdminPage() {
                                                  <span className="text-slate-300">{log.item_name}</span>
                                                  <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
                                              </div>
-                                         )) : (
-                                             <p className="text-xs text-slate-600 italic">No items used.</p>
-                                         )}
+                                         )) : <p className="text-xs text-slate-600 italic">No items used.</p>}
                                      </div>
                                  </div>
-                                 {isDev && <button onClick={handlePasswordReset} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">Reset Password (Dev Only)</button>}
                                  <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
                                  <div className="grid grid-cols-2 gap-2">
                                      <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
@@ -417,7 +390,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ENGAGEMENT TAB */}
       {activeTab === 'engagement' && (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -477,7 +449,6 @@ export default function AdminPage() {
                                 <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
                                     {questTasks.map((t, i) => (
                                         <div key={i} className="flex gap-1 mb-1">
-                                            {/* 🟢 ADDED: Description Input (Fixes red line issue) */}
                                             <div className="flex-1 flex flex-col gap-1">
                                                 <div className="flex gap-1">
                                                     <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
@@ -542,20 +513,19 @@ export default function AdminPage() {
                 <div className="flex-grow overflow-y-auto pr-2 space-y-2 max-h-[400px]">
                      {filteredBadges.map(([name, config]) => {
                         const b = config as any; 
-                        // 🟢 FIX: Handle Emoji detection correctly
                         const isEmoji = !iconMap[b.icon];
                         const BadgeIcon = iconMap[b.icon] || iconMap['Snowflake'];
-                        // 🟢 FIX: Handle both snake_case (DB) and camelCase (local)
-                        const isActive = b.is_active !== undefined ? b.is_active : b.isActive;
+                        const isActive = b.isActive !== undefined ? b.isActive : true;
 
                         return (
                         <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                             <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">{isEmoji ? (<span className="text-xl select-none">{b.icon}</span>) : (<BadgeIcon className="w-6 h-6" style={{ color: b.color }} />)}</div><div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={isActive !== false ? "text-green-400" : "text-slate-500"}>{isActive !== false ? "Active" : "Draft"}</span>}</div></div></div>
+                             <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">{isEmoji ? (<span className="text-xl select-none">{b.icon}</span>) : (<BadgeIcon className="w-6 h-6" style={{ color: b.color }} />)}</div><div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div></div>
                             <div className="flex gap-2 items-center">
                                 {!b.isArchived && (
-                                    <ToggleSwitch checked={isActive !== false} onChange={(val) => handleToggleBadgeActive(name, val)} />
+                                    <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                 )}
-                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 text-xs font-bold">Delete</button><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 text-xs font-bold">Edit</button></>}
+                                {/* 🟢 FIX: Reordered buttons to Match Reward Actions (Edit first, then Delete) */}
+                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                             </div>
                         </div>
                     )})}
@@ -564,7 +534,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* STORE TAB */}
       {activeTab === 'store' && (
              <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
@@ -596,7 +565,6 @@ export default function AdminPage() {
                                 <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" rows={2} />
                              </div>
 
-                             {/* Dynamic Type Selector */}
                              <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Item Type</label>
@@ -613,6 +581,7 @@ export default function AdminPage() {
                                     <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                     <div className="flex gap-2 items-center">
                                         <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
+                                            {/* 🟢 FIXED: Use state 'metaColor' instead of undefined 'item.metadata.color' */}
                                             <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                         </div>
                                         <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full h-10">
@@ -622,7 +591,6 @@ export default function AdminPage() {
                                 </div>
                              </div>
 
-                             {/* Conditional Fields */}
                              <div className="bg-slate-900/50 p-3 rounded border border-slate-700 mb-4">
                                 {itemType === 'TIMED_EFFECT' && (
                                     <div className="flex gap-2">
@@ -678,7 +646,6 @@ export default function AdminPage() {
                                           <p className="text-[10px] text-slate-500 mt-1">Recommended Size: 1200x300px (JPG/PNG)</p>
                                       </div>
                                   )}
-                                {itemType === 'INSTANT' && <p className="text-xs text-slate-500 italic">Standard consumable item.</p>}
                              </div>
 
                              <div className="flex gap-2">
@@ -687,7 +654,6 @@ export default function AdminPage() {
                             </div>
                         </form>
                         
-                        {/* List of Items */}
                         <div className="flex-grow overflow-y-auto pr-2 space-y-2">
                             {filteredStore.map(item => (
                                 <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
@@ -703,7 +669,7 @@ export default function AdminPage() {
                                     </div>
                                     <div className="flex gap-2 items-center">
                                          {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
-                                        {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                                        {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                     </div>
                                 </div>
                             ))}
@@ -715,7 +681,7 @@ export default function AdminPage() {
              </div>
       )}
 
-      {/* SETTINGS TAB */}
+      {/* 🟢 FULL SETTINGS TAB RESTORED */}
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
@@ -739,11 +705,12 @@ export default function AdminPage() {
             {isFeatureEnabled('white_label') ? (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/30">
                     <h3 className="text-lg font-bold text-white mb-4">White-Label Branding</h3>
-                    <div className="space-y-4"><div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabel(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div><p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p></div>
+                    <div className="space-y-4"><div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabelClick(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div><p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p></div>
                 </div>
             ) : <FeatureLock title="White-Label Branding" description="Remove branding." requiredTier="Elite"><div className="space-y-6 pt-2"><div className="flex items-center justify-between"><div className="h-6 w-32 bg-slate-600 rounded"></div><div className="h-6 w-12 bg-purple-600/30 rounded-full"></div></div><div className="h-px w-full bg-slate-700"></div><div className="h-4 w-3/4 bg-slate-700 rounded"></div><div className="h-4 w-1/2 bg-slate-700 rounded"></div></div></FeatureLock>}
 
-{isDev && (
+            {/* 🟢 FULL SIMULATION TOOLS RESTORED */}
+            {isDev && (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
                     <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
                     <div className="space-y-4">

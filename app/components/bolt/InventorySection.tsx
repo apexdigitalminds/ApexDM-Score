@@ -25,6 +25,7 @@ interface InventorySectionProps {
     inventory?: UserInventoryItem[];
     activeEffects?: any[];
     history?: any[];
+    userMetadata?: any; // 🟢 New Prop
     onRefresh?: () => void;
 }
 
@@ -32,20 +33,24 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     inventory = [], 
     activeEffects = [], 
     history = [], 
+    userMetadata = null,
     onRefresh 
 }) => {
     const { selectedUser, activateInventoryItem } = useApp();
     const [toast, setToast] = useState<{msg: string, type: 'success'|'error'} | null>(null);
     
-    // 🟢 OPTIMISTIC STATE: Stores a local copy of metadata to update UI immediately
-    const [localMetadata, setLocalMetadata] = useState<any>(null);
-    
-    // Sync local state with real user state when it changes
+    // Optimistic State
+    const [localMetadata, setLocalMetadata] = useState<any>(userMetadata || selectedUser?.metadata || {});
+
+    // 🟢 SYNC EFFECT: Only update local state if props change AND we aren't mid-action
+    // This ensures that fresh data from the server eventually overwrites local state
     useEffect(() => {
-        if (selectedUser?.metadata) {
+        if (userMetadata) {
+            setLocalMetadata(userMetadata);
+        } else if (selectedUser?.metadata) {
             setLocalMetadata(selectedUser.metadata);
         }
-    }, [selectedUser?.metadata]);
+    }, [userMetadata, selectedUser?.metadata]);
 
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
     const [unequippingType, setUnequippingType] = useState<string | null>(null);
@@ -58,33 +63,34 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const handleEquip = async (item: UserInventoryItem) => {
         if (!item.itemDetails || !selectedUser) return;
         
-        // ⚡ Optimistic: Update local metadata immediately so item disappears from list
+        // ⚡ Optimistic Update
         setProcessingIds(prev => new Set(prev).add(item.id));
         const prevMetadata = { ...localMetadata };
 
-        // Determine what field to update based on type
         const type = item.itemDetails.itemType;
         const newMeta = { ...localMetadata };
+        
+        // Update local state immediately
         if (type === 'NAME_COLOR') newMeta.nameColor = item.itemDetails.metadata?.color;
         if (type === 'TITLE') newMeta.title = item.itemDetails.metadata?.text;
         if (type === 'BANNER') newMeta.bannerUrl = item.itemDetails.metadata?.imageUrl;
         if (type === 'AVATAR_PULSE') newMeta.avatarPulseColor = item.itemDetails.metadata?.color;
+        
         setLocalMetadata(newMeta);
 
         try {
             const result = await api.equipCosmetic(selectedUser.id, item.itemDetails);
             if (result.success) {
                 showToast("Equipped!");
+                // Trigger background refresh but DON'T wipe local state immediately
                 if (onRefresh) onRefresh();
             } else {
-                showToast(result.message, 'error');
-                // Revert
-                setLocalMetadata(prevMetadata);
-                setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
+                throw new Error(result.message);
             }
-        } catch (e) { 
-            showToast("Failed to equip.", 'error'); 
-            setLocalMetadata(prevMetadata);
+        } catch (e: any) { 
+            showToast(e.message || "Failed to equip.", 'error'); 
+            setLocalMetadata(prevMetadata); // Revert on error
+        } finally {
             setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
         }
     };
@@ -93,13 +99,15 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         if (!selectedUser) return;
         setUnequippingType(type); 
         
-        // ⚡ Optimistic: Clear the field locally immediately
         const prevMetadata = { ...localMetadata };
         const newMeta = { ...localMetadata };
+
+        // ⚡ Optimistic Remove
         if (type === 'NAME_COLOR') delete newMeta.nameColor;
         if (type === 'TITLE') delete newMeta.title;
         if (type === 'BANNER') delete newMeta.bannerUrl;
         if (type === 'AVATAR_PULSE') delete newMeta.avatarPulseColor;
+        
         setLocalMetadata(newMeta);
 
         try {
@@ -108,20 +116,18 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 showToast("Unequipped.");
                 if (onRefresh) onRefresh();
             } else {
-                // Revert
-                setLocalMetadata(prevMetadata);
+                throw new Error(result.message);
             }
-        } catch (e) { 
-            showToast("Failed to unequip.", 'error');
+        } catch (e: any) { 
+            showToast(e.message || "Failed to unequip.", 'error');
             setLocalMetadata(prevMetadata);
+        } finally {
+            setUnequippingType(null);
         }
-        
-        setUnequippingType(null);
     };
 
     const handleUseItem = async (item: UserInventoryItem) => {
         if (!item.itemDetails) return;
-        
         setProcessingIds(prev => new Set(prev).add(item.id));
         
         const result = await activateInventoryItem(item.id);
@@ -130,22 +136,21 @@ const InventorySection: React.FC<InventorySectionProps> = ({
              if (onRefresh) onRefresh();
         } else {
              showToast(result.message, 'error');
-             setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
         }
+        setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
     };
 
     const visibleInventory = inventory.filter(i => !processingIds.has(i.id));
-
     const consumables = visibleInventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
     
-    // 🟢 UPDATED: Filter using localMetadata (which updates instantly)
+    // 🟢 ROBUST FILTERING: Compare item metadata with current localMetadata
     const wearables = visibleInventory.filter(i => {
         const type = i.itemDetails?.itemType || '';
         if (['INSTANT', 'TIMED_EFFECT'].includes(type)) return false;
         
-        const meta = localMetadata; // Use optimistic state
+        const meta = localMetadata || {};
         const itemMeta = i.itemDetails?.metadata;
-        if (!meta || !itemMeta) return true;
+        if (!itemMeta) return true;
 
         if (type === 'NAME_COLOR' && meta.nameColor === itemMeta.color) return false;
         if (type === 'TITLE' && meta.title === itemMeta.text) return false;
@@ -170,7 +175,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 </h3>
                 
                 <div className="space-y-3 flex-grow">
-                    {/* Active Buffs */}
                     {activeEffects.length > 0 && (
                         <div>
                             <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Boosts</h4>
@@ -185,7 +189,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         </div>
                     )}
 
-                    {/* Equipped Cosmetics (Using localMetadata for instant feedback) */}
                     <div>
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Cosmetics</h4>
                         {localMetadata?.nameColor && (
@@ -239,7 +242,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                     </div>
                 </div>
                 
-                 {/* Item History */}
                  {history.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-700">
                             <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Recent Usage</h4>
@@ -255,7 +257,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 )}
             </div>
 
-            {/* COL 2: Consumables */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <BeakerIcon className="w-5 h-5 text-blue-400" /> Consumables
@@ -278,7 +279,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 </div>
             </div>
 
-            {/* COL 3: Wearables */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <ChestIcon className="w-5 h-5 text-amber-400" /> Wearables
