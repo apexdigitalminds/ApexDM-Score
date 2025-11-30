@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import Link from 'next/link';
 import type { Action, ActionType } from '@/types';
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
 import Leaderboard from './Leaderboard';
-import { SnowflakeIcon } from './icons';
+import { SnowflakeIcon, ArrowPathIcon } from './icons'; 
 import ActionButton from './ActionButton';
-import InventorySection from './InventorySection'; // 🟢 NEW IMPORT
-import { ArrowPathIcon } from './icons'; // Ensure you have a refresh icon or similar
+import InventorySection from './InventorySection'; 
+
+// --- Sub-Components ---
 
 const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
     return (
@@ -31,6 +31,8 @@ const StreakFreezeIndicator: React.FC<{ count: number }> = ({ count }) => (
     </div>
 );
 
+// --- Main Component ---
+
 const DashboardPage: React.FC = () => {
     const { 
         isLoading, 
@@ -40,23 +42,18 @@ const DashboardPage: React.FC = () => {
         handleRecordAction, 
         rewardsConfig,
     } = useApp();
-    const [isSyncing, setIsSyncing] = useState(false);
 
-const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-        const res = await fetch('/api/sync', { method: 'POST' });
-        const data = await res.json();
-        showNotification(data.message); // Reuse your existing notification helper
-        if (data.success) fetchData(); // Refresh dashboard if sync found new stuff
-    } catch (e) {
-        showNotification("Sync failed. Try again later.");
-    }
-    setIsSyncing(false);
-};
+    // Local State
+    const [isSyncing, setIsSyncing] = useState(false);
     const [userActions, setUserActions] = useState<Action[]>([]);
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
+
+    // Helpers
+    const showNotification = (message: string) => {
+        setNotification(message);
+        setTimeout(() => setNotification(''), 3000);
+    };
 
     const fetchData = async () => {
         if (selectedUser) {
@@ -64,29 +61,29 @@ const handleSync = async () => {
             setUserActions(actions);
         }
     };
-<div className="flex justify-between items-start">
-    <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        {/* ... */}
-    </div>
-    <button 
-        onClick={handleSync} 
-        disabled={isSyncing}
-        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
-    >
-        <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-        {isSyncing ? 'Syncing...' : 'Sync Progress'}
-    </button>
-</div>
-    useEffect(() => {
-        fetchData();
-    }, [selectedUser]);
 
-    const showNotification = (message: string) => {
-        setNotification(message);
-        setTimeout(() => setNotification(''), 3000);
+    // Sync Handler
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/sync', { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.success) {
+                showNotification(data.message || "Sync successful!");
+                await fetchData(); // Refresh dashboard data
+            } else {
+                showNotification(data.message || "Sync completed with no changes.");
+            }
+        } catch (e) {
+            console.error("Sync error:", e);
+            showNotification("Sync failed. Check connection.");
+        } finally {
+            setIsSyncing(false);
+        }
     };
-    
+
+    // Manual Action Handler (Dev/Admin)
     const handleAction = async (actionType: ActionType) => {
         if (!selectedUser) return;
         const result = await handleRecordAction(selectedUser.id, actionType, 'manual');
@@ -98,8 +95,14 @@ const handleSync = async () => {
         }
     };
 
+    // Initial Load Effect
+    useEffect(() => {
+        fetchData();
+    }, [selectedUser]);
+
+    // Loading State
     if (isLoading || !selectedUser) {
-        return <div className="text-center p-8">Loading user data...</div>;
+        return <div className="text-center p-8 text-slate-400">Loading user data...</div>;
     }
     
     const currentUser = selectedUser!;
@@ -107,14 +110,14 @@ const handleSync = async () => {
 
     return (
         <div className="space-y-6">
-            {/* 🟢 HEADER ROW */}
+            {/* Header Row */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Dashboard</h1>
                     <p className="text-slate-400">Your hub for stats and inventory.</p>
                 </div>
                 
-                {/* 🟢 FIX: Button is always visible to everyone */}
+                {/* Sync Button */}
                 <button 
                     onClick={handleSync} 
                     disabled={isSyncing}
@@ -124,12 +127,17 @@ const handleSync = async () => {
                     {isSyncing ? 'Syncing...' : 'Sync Progress'}
                 </button>
             </div>
+
+            {/* Notifications */}
             {xpGained && <XpNotification amount={xpGained} />}
-             {notification && (
-                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600">
-                {notification}
+            
+            {notification && (
+                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600 animate-pulse">
+                    {notification}
                 </div>
             )}
+
+            {/* Animation Styles */}
             <style>{`
                 @keyframes fade-up-out {
                     0% { opacity: 0; transform: translate(-50%, 0); }
@@ -142,6 +150,7 @@ const handleSync = async () => {
                 }
             `}</style>
 
+            {/* Top Stats Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-2">
                     <XPProgress xp={currentUser.xp} />
@@ -154,9 +163,10 @@ const handleSync = async () => {
                 </div>
             </div>
 
-            {/* 🟢 NEW: Dedicated Inventory Section */}
+            {/* Inventory Section */}
             <InventorySection />
 
+            {/* Leaderboard & Badges */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                     <Leaderboard users={allUsers} currentUserId={currentUser.id} />
@@ -166,7 +176,7 @@ const handleSync = async () => {
                 </div>
             </div>
 
-            {/* Only show Manual Actions to Admin in Dev Mode */}
+            {/* Dev Tools (Admin Only & Dev Mode) */}
             {currentUser.role === 'admin' && isDev && (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-dashed border-slate-600">
                     <div className="flex justify-between items-center mb-4">
@@ -186,24 +196,28 @@ const handleSync = async () => {
                 </div>
             )}
             
+            {/* Info & Recent History */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* How to Earn */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                      <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
                      <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
-                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm">
+                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm custom-scrollbar">
                         {Object.entries(rewardsConfig).map(([action, config]) => (
-                            <div key={action} className="flex justify-between items-center p-2 bg-slate-700/50 rounded-md">
+                            <div key={action} className="flex justify-between items-center p-2 bg-slate-700/50 rounded-md hover:bg-slate-700 transition-colors">
                                 <span className="text-slate-300 capitalize">{action.replace(/_/g, ' ')}</span>
                                 <span className="font-bold text-blue-400">+{ (config as any).xpGained ?? (config as any).xp } XP</span>
                             </div>
                         ))}
                      </div>
                 </div>
+
+                {/* Recent Actions */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                     <h3 className="text-lg font-bold text-white mb-4">Recent Actions</h3>
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                         {userActions.length > 0 ? userActions.slice(0, 5).map(action => (
-                            <div key={action.id} className="flex justify-between items-center text-sm">
+                            <div key={action.id} className="flex justify-between items-center text-sm p-2 bg-slate-700/30 rounded-md">
                                 <p className="text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
                                 <span className={`font-bold ${action.xpGained >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {action.xpGained > 0 ? '+' : ''}{action.xpGained} XP
