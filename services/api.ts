@@ -29,7 +29,7 @@ import {
     adminRestoreQuestAction,
     adminToggleQuestAction,
     recordActionServer,
-    getAnalyticsDataServer, // 🟢 NOW EXPORTED & IMPORTED CORRECTLY
+    getAnalyticsDataServer, 
     syncUserAction 
 } from '@/app/actions';
 
@@ -165,13 +165,18 @@ export const api = {
     },
 
     getUserById: async (userId: string): Promise<User | null> => {
-        const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle();
+        // 🟢 FIX: Ensure we fetch user_badges too so the profile hydrates correctly
+        const { data, error } = await supabase
+            .from('profiles')
+            .select(`${PROFILE_COLUMNS}, user_badges(badges(*))`)
+            .eq('id', userId)
+            .maybeSingle();
+            
         if (error || !data) return null;
         return profileFromSupabase(data);
     },
 
     getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
-        // 🟢 UPDATED: Calls the Server Action to sync
         const userData = await syncUserAction(whopId, whopRole);
         if (userData) return profileFromSupabase(userData);
         return null;
@@ -219,7 +224,6 @@ export const api = {
     },
 
     updateCommunityBranding: async (enabled: boolean) => { 
-        // Client-side for now unless you want to lock communities table completely
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ white_label_enabled: enabled }).eq('id', communityId);
         return !error;
@@ -257,15 +261,53 @@ export const api = {
         return (data || []).map(activeEffectFromSupabase);
     },
 
-    // --- WRITE OPERATIONS (Routed to Server Actions) ---
+    // --- WRITE OPERATIONS ---
 
     recordAction: async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord') => {
         return await recordActionServer(userId, actionType, source);
     },
 
+    // 🟢 FIXED: Actually inserts the badge into the database
     awardBadge: async (userId: string, badgeName: string) => {
-        const res = await api.recordAction(userId, 'award_badge' as any, 'manual'); 
-        return { success: !!res };
+        try {
+            // 1. Find the Badge ID
+            const { data: badge } = await supabase
+                .from('badges')
+                .select('id')
+                .eq('name', badgeName)
+                .single();
+
+            if (!badge) {
+                console.error(`Badge '${badgeName}' not found.`);
+                return { success: false };
+            }
+
+            // 2. Check if user already has it
+            const { data: existing } = await supabase
+                .from('user_badges')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('badge_id', badge.id)
+                .maybeSingle();
+
+            if (existing) return { success: true }; // Already has it
+
+            // 3. Award it
+            const { error } = await supabase
+                .from('user_badges')
+                .insert({
+                    user_id: userId,
+                    badge_id: badge.id,
+                    earned_at: new Date().toISOString() // Explicit timestamp
+                });
+
+            if (error) throw error;
+            return { success: true };
+
+        } catch (e) {
+            console.error("Error awarding badge:", e);
+            return { success: false };
+        }
     },
 
     // USER WRITE ACTIONS
@@ -327,7 +369,6 @@ export const api = {
     restoreQuest: async (id: string) => { return await adminRestoreQuestAction(id); },
     updateQuestActiveStatus: async (id: string, v: boolean) => { return await adminToggleQuestAction(id, v); },
 
-    // 🟢 ANALYTICS via Server Action
     getAnalyticsData: async (dateRange: '7d' | '30d'): Promise<AnalyticsData | null> => {
         return await getAnalyticsDataServer(dateRange);
     },
