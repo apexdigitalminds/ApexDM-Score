@@ -27,34 +27,44 @@ const BadgeDisplay: React.FC<BadgeDisplayProps> = ({ badges }) => {
     return (
         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-full">
             <h3 className="text-lg font-bold text-white mb-4">Earned Badges</h3>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-items-center">
                 {badges.map((userBadge) => {
-                    // 🟢 HYDRATION: Look up config by name if details are missing
+                    // 🟢 HYDRATION: Look up config to get Description & Style
                     const config = badgesConfig[userBadge.name];
                     const iconName = userBadge.icon || config?.icon || 'Star';
                     const color = userBadge.color || config?.color || '#fbbf24';
+                    const description = userBadge.description || config?.description || "No description available";
                     
                     const isPreset = iconMapKeys.includes(iconName);
                     const IconComponent = isPreset ? iconMap[iconName] : null;
 
                     return (
-                        <div key={userBadge.id} className="flex flex-col items-center group relative">
+                        <div key={userBadge.id} className="flex flex-col items-center group relative w-20">
+                            {/* Visual Container */}
                             <div 
-                                className="w-12 h-12 rounded-xl flex items-center justify-center border-2 bg-slate-900/50 shadow-md transition-all duration-300 group-hover:scale-110"
+                                className="w-16 h-16 rounded-2xl flex items-center justify-center border-2 bg-slate-900/50 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl group-hover:border-opacity-100 border-opacity-70"
                                 style={{ borderColor: color }}
                             >
                                 {isPreset && IconComponent ? (
-                                    <IconComponent className="w-6 h-6" style={{ color }} />
+                                    <IconComponent className="w-8 h-8 drop-shadow-md transition-transform group-hover:rotate-12" style={{ color }} />
                                 ) : (
-                                    <span className="text-xl select-none filter drop-shadow-md">
+                                    <span className="text-2xl select-none filter drop-shadow-md transition-transform group-hover:scale-110">
                                         {iconName || "🏆"}
                                     </span>
                                 )}
                             </div>
                             
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none">
-                                {userBadge.name}
+                            {/* Name Label (Visible Always) */}
+                            <div className="mt-2 text-center w-full">
+                                <p className="text-[10px] font-bold text-slate-300 truncate px-1 group-hover:text-white transition-colors leading-tight">
+                                    {userBadge.name}
+                                </p>
+                            </div>
+                            
+                            {/* Tooltip (Description on Hover) */}
+                            <div className="absolute bottom-full mb-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 bg-slate-900/95 text-slate-200 text-[10px] p-2 rounded-lg shadow-2xl pointer-events-none w-32 text-center z-20 border border-slate-700 backdrop-blur-sm">
+                                {description}
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-b border-r border-slate-700 rotate-45"></div>
                             </div>
                         </div>
                     );
