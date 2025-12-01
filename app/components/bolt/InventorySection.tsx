@@ -25,7 +25,7 @@ interface InventorySectionProps {
     inventory?: UserInventoryItem[];
     activeEffects?: any[];
     history?: any[];
-    userMetadata?: any; // 🟢 New Prop
+    userMetadata?: any; 
     onRefresh?: () => void;
 }
 
@@ -42,8 +42,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     // Optimistic State
     const [localMetadata, setLocalMetadata] = useState<any>(userMetadata || selectedUser?.metadata || {});
 
-    // 🟢 SYNC EFFECT: Only update local state if props change AND we aren't mid-action
-    // This ensures that fresh data from the server eventually overwrites local state
+    // Sync effect
     useEffect(() => {
         if (userMetadata) {
             setLocalMetadata(userMetadata);
@@ -63,14 +62,12 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const handleEquip = async (item: UserInventoryItem) => {
         if (!item.itemDetails || !selectedUser) return;
         
-        // ⚡ Optimistic Update
         setProcessingIds(prev => new Set(prev).add(item.id));
         const prevMetadata = { ...localMetadata };
 
         const type = item.itemDetails.itemType;
         const newMeta = { ...localMetadata };
         
-        // Update local state immediately
         if (type === 'NAME_COLOR') newMeta.nameColor = item.itemDetails.metadata?.color;
         if (type === 'TITLE') newMeta.title = item.itemDetails.metadata?.text;
         if (type === 'BANNER') newMeta.bannerUrl = item.itemDetails.metadata?.imageUrl;
@@ -82,14 +79,13 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             const result = await api.equipCosmetic(selectedUser.id, item.itemDetails);
             if (result.success) {
                 showToast("Equipped!");
-                // Trigger background refresh but DON'T wipe local state immediately
                 if (onRefresh) onRefresh();
             } else {
                 throw new Error(result.message);
             }
         } catch (e: any) { 
             showToast(e.message || "Failed to equip.", 'error'); 
-            setLocalMetadata(prevMetadata); // Revert on error
+            setLocalMetadata(prevMetadata); 
         } finally {
             setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
         }
@@ -102,7 +98,6 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         const prevMetadata = { ...localMetadata };
         const newMeta = { ...localMetadata };
 
-        // ⚡ Optimistic Remove
         if (type === 'NAME_COLOR') delete newMeta.nameColor;
         if (type === 'TITLE') delete newMeta.title;
         if (type === 'BANNER') delete newMeta.bannerUrl;
@@ -140,10 +135,22 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
     };
 
+    // Filter Items
     const visibleInventory = inventory.filter(i => !processingIds.has(i.id));
-    const consumables = visibleInventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
     
-    // 🟢 ROBUST FILTERING: Compare item metadata with current localMetadata
+    // 🟢 Group Consumables Logic
+    const rawConsumables = visibleInventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
+    
+    // Group by ID to show counters
+    const groupedConsumables = Object.values(rawConsumables.reduce((acc, item) => {
+        const key = item.itemDetails?.id || 'unknown';
+        if (!acc[key]) {
+            acc[key] = { item, count: 0 };
+        }
+        acc[key].count++;
+        return acc;
+    }, {} as Record<string, { item: UserInventoryItem, count: number }>));
+
     const wearables = visibleInventory.filter(i => {
         const type = i.itemDetails?.itemType || '';
         if (['INSTANT', 'TIMED_EFFECT'].includes(type)) return false;
@@ -168,13 +175,14 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 </div>
             )}
 
-            {/* COL 1: Active Effects & History */}
+            {/* COL 1: Active Effects */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <SparklesIcon className="w-5 h-5 text-yellow-400" /> Active & Equipped
                 </h3>
                 
                 <div className="space-y-3 flex-grow">
+                    {/* Active Buffs */}
                     {activeEffects.length > 0 && (
                         <div>
                             <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Boosts</h4>
@@ -191,13 +199,14 @@ const InventorySection: React.FC<InventorySectionProps> = ({
 
                     <div>
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Cosmetics</h4>
+                        {/* 🟢 Muted Unequip Button Style */}
                         {localMetadata?.nameColor && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: localMetadata.nameColor }}></div>
                                     <span className="text-sm text-slate-300">Name Color</span>
                                 </div>
-                                <button onClick={() => handleUnequip('NAME_COLOR')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
+                                <button onClick={() => handleUnequip('NAME_COLOR')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'NAME_COLOR' ? '...' : 'Unequip'}
                                 </button>
                             </div>
@@ -208,7 +217,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                     <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">TITLE</span>
                                     <span className="text-sm text-white font-bold">{localMetadata.title}</span>
                                 </div>
-                                <button onClick={() => handleUnequip('TITLE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
+                                <button onClick={() => handleUnequip('TITLE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'TITLE' ? '...' : 'Unequip'}
                                 </button>
                             </div>
@@ -219,7 +228,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
                                 <span className="text-sm text-slate-300">Avatar Pulse</span>
                             </div>
-                            <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
+                            <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                 {unequippingType === 'AVATAR_PULSE' ? '...' : 'Unequip'}
                             </button>
                         </div>
@@ -230,7 +239,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                     <img src={localMetadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
                                     <span className="text-sm text-slate-300">Banner</span>
                                 </div>
-                                <button onClick={() => handleUnequip('BANNER')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
+                                <button onClick={() => handleUnequip('BANNER')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'BANNER' ? '...' : 'Unequip'}
                                 </button>
                             </div>
@@ -257,13 +266,20 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 )}
             </div>
 
+            {/* COL 2: Consumables (Grouped) */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <BeakerIcon className="w-5 h-5 text-blue-400" /> Consumables
                 </h3>
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                    {consumables.length > 0 ? consumables.map(item => (
-                        <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center">
+                    {groupedConsumables.length > 0 ? groupedConsumables.map(({ item, count }) => (
+                        <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center relative">
+                            {/* 🟢 Counter Badge */}
+                            {count > 1 && (
+                                <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-800 shadow-sm z-10">
+                                    {count}x
+                                </div>
+                            )}
                             <div>
                                 <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
                                 <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
@@ -279,6 +295,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 </div>
             </div>
 
+            {/* COL 3: Wearables */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <ChestIcon className="w-5 h-5 text-amber-400" /> Wearables

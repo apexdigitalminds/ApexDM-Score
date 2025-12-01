@@ -38,28 +38,33 @@ const AnalyticsPage: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
-            const analyticsData = await api.getAnalyticsData(dateRange);
-            setData(analyticsData);
-            setIsLoading(false);
+            try {
+                const analyticsData = await api.getAnalyticsData(dateRange);
+                setData(analyticsData);
+            } catch (e) {
+                console.error("Failed to load analytics", e);
+            } finally {
+                setIsLoading(false);
+            }
         };
         fetchData();
     }, [dateRange]);
 
+    // 🟢 SAFE MATH: Prevent NaN/Infinity if activeMembers is 0
     const churnRate = data && data.engagement.activeMembers30d > 0 
         ? ((data.growth.churnedMembers14d / data.engagement.activeMembers30d) * 100).toFixed(1)
-        : 0;
+        : "0.0";
         
     const showRetention = isFeatureEnabled('store'); 
 
-    // FIX: Removed explicit ': ChartData[]' type to allow TS to infer correct types for the chart component
     const activityChartData = data
       ? data.activityBreakdown.map(item => ({
-          actionType: item.label || 'Unknown', // Fallback to ensure string
+          actionType: item.label || 'Unknown', 
           count: item.value || 0,
         }))
       : [];
 
-const questAnalyticsData = data && Array.isArray(data.questAnalytics)
+    const questAnalyticsData = data && Array.isArray(data.questAnalytics)
       ? data.questAnalytics.map((item: any) => ({
             questId: item.questId || 'unknown',
             title: item.title || 'Unknown Quest',
@@ -68,7 +73,7 @@ const questAnalyticsData = data && Array.isArray(data.questAnalytics)
           }))
       : [];
       
-const storeAnalyticsData = data && data.storeAnalytics
+    const storeAnalyticsData = data && data.storeAnalytics
       ? { 
           ...data.storeAnalytics, 
           totalSpent: data.storeAnalytics.xpSpent, 

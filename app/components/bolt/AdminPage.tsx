@@ -374,6 +374,7 @@ export default function AdminPage() {
       {activeTab === 'engagement' && (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* REWARDS */}
                  <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
@@ -410,6 +411,7 @@ export default function AdminPage() {
                     </div>
                  </div>
                 
+                {/* QUESTS */}
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold text-white">Manage Quests</h3>
@@ -433,7 +435,7 @@ export default function AdminPage() {
                                                     <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
                                                     <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
                                                 </div>
-                                                <input type="text" value={t.description || ""} onChange={e => handleUpdateTask(i, 'description', e.target.value)} placeholder="Task description..." className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-full" />
+                                                {/* 🟢 REMOVED: Task Description Input as requested */}
                                             </div>
                                             <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
                                         </div>
@@ -461,6 +463,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
+            {/* BADGES */}
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-white">Manage Badges</h3>
@@ -491,7 +494,6 @@ export default function AdminPage() {
                 <div className="flex-grow overflow-y-auto pr-2 space-y-2 max-h-[400px]">
                      {filteredBadges.map(([name, config]) => {
                         const b = config as any; 
-                        // 🟢 FIX: Correctly detect Emoji vs Preset
                         const isPreset = iconMapKeys.includes(b.icon);
                         const BadgeIcon = isPreset ? (iconMap[b.icon] || iconMap['Snowflake']) : null;
                         const isActive = b.isActive !== undefined ? b.isActive : true;
@@ -508,7 +510,6 @@ export default function AdminPage() {
                                 {!b.isArchived && (
                                     <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                 )}
-                                {/* 🟢 FIX: Edit then Delete */}
                                 {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                             </div>
                         </div>
@@ -557,7 +558,8 @@ export default function AdminPage() {
                                         <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
                                         <option value="NAME_COLOR">Name Color (Cosmetic)</option>
                                         <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option> 
-                                        <option value="TITLE">Title / Prefix (Cosmetic)</option>
+                                        {/* 🟢 UPDATED: Label Change */}
+                                        <option value="TITLE">Title - Prefix/Suffix (Cosmetic)</option>
                                         <option value="BANNER">Profile Banner (Cosmetic)</option>
                                     </select>
                                 </div>

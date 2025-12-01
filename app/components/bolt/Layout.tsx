@@ -13,7 +13,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { selectedUser, isFeatureEnabled, community, isLoading, activeEffects } = useApp();
+    const { selectedUser, isFeatureEnabled, community, isLoading } = useApp();
     const router = useRouter();
     const pathname = usePathname(); 
     
@@ -21,9 +21,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    // 🟢 FIX: Check Metadata for the Pulse cosmetic to ensure instant reactivity
+    // 🟢 DYNAMIC COSMETIC LOGIC
+    // We check 'metadata' directly so it updates instantly when Context refreshes
     const pulseColor = selectedUser?.metadata?.avatarPulseColor;
-    const isBoosted = !!pulseColor; // If color exists, pulse is active
+    const isBoosted = !!pulseColor;
 
     const showQuests = isFeatureEnabled('quests');
     const showStore = isFeatureEnabled('store');
@@ -55,8 +56,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
     }, [isWhiteLabelActive, community, isLoading]);
 
-    const isDev = process.env.NODE_ENV === 'development';
-
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
             <TrialBanner />
@@ -86,18 +85,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         href={`/profile/${selectedUser.id}`} 
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        {/* 🟢 PULSE AVATAR CONTAINER */}
+                                        {/* 🟢 AVATAR CONTAINER: Handles Glow & Border */}
                                         <div 
-                                            className={`relative rounded-full transition-all duration-300 ${isBoosted ? 'animate-pulse' : ''}`}
+                                            className={`relative rounded-full transition-all duration-300 p-0.5`}
                                             style={isBoosted ? { 
-                                                boxShadow: `0 0 15px 2px ${pulseColor}`, // Glow effect
-                                                border: `2px solid ${pulseColor}`      // Colored border
-                                            } : {}}
+                                                boxShadow: `0 0 12px 2px ${pulseColor}`, // Glow
+                                                border: `2px solid ${pulseColor}`,     // Border
+                                                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                                            } : { border: '2px solid transparent' }}
                                         >
                                             <Avatar 
                                                 src={selectedUser.avatarUrl} 
                                                 alt={selectedUser.username || "User"} 
-                                                className="w-8 h-8 rounded-full" 
+                                                className="w-8 h-8 rounded-full bg-slate-700" 
                                             />
                                         </div>
                                         <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>
