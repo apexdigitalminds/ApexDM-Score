@@ -39,8 +39,14 @@ import type {
 
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
-    const badges: Badge[] = (data.user_badges || [])
-        .map((join: any) => (join.badges ? badgeFromSupabase(join.badges) : null))
+    // Check if user_badges exists and map it correctly
+    const rawBadges = data.user_badges || [];
+    const badges: Badge[] = rawBadges
+        .map((join: any) => {
+            // Support both 'badges' (joined object) or direct data if structure differs
+            const badgeData = join.badges || join.badge; 
+            return badgeData ? badgeFromSupabase(badgeData) : null;
+        })
         .filter((b: Badge | null): b is Badge => b !== null);
 
     return {
@@ -154,6 +160,7 @@ const getCommunityId = async () => {
     return COMMUNITY_ID;
 };
 
+// 🟢 FIX: Ensure we select user_badges correctly in the profile query
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
 
 export const api = {
@@ -165,14 +172,18 @@ export const api = {
     },
 
     getUserById: async (userId: string): Promise<User | null> => {
-        // 🟢 FIX: Ensure we fetch user_badges too so the profile hydrates correctly
+        // 🟢 FIX: Explicitly join user_badges and nested badges table
         const { data, error } = await supabase
             .from('profiles')
             .select(`${PROFILE_COLUMNS}, user_badges(badges(*))`)
             .eq('id', userId)
             .maybeSingle();
             
-        if (error || !data) return null;
+        if (error) {
+            console.error("Error fetching user profile:", error);
+            return null;
+        }
+        if (!data) return null;
         return profileFromSupabase(data);
     },
 
@@ -267,20 +278,23 @@ export const api = {
         return await recordActionServer(userId, actionType, source);
     },
 
-    // 🟢 FIXED: Actually inserts the badge into the database
+    // 🟢 FIXED: Aggressive logging and error reporting for Badge Award
     awardBadge: async (userId: string, badgeName: string) => {
+        console.log(`🏆 Attempting to award badge '${badgeName}' to user '${userId}'...`);
         try {
             // 1. Find the Badge ID
-            const { data: badge } = await supabase
+            const { data: badge, error: lookupError } = await supabase
                 .from('badges')
                 .select('id')
-                .eq('name', badgeName)
+                .eq('name', badgeName.trim()) // Trim to avoid whitespace mismatches
                 .single();
 
-            if (!badge) {
-                console.error(`Badge '${badgeName}' not found.`);
-                return { success: false };
+            if (lookupError || !badge) {
+                console.error(`❌ Badge '${badgeName}' NOT FOUND in DB. Error:`, lookupError);
+                return { success: false, message: "Badge definition not found" };
             }
+
+            console.log(`✅ Found Badge ID: ${badge.id}`);
 
             // 2. Check if user already has it
             const { data: existing } = await supabase
@@ -290,23 +304,32 @@ export const api = {
                 .eq('badge_id', badge.id)
                 .maybeSingle();
 
-            if (existing) return { success: true }; // Already has it
+            if (existing) {
+                console.log("ℹ️ User already has this badge.");
+                return { success: true, message: "Already earned" };
+            }
 
             // 3. Award it
-            const { error } = await supabase
+            console.log("📝 Inserting into user_badges...");
+            const { error: insertError } = await supabase
                 .from('user_badges')
                 .insert({
                     user_id: userId,
                     badge_id: badge.id,
-                    earned_at: new Date().toISOString() // Explicit timestamp
+                    earned_at: new Date().toISOString()
                 });
 
-            if (error) throw error;
-            return { success: true };
+            if (insertError) {
+                console.error("❌ INSERT FAILED. Check RLS Policies.", insertError);
+                throw insertError;
+            }
 
-        } catch (e) {
-            console.error("Error awarding badge:", e);
-            return { success: false };
+            console.log("🎉 Badge successfully awarded!");
+            return { success: true, message: "Awarded" };
+
+        } catch (e: any) {
+            console.error("💥 CRITICAL ERROR in awardBadge:", e);
+            return { success: false, message: e.message || "Unknown error" };
         }
     },
 
