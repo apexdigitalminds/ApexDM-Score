@@ -29,7 +29,6 @@ const BadgeDisplay: React.FC<BadgeDisplayProps> = ({ badges }) => {
             <h3 className="text-lg font-bold text-white mb-4">Earned Badges</h3>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 justify-items-center">
                 {badges.map((userBadge) => {
-                    // 🟢 HYDRATION: Look up config to get Description & Style
                     const config = badgesConfig[userBadge.name];
                     const iconName = userBadge.icon || config?.icon || 'Star';
                     const color = userBadge.color || config?.color || '#fbbf24';

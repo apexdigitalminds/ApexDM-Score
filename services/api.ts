@@ -40,12 +40,21 @@ import type {
 
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
-    // 🟢 UPDATED: Handle manual badge array injection
-    const badges: Badge[] = Array.isArray(data.badges) 
-        ? data.badges 
-        : (data.user_badges || [])
-            .map((join: any) => (join.badges ? badgeFromSupabase(join.badges) : null))
+    // 🟢 UPDATED: Robust Badge Parsing
+    // 1. If 'badges' array already exists (manually fetched), use it.
+    // 2. Else check 'user_badges' join.
+    let badges: Badge[] = [];
+    
+    if (data.badges && Array.isArray(data.badges)) {
+        badges = data.badges;
+    } else if (data.user_badges && Array.isArray(data.user_badges)) {
+        badges = data.user_badges
+            .map((join: any) => {
+                const badgeData = join.badges || join.badge; 
+                return badgeData ? badgeFromSupabase(badgeData) : null;
+            })
             .filter((b: Badge | null): b is Badge => b !== null);
+    }
 
     return {
         id: data.id,
@@ -59,7 +68,7 @@ const profileFromSupabase = (data: any): User => {
         role: data.role,
         whopUser: data.whop_user_id ? { id: data.whop_user_id, username: data.username } : undefined,
         bannedUntil: data.banned_until,
-        badges, // Now populated correctly
+        badges, 
         level: Math.floor((data.xp ?? 0) / 100),
         metadata: data.metadata || {}, 
     };
@@ -160,6 +169,18 @@ const getCommunityId = async () => {
 
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
 
+// Helper to manually fetch badges
+const fetchBadgesForUser = async (userId: string): Promise<Badge[]> => {
+    const { data: userBadges } = await supabase.from('user_badges').select('badge_id').eq('user_id', userId);
+    const badgeIds = userBadges?.map((ub: any) => ub.badge_id) || [];
+    
+    if (badgeIds.length > 0) {
+        const { data: badgeDefs } = await supabase.from('badges').select('*').in('id', badgeIds);
+        return (badgeDefs || []).map(badgeFromSupabase);
+    }
+    return [];
+};
+
 export const api = {
     // READ
     getUsers: async (): Promise<User[]> => {
@@ -169,31 +190,26 @@ export const api = {
     },
 
     getUserById: async (userId: string): Promise<User | null> => {
-        // 🟢 1. Get Profile
         const { data: profile, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single();
         if (error || !profile) return null;
 
-        // 🟢 2. Manual Badge Fetch (Robust against missing FKs)
-        const { data: userBadges } = await supabase.from('user_badges').select('badge_id').eq('user_id', userId);
-        const badgeIds = userBadges?.map((ub: any) => ub.badge_id) || [];
-        
-        let badges: Badge[] = [];
-        if (badgeIds.length > 0) {
-            const { data: badgeDefs } = await supabase.from('badges').select('*').in('id', badgeIds);
-            badges = (badgeDefs || []).map(badgeFromSupabase);
-        }
-
-        // 🟢 3. Stitch and Return
-        // We temporarily attach the fetched badges array to the raw profile data 
-        // so profileFromSupabase can pick it up
+        // Manual Fetch
+        const badges = await fetchBadgesForUser(userId);
         (profile as any).badges = badges; 
         
         return profileFromSupabase(profile);
     },
 
+    // 🟢 FIXED: Now fetches badges after sync
     getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
         const userData = await syncUserAction(whopId, whopRole);
-        if (userData) return profileFromSupabase(userData);
+        if (userData) {
+            // Manual Fetch Badges
+            const badges = await fetchBadgesForUser(userData.id);
+            (userData as any).badges = badges;
+            
+            return profileFromSupabase(userData);
+        }
         return null;
     },
 
