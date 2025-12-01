@@ -67,7 +67,7 @@ export interface AppContextValue {
   
   // Actions & Webhooks
   handleRecordAction: (userId: string, actionType: ActionType, source?: 'manual' | 'whop' | 'discord') => Promise<{ xpGained: number } | null>;
-  handleAwardBadge: (userId: string, badgeName: string) => Promise<{ success: boolean; message: string } | void>;
+  handleAwardBadge: (userId: string, badgeName: string) => Promise<{ success: boolean; message: string }>;
   handleTriggerWebhook: (userId: string, actionType: string) => Promise<string | null>;
   
   // User Features
@@ -134,13 +134,68 @@ export const AppProvider = ({
       }
   };
 
+  // 🟢 AUTOMATED BADGE CHECKER (Updated to match your screenshot)
+  const checkAutomatedBadges = async (userId: string) => {
+      const user = await api.getUserById(userId);
+      if (!user) return;
+
+      // Defined Rules (Must match Admin Panel Names exactly)
+      const xpBadges = [
+          { xp: 100, name: 'XP Novice' },
+          { xp: 1000, name: 'XP Adept' },
+          { xp: 5000, name: 'XP Veteran' },
+          { xp: 10000, name: 'XP Master' }
+      ];
+
+      const streakBadges = [
+          { streak: 3, name: '3 Day Streak' },
+          { streak: 7, name: '7 Day Streak' },
+          { streak: 30, name: '30 Day Streak' },
+          { streak: 100, name: 'Century Club (100 Day Streak)' }
+      ];
+
+      let badgeAwarded = false;
+
+      // Check XP Badges
+      for (const badge of xpBadges) {
+          if (user.xp >= badge.xp) {
+              const hasBadge = user.badges?.some(b => b.name === badge.name);
+              if (!hasBadge) {
+                  console.log(`🏆 Auto-Awarding Badge: ${badge.name}`);
+                  await api.awardBadge(userId, badge.name);
+                  badgeAwarded = true;
+              }
+          }
+      }
+
+      // Check Streak Badges
+      for (const badge of streakBadges) {
+          if (user.streak >= badge.streak) {
+              const hasBadge = user.badges?.some(b => b.name === badge.name);
+              if (!hasBadge) {
+                  console.log(`🔥 Auto-Awarding Streak Badge: ${badge.name}`);
+                  await api.awardBadge(userId, badge.name);
+                  badgeAwarded = true;
+              }
+          }
+      }
+
+      if (badgeAwarded) {
+          await fetchAllUsers();
+          if (selectedUser && userId === selectedUser.id) await refreshSelectedUser();
+      }
+  };
+
   const checkDailyLogin = async (user: Profile) => {
       const today = new Date().toDateString();
       const lastDate = user.last_action_date ? new Date(user.last_action_date).toDateString() : null;
       if (lastDate !== today) {
           console.log("📅 First login of the day! Awarding XP...");
           const result = await api.recordAction(user.id, 'daily_login', 'manual');
-          if (result) await refreshSelectedUser();
+          if (result) {
+              await checkAutomatedBadges(user.id); // Check badges after login
+              await refreshSelectedUser();
+          }
       }
   };
 
@@ -151,7 +206,6 @@ export const AppProvider = ({
 
   const handleAddBadge = async (badge: Partial<Badge>) => { if (!badge.name) return; const config = { name: badge.name, description: badge.description || '', icon: badge.icon || '', color: badge.color || '' }; await api.createBadge(badge.name, config); await fetchBadges(); };
   
-  // 🟢 FIX: Updated to use new API signature
   const handleUpdateBadge = async (badgeName: string, data: Partial<Badge> & { isActive?: boolean }) => { 
       await api.updateBadge(badgeName, data); 
       await fetchBadges(); 
@@ -181,6 +235,10 @@ export const AppProvider = ({
   const handleRecordAction = async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord' = "manual") => { 
       try { 
           const result = await api.recordAction(userId, actionType, source); 
+          
+          // 🟢 Trigger Automated Badge Check
+          await checkAutomatedBadges(userId);
+
           if (selectedUser && userId === selectedUser.id) { await fetchUserQuestProgress(); await refreshSelectedUser(); }
           await fetchAllUsers();
           return result; 
@@ -188,10 +246,15 @@ export const AppProvider = ({
   };
 
   const handleAwardBadge = async (userId: string, badgeName: string) => { 
-      const res = await api.awardBadge(userId, badgeName); 
-      await fetchAllUsers(); 
-      if (selectedUser && userId === selectedUser.id) await refreshSelectedUser();
-      return res ? { success: false, message: "Failed" } : { success: true, message: "Awarded" }; 
+      try {
+          const res = await api.awardBadge(userId, badgeName); 
+          await fetchAllUsers(); 
+          if (selectedUser && userId === selectedUser.id) await refreshSelectedUser();
+          
+          return res ? { success: true, message: "Badge Awarded" } : { success: false, message: "Failed to award" }; 
+      } catch (e) {
+          return { success: false, message: "Error awarding badge" };
+      }
   };
   
   const handleTriggerWebhook = async (userId: string, actionType: string) => { return await (api as any).triggerWebhook(userId, actionType); };
@@ -200,17 +263,35 @@ export const AppProvider = ({
   const adminBanUser = async (userId: string, h: number | null) => { const res = await api.adminBanUser(userId, h); return { success: res.success, message: res.success ? "Updated" : "Failed" }; };
   const adminGetUserEmail = async (userId: string) => { return await (api as any).adminGetUserEmail(userId); };
   const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
-  const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { const res = await api.adminUpdateUserStats(userId, xp, streak, freezes); await fetchAllUsers(); if (selectedUser && userId === selectedUser.id) await refreshSelectedUser(); return { success: res.success, message: res.success ? "Updated" : "Failed" }; };
+  const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { 
+      const res = await api.adminUpdateUserStats(userId, xp, streak, freezes); 
+      // 🟢 Check badges after admin manual stat update
+      await checkAutomatedBadges(userId); 
+      
+      await fetchAllUsers(); 
+      if (selectedUser && userId === selectedUser.id) await refreshSelectedUser(); 
+      return { success: res.success, message: res.success ? "Updated" : "Failed" }; 
+  };
 
   const claimQuestReward = async (id: number) => { 
       const res = await api.claimQuestReward(id); 
-      if (res.success) { await fetchUserQuestProgress(); await refreshSelectedUser(); await fetchAllUsers(); }
+      if (res.success) { 
+          // 🟢 Check badges after quest claim
+          if (selectedUser) await checkAutomatedBadges(selectedUser.id);
+          
+          await fetchUserQuestProgress(); await refreshSelectedUser(); await fetchAllUsers(); 
+      }
       return res; 
   };
 
   const activateInventoryItem = async (id: string) => { 
       const res = await api.activateInventoryItem(id); 
-      if (res.success) { await refreshSelectedUser(); await fetchActiveEffects(); }
+      if (res.success) { 
+          // 🟢 Check badges after using item (if item gave XP)
+          if (selectedUser) await checkAutomatedBadges(selectedUser.id);
+          
+          await refreshSelectedUser(); await fetchActiveEffects(); 
+      }
       return res;
   };
 
