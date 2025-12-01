@@ -30,7 +30,8 @@ import {
     adminToggleQuestAction,
     recordActionServer,
     getAnalyticsDataServer, 
-    syncUserAction 
+    syncUserAction,
+    awardBadgeAction // 🟢 IMPORT THE NEW ACTION
 } from '@/app/actions';
 
 import type {
@@ -39,11 +40,9 @@ import type {
 
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
-    // Check if user_badges exists and map it correctly
     const rawBadges = data.user_badges || [];
     const badges: Badge[] = rawBadges
         .map((join: any) => {
-            // Support both 'badges' (joined object) or direct data if structure differs
             const badgeData = join.badges || join.badge; 
             return badgeData ? badgeFromSupabase(badgeData) : null;
         })
@@ -160,7 +159,6 @@ const getCommunityId = async () => {
     return COMMUNITY_ID;
 };
 
-// 🟢 FIX: Ensure we select user_badges correctly in the profile query
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
 
 export const api = {
@@ -172,18 +170,13 @@ export const api = {
     },
 
     getUserById: async (userId: string): Promise<User | null> => {
-        // 🟢 FIX: Explicitly join user_badges and nested badges table
         const { data, error } = await supabase
             .from('profiles')
             .select(`${PROFILE_COLUMNS}, user_badges(badges(*))`)
             .eq('id', userId)
             .maybeSingle();
             
-        if (error) {
-            console.error("Error fetching user profile:", error);
-            return null;
-        }
-        if (!data) return null;
+        if (error || !data) return null;
         return profileFromSupabase(data);
     },
 
@@ -278,59 +271,13 @@ export const api = {
         return await recordActionServer(userId, actionType, source);
     },
 
-    // 🟢 FIXED: Aggressive logging and error reporting for Badge Award
+    // 🟢 FIXED: Calls the Server Action to bypass RLS
     awardBadge: async (userId: string, badgeName: string) => {
-        console.log(`🏆 Attempting to award badge '${badgeName}' to user '${userId}'...`);
-        try {
-            // 1. Find the Badge ID
-            const { data: badge, error: lookupError } = await supabase
-                .from('badges')
-                .select('id')
-                .eq('name', badgeName.trim()) // Trim to avoid whitespace mismatches
-                .single();
-
-            if (lookupError || !badge) {
-                console.error(`❌ Badge '${badgeName}' NOT FOUND in DB. Error:`, lookupError);
-                return { success: false, message: "Badge definition not found" };
-            }
-
-            console.log(`✅ Found Badge ID: ${badge.id}`);
-
-            // 2. Check if user already has it
-            const { data: existing } = await supabase
-                .from('user_badges')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('badge_id', badge.id)
-                .maybeSingle();
-
-            if (existing) {
-                console.log("ℹ️ User already has this badge.");
-                return { success: true, message: "Already earned" };
-            }
-
-            // 3. Award it
-            console.log("📝 Inserting into user_badges...");
-            const { error: insertError } = await supabase
-                .from('user_badges')
-                .insert({
-                    user_id: userId,
-                    badge_id: badge.id,
-                    earned_at: new Date().toISOString()
-                });
-
-            if (insertError) {
-                console.error("❌ INSERT FAILED. Check RLS Policies.", insertError);
-                throw insertError;
-            }
-
-            console.log("🎉 Badge successfully awarded!");
-            return { success: true, message: "Awarded" };
-
-        } catch (e: any) {
-            console.error("💥 CRITICAL ERROR in awardBadge:", e);
-            return { success: false, message: e.message || "Unknown error" };
+        if (!awardBadgeAction) {
+            console.error("awardBadgeAction not found in imports");
+            return { success: false, message: "Server action missing" };
         }
+        return await awardBadgeAction(userId, badgeName);
     },
 
     // USER WRITE ACTIONS
