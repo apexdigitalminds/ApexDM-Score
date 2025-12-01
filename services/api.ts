@@ -31,7 +31,7 @@ import {
     recordActionServer,
     getAnalyticsDataServer, 
     syncUserAction,
-    awardBadgeAction // 🟢 IMPORT THE NEW ACTION
+    awardBadgeAction 
 } from '@/app/actions';
 
 import type {
@@ -40,13 +40,12 @@ import type {
 
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
-    const rawBadges = data.user_badges || [];
-    const badges: Badge[] = rawBadges
-        .map((join: any) => {
-            const badgeData = join.badges || join.badge; 
-            return badgeData ? badgeFromSupabase(badgeData) : null;
-        })
-        .filter((b: Badge | null): b is Badge => b !== null);
+    // 🟢 UPDATED: Handle manual badge array injection
+    const badges: Badge[] = Array.isArray(data.badges) 
+        ? data.badges 
+        : (data.user_badges || [])
+            .map((join: any) => (join.badges ? badgeFromSupabase(join.badges) : null))
+            .filter((b: Badge | null): b is Badge => b !== null);
 
     return {
         id: data.id,
@@ -60,7 +59,7 @@ const profileFromSupabase = (data: any): User => {
         role: data.role,
         whopUser: data.whop_user_id ? { id: data.whop_user_id, username: data.username } : undefined,
         bannedUntil: data.banned_until,
-        badges,
+        badges, // Now populated correctly
         level: Math.floor((data.xp ?? 0) / 100),
         metadata: data.metadata || {}, 
     };
@@ -170,14 +169,26 @@ export const api = {
     },
 
     getUserById: async (userId: string): Promise<User | null> => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select(`${PROFILE_COLUMNS}, user_badges(badges(*))`)
-            .eq('id', userId)
-            .maybeSingle();
-            
-        if (error || !data) return null;
-        return profileFromSupabase(data);
+        // 🟢 1. Get Profile
+        const { data: profile, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).single();
+        if (error || !profile) return null;
+
+        // 🟢 2. Manual Badge Fetch (Robust against missing FKs)
+        const { data: userBadges } = await supabase.from('user_badges').select('badge_id').eq('user_id', userId);
+        const badgeIds = userBadges?.map((ub: any) => ub.badge_id) || [];
+        
+        let badges: Badge[] = [];
+        if (badgeIds.length > 0) {
+            const { data: badgeDefs } = await supabase.from('badges').select('*').in('id', badgeIds);
+            badges = (badgeDefs || []).map(badgeFromSupabase);
+        }
+
+        // 🟢 3. Stitch and Return
+        // We temporarily attach the fetched badges array to the raw profile data 
+        // so profileFromSupabase can pick it up
+        (profile as any).badges = badges; 
+        
+        return profileFromSupabase(profile);
     },
 
     getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
@@ -271,7 +282,6 @@ export const api = {
         return await recordActionServer(userId, actionType, source);
     },
 
-    // 🟢 FIXED: Calls the Server Action to bypass RLS
     awardBadge: async (userId: string, badgeName: string) => {
         if (!awardBadgeAction) {
             console.error("awardBadgeAction not found in imports");

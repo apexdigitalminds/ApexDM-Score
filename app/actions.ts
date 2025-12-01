@@ -103,21 +103,21 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 🟢 NEW: Server-Side Badge Awarding (Bypasses RLS) ---
+// --- 🟢 ROBUST BADGE AWARDING ---
 export async function awardBadgeAction(userId: string, badgeName: string) {
     // 1. Get Badge ID
     const { data: badge, error: badgeError } = await supabaseAdmin
         .from('badges')
-        .select('id')
+        .select('id, community_id')
         .eq('name', badgeName)
         .single();
 
     if (badgeError || !badge) {
         console.error(`Server: Badge '${badgeName}' not found.`);
-        return { success: false, message: `Badge '${badgeName}' not found in DB` };
+        return { success: false, message: `Badge '${badgeName}' not found` };
     }
 
-    // 2. Check if user already has it
+    // 2. Check Exists
     const { data: existing } = await supabaseAdmin
         .from('user_badges')
         .select('id')
@@ -126,27 +126,35 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         .maybeSingle();
 
     if (existing) {
-        return { success: true, message: "User already has this badge" };
+        return { success: true, message: `User already has ${badgeName}` };
     }
 
-    // 3. Insert using supabaseAdmin (Service Role)
+    // 3. Fallback Community ID (Essential fix if badge.community_id is null)
+    let finalCommunityId = badge.community_id;
+    if (!finalCommunityId) {
+        finalCommunityId = await getCommunityId();
+    }
+
+    // 4. Insert
+    const payload = {
+        user_id: userId,
+        badge_id: badge.id,
+        community_id: finalCommunityId,
+        earned_at: new Date().toISOString()
+    };
+
     const { error: insertError } = await supabaseAdmin
         .from('user_badges')
-        .insert({
-            user_id: userId,
-            badge_id: badge.id,
-            earned_at: new Date().toISOString()
-        });
+        .insert(payload);
 
     if (insertError) {
         console.error("Server: Insert failed", insertError);
-        return { success: false, message: insertError.message };
+        return { success: false, message: `DB Error: ${insertError.message}` };
     }
 
-    // Force refresh of paths
     revalidatePath('/dashboard');
     revalidatePath('/profile/[userId]');
-    return { success: true, message: "Badge awarded successfully" };
+    return { success: true, message: `Successfully awarded: ${badgeName}` };
 }
 
 // --- USER ACTIONS ---
@@ -247,7 +255,6 @@ export async function claimQuestRewardAction(progressId: number) {
     await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: questData.xp_reward });
 
     if (questData.badge_reward_id) {
-        // 🟢 FIX: Correctly check for existing badge before awarding
         const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', userId).eq('badge_id', questData.badge_reward_id);
         
         if (count === 0) {
@@ -548,9 +555,7 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         const actionsToday = allActions.filter((a: any) => a.created_at && a.created_at >= todayStart);
         const xpEarnedToday = actionsToday.reduce((sum: number, a: any) => sum + (a.xp_gained || 0), 0);
 
-        // 🟢 FIXED: Count new members joined in the last 7 days (by created_at)
         const newMembers7d = allProfiles.filter((p: any) => p.created_at && new Date(p.created_at).toISOString() >= dateLimit7d).length;
-        
         const churnedMembers14d = allProfiles.filter((p: any) => !p.last_action_date || new Date(p.last_action_date).toISOString() < dateLimit14d).length;
 
         const mapUser = (p: any): Profile => ({
