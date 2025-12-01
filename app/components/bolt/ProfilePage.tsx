@@ -51,9 +51,9 @@ const ProfilePage: React.FC = () => {
         : null;
 
     // COSMETIC LOGIC
-const nameColor = profile.metadata?.nameColor || '#FFFFFF';
+    const nameColor = profile.metadata?.nameColor || '#FFFFFF';
     const title = profile.metadata?.title;
-    const titlePos = profile.metadata?.titlePosition || 'prefix'; // Default to prefix
+    const titlePos = profile.metadata?.titlePosition || 'prefix'; 
     const bannerUrl = profile.metadata?.bannerUrl;
     const pulseColor = profile.metadata?.avatarPulseColor;
 
@@ -96,9 +96,8 @@ const nameColor = profile.metadata?.nameColor || '#FFFFFF';
                         )}
                     </div>
                     
-<div className="text-center sm:text-left">
+                    <div className="text-center sm:text-left">
                         <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={{ color: nameColor }}>
-                            {/* 🟢 FIX: Handle Suffix Logic */}
                             {title && titlePos === 'prefix' && (
                                 <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
                             )}

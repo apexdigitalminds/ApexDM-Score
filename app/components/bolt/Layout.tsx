@@ -21,8 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    // 🟢 DYNAMIC COSMETIC LOGIC
-    // We check 'metadata' directly so it updates instantly when Context refreshes
+    // Dynamic Cosmetic Logic
     const pulseColor = selectedUser?.metadata?.avatarPulseColor;
     const isBoosted = !!pulseColor;
 
@@ -85,19 +84,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         href={`/profile/${selectedUser.id}`} 
                                         className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        {/* 🟢 AVATAR CONTAINER: Handles Glow & Border */}
+                                        {/* 🟢 FIXED: Avatar Container sizing and positioning */}
                                         <div 
-                                            className={`relative rounded-full transition-all duration-300 p-0.5`}
+                                            className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300"
                                             style={isBoosted ? { 
-                                                boxShadow: `0 0 12px 2px ${pulseColor}`, // Glow
-                                                border: `2px solid ${pulseColor}`,     // Border
+                                                boxShadow: `0 0 10px 2px ${pulseColor}`, // Outer Glow
+                                                border: `2px solid ${pulseColor}`,     // Solid Border
                                                 animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                                             } : { border: '2px solid transparent' }}
                                         >
+                                            {/* Avatar Image - Ensure it fills container */}
                                             <Avatar 
                                                 src={selectedUser.avatarUrl} 
                                                 alt={selectedUser.username || "User"} 
-                                                className="w-8 h-8 rounded-full bg-slate-700" 
+                                                className="w-8 h-8 rounded-full bg-slate-700 object-cover" 
                                             />
                                         </div>
                                         <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>

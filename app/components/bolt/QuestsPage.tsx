@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import type { Quest, UserQuestProgress, Badge as BadgeType } from '@/types';
-import { iconMap, CheckCircleIcon, TrophyIcon } from './icons';
-import BadgeItem from './BadgeItem';
+import { iconMap, iconMapKeys, CheckCircleIcon, TrophyIcon } from './icons';
 import LockedPageMockup from './LockedPageMockup';
 
 interface QuestCardProps {
@@ -20,17 +19,28 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
     const isCompleted = progress?.completed || false;
     const isClaimed = progress?.isClaimed || false; 
     
-    const badgeRewardConfig = quest.badgeReward ? badgesConfig[quest.badgeReward] : null;
+    const badgeRewardName = quest.badgeReward;
+    const badgeRewardConfig = badgeRewardName ? badgesConfig[badgeRewardName] : null;
     
-    const badgeReward: BadgeType | null = badgeRewardConfig ? { 
-        id: `quest_badge_${quest.id}`, 
-        name: quest.badgeReward!, 
-        description: badgeRewardConfig.description,
-        icon: badgeRewardConfig.icon,
-        color: badgeRewardConfig.color,
-        communityId: '', 
-        isActive: true
-    } : null;
+    // 🟢 Helper to render mini badge icon
+    const renderMiniBadge = () => {
+        if (!badgeRewardConfig) return null;
+        
+        const iconName = badgeRewardConfig.icon;
+        const color = badgeRewardConfig.color;
+        const isPreset = iconMapKeys.includes(iconName);
+        const IconComponent = isPreset ? iconMap[iconName] : null;
+
+        return (
+            <div className="w-5 h-5 rounded flex items-center justify-center border border-white/20 bg-slate-900" style={{ borderColor: color }}>
+                 {isPreset && IconComponent ? (
+                    <IconComponent className="w-3 h-3" style={{ color }} />
+                ) : (
+                    <span className="text-[10px] leading-none">{iconName || "🏆"}</span>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className={`bg-slate-800 rounded-2xl shadow-lg border border-slate-700 flex flex-col overflow-hidden transition-all duration-300 ${isClaimed ? 'opacity-50' : ''}`}>
@@ -43,7 +53,6 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                         const safeActionType = task.actionType || 'unknown';
                         const safeTarget = task.targetCount || 1;
                         
-                        // 🟢 FIXED: Auto-generate description if missing
                         const description = task.description || `${safeActionType.replace(/_/g, ' ')} (${safeTarget}x)`;
 
                         const currentProgress = progress?.progress?.[safeActionType] || 0;
@@ -77,9 +86,11 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                         <TrophyIcon className="w-5 h-5" />
                         <span className="font-bold text-lg">{quest.xpReward} XP</span>
                     </div>
-                     {badgeReward && (
-                        <div className="w-24 h-24">
-                           <BadgeItem badge={badgeReward}/>
+                    
+                     {badgeRewardConfig && (
+                        <div className="flex items-center gap-2 bg-slate-800 px-2 py-1 rounded border border-slate-600">
+                           {renderMiniBadge()}
+                           <span className="text-xs font-bold text-slate-300 truncate max-w-[100px]">{badgeRewardName}</span>
                         </div>
                     )}
                 </div>
