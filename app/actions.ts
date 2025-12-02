@@ -37,6 +37,7 @@ async function verifyUser() {
 
     if (!profile) {
         if (isAdmin) {
+             // 🟢 Pass tokenCompanyId so we can use it for setup even if profile doesn't exist
              return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
         }
         throw new Error("Profile not initialized. Please refresh.");
@@ -50,7 +51,8 @@ async function verifyUser() {
         userId: profile.id, 
         whopUserId, 
         isAdmin,
-        communityId: profile.community_id || tokenCompanyId
+        // 🟢 PREFER TOKEN ID: If the profile is linked to a dummy community, we still want the REAL ID from the token
+        communityId: tokenCompanyId || profile.community_id 
     };
 
   } catch (error: any) {
@@ -66,7 +68,7 @@ async function ensureAdmin() {
 
 async function getCommunityId(overrideId?: string) {
     if (overrideId) return overrideId;
-    const { data: community } = await supabaseAdmin.from('communities').select('id').single();
+    const { data: community } = await supabaseAdmin.from('communities').select('id').limit(1).single();
     if (!community) throw new Error("Community not found");
     return community.id;
 }
@@ -103,16 +105,18 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 🟢 NEW: Sync Branding from Whop API ---
+// --- 🟢 NEW: Robust Branding Sync ---
 export async function syncCommunityBrandingAction() {
     try {
-        const { isAdmin, communityId } = await verifyUser();
-        if (!isAdmin || !communityId) throw new Error("Unauthorized");
+        // 1. Get the REAL Company ID from the current user's session token
+        const { isAdmin, communityId: realWhopId } = await verifyUser();
+        
+        if (!isAdmin || !realWhopId) throw new Error("Unauthorized or No Company ID found");
 
-        // 1. Fetch Company Info from Whop API
-        // Note: Using the whopsdk wrapper might require a specific method, 
-        // but raw fetch is safer if SDK types are incomplete.
-        const response = await fetch(`https://api.whop.com/api/v2/companies/${communityId}`, {
+        console.log(`Syncing branding for Whop Company ID: ${realWhopId}`);
+
+        // 2. Fetch Info from Whop API using the REAL ID
+        const response = await fetch(`https://api.whop.com/api/v2/companies/${realWhopId}`, {
             headers: {
                 'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
                 'Content-Type': 'application/json'
@@ -120,28 +124,36 @@ export async function syncCommunityBrandingAction() {
         });
 
         if (!response.ok) {
-            console.error("Whop API Error:", await response.text());
-            return { success: false, message: "Failed to fetch Whop data" };
+            const errText = await response.text();
+            console.error("Whop API Error:", errText);
+            return { success: false, message: `Whop API Error: ${response.status}` };
         }
 
         const data = await response.json();
         const companyName = data.title || data.name;
         const logoUrl = data.image_url || data.logo_url;
 
-        // 2. Update Database
-        const dbCommunityId = await getCommunityId(communityId); // Resolves internal ID if different
-        const { error } = await supabaseAdmin
+        // 3. Update Database (and fix the ID if it was a dummy)
+        // We find the SINGLE community row that exists and update it.
+        // We effectively "Adopt" the real Whop ID into our database now.
+        
+        const { data: currentDbComm } = await supabaseAdmin.from('communities').select('id').limit(1).single();
+        
+        if (currentDbComm) {
+             const { error } = await supabaseAdmin
             .from('communities')
             .update({ 
+                id: realWhopId, // 🟢 CRITICAL: Overwrite dummy ID with real Whop ID
                 name: companyName,
                 logo_url: logoUrl
             })
-            .eq('id', dbCommunityId);
+            .eq('id', currentDbComm.id);
 
-        if (error) throw error;
+            if (error) throw error;
+        }
 
-        revalidatePath('/'); // Refresh layout
-        return { success: true, message: "Branding synced successfully!" };
+        revalidatePath('/'); 
+        return { success: true, message: `Synced as: ${companyName}` };
 
     } catch (e: any) {
         console.error("Sync Branding Error:", e);
@@ -169,9 +181,10 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         .maybeSingle();
 
     if (existing) {
-        return { success: true, message: "User already has this badge" };
+        return { success: true, message: `User already has ${badgeName}` };
     }
 
+    // Fallback Community ID
     let finalCommunityId = badge.community_id;
     if (!finalCommunityId) {
         finalCommunityId = await getCommunityId();
@@ -195,7 +208,7 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 
     revalidatePath('/dashboard');
     revalidatePath('/profile/[userId]');
-    return { success: true, message: "Badge awarded successfully" };
+    return { success: true, message: `Successfully awarded: ${badgeName}` };
 }
 
 // --- USER ACTIONS ---
