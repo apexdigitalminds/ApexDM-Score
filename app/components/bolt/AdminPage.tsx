@@ -178,6 +178,17 @@ export default function AdminPage() {
   const handleAwardXp = async () => { if (targetUser) { const result = await handleRecordAction(targetUser.id, actionType, "manual"); await withRefresh(async () => {}); showNotification(`Awarded ${result?.xpGained ?? 0} XP.`); } };
   const handleAwardBadgeClick = async () => { if (targetUser && badgeToAward) { await handleAwardBadge(targetUser.id, badgeToAward); await withRefresh(async () => {}); showNotification(`Badge awarded.`); } };
 
+  // 🟢 NEW: Handle Branding Sync
+  const handleSyncBranding = async () => {
+      const res = await api.syncBrandingFromWhop();
+      if (res.success) {
+          showNotification("Branding synced!");
+          await withRefresh(async () => {});
+      } else {
+          showNotification(res.message || "Failed to sync.");
+      }
+  };
+
   const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { 
       setLocalRewards(prev => ({ ...prev, [actionType]: { ...prev[actionType], isActive } })); 
       await handleUpdateReward(actionType, { isActive } as any); 
@@ -666,6 +677,7 @@ export default function AdminPage() {
              </div>
       )}
 
+      {/* 🟢 FULL SETTINGS TAB WITH BRANDING SYNC */}
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
@@ -689,7 +701,21 @@ export default function AdminPage() {
             {isFeatureEnabled('white_label') ? (
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/30">
                     <h3 className="text-lg font-bold text-white mb-4">White-Label Branding</h3>
-                    <div className="space-y-4"><div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabelClick(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div><p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p></div>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabelClick(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div>
+                        <p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p>
+                        
+                        {/* 🟢 NEW: SYNC BUTTON */}
+                        <div className="border-t border-slate-700 pt-4 mt-4">
+                            <button 
+                                onClick={handleSyncBranding} 
+                                className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <LogoIcon className="w-4 h-4" /> Sync Branding from Whop
+                            </button>
+                            <p className="text-[10px] text-slate-500 mt-2 text-center">Updates logo and company name from your Whop settings.</p>
+                        </div>
+                    </div>
                 </div>
             ) : <FeatureLock title="White-Label Branding" description="Remove branding." requiredTier="Elite"><div className="space-y-6 pt-2"><div className="flex items-center justify-between"><div className="h-6 w-32 bg-slate-600 rounded"></div><div className="h-6 w-12 bg-purple-600/30 rounded-full"></div></div><div className="h-px w-full bg-slate-700"></div><div className="h-4 w-3/4 bg-slate-700 rounded"></div><div className="h-4 w-1/2 bg-slate-700 rounded"></div></div></FeatureLock>}
 

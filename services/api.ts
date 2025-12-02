@@ -31,7 +31,8 @@ import {
     recordActionServer,
     getAnalyticsDataServer, 
     syncUserAction,
-    awardBadgeAction 
+    awardBadgeAction,
+    syncCommunityBrandingAction // 🟢 NEW IMPORT
 } from '@/app/actions';
 
 import type {
@@ -41,10 +42,7 @@ import type {
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
     // 🟢 UPDATED: Robust Badge Parsing
-    // 1. If 'badges' array already exists (manually fetched), use it.
-    // 2. Else check 'user_badges' join.
     let badges: Badge[] = [];
-    
     if (data.badges && Array.isArray(data.badges)) {
         badges = data.badges;
     } else if (data.user_badges && Array.isArray(data.user_badges)) {
@@ -200,7 +198,6 @@ export const api = {
         return profileFromSupabase(profile);
     },
 
-    // 🟢 FIXED: Now fetches badges after sync
     getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
         const userData = await syncUserAction(whopId, whopRole);
         if (userData) {
@@ -258,6 +255,11 @@ export const api = {
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ white_label_enabled: enabled }).eq('id', communityId);
         return !error;
+    },
+
+    // 🟢 NEW: Sync Branding API Wrapper
+    syncBrandingFromWhop: async () => {
+        return await syncCommunityBrandingAction();
     },
 
     // QUESTS

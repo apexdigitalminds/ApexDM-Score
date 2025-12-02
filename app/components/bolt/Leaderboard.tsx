@@ -1,9 +1,11 @@
+"use client";
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import type { Profile } from '@/types';
 import Avatar from './Avatar';
 import { useApp } from '@/context/AppContext';
-import { FireIcon, StarIcon } from './icons'; 
+import { FireIcon, StarIcon, TrophyIcon } from './icons'; 
 
 interface LeaderboardProps {
   users: Profile[];
@@ -23,7 +25,14 @@ const UserRow: React.FC<{
     const titlePos = user.metadata?.titlePosition || 'prefix';
     const pulseColor = user.metadata?.avatarPulseColor;
 
-return (
+    // Rank Logic
+    const rank = index + 1;
+    let rankDisplay: React.ReactNode = <span className={`font-bold w-6 text-center ${rank < 4 ? 'text-yellow-400' : 'text-slate-400'}`}>{rank}</span>;
+    if (rank === 1) rankDisplay = <span className="text-xl">🥇</span>;
+    if (rank === 2) rankDisplay = <span className="text-xl">🥈</span>;
+    if (rank === 3) rankDisplay = <span className="text-xl">🥉</span>;
+
+    return (
       <Link
         href={`/profile/${user.id}`}
         className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
@@ -31,9 +40,7 @@ return (
         }`}
       >
         <div className="flex items-center gap-4">
-          <span className={`font-bold w-6 text-center ${index < 3 ? 'text-yellow-400' : 'text-slate-400'}`}>
-            {index + 1}
-          </span>
+          <div className="w-8 flex justify-center">{rankDisplay}</div>
           
           <div 
             className={`relative rounded-full ${pulseColor ? 'animate-pulse' : ''}`}
@@ -105,7 +112,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ users, currentUserId }) => {
       <div className="flex flex-col gap-4 mb-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                {metric === 'xp' ? <span>🏆 XP Leaderboard</span> : <span className="text-orange-400">🔥 Streak Leaders</span>}
+                {metric === 'xp' ? 
+                    <><TrophyIcon className="w-5 h-5 text-yellow-400"/> XP Leaderboard</> : 
+                    <><FireIcon className="w-5 h-5 text-orange-400"/> Streak Leaders</>
+                }
             </h3>
           </div>
           <div className="flex justify-between items-center bg-slate-900/30 p-1 rounded-lg">
@@ -122,7 +132,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ users, currentUserId }) => {
           </div>
       </div>
       
-      <div className="flex-grow space-y-3 overflow-y-auto pr-2 min-h-[300px]">
+      {/* 🟢 MOBILE RESPONSIVE SCROLL AREA */}
+      <div className="flex-grow space-y-3 overflow-y-auto pr-2 min-h-[300px] overflow-x-hidden">
         {topUsers.map((user, index) => (
           <UserRow key={user.id} user={user} index={index} isCurrent={user.id === currentUserId} mode={metric} />
         ))}

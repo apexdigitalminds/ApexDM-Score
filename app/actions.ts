@@ -103,9 +103,53 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 🟢 ROBUST BADGE AWARDING ---
+// --- 🟢 NEW: Sync Branding from Whop API ---
+export async function syncCommunityBrandingAction() {
+    try {
+        const { isAdmin, communityId } = await verifyUser();
+        if (!isAdmin || !communityId) throw new Error("Unauthorized");
+
+        // 1. Fetch Company Info from Whop API
+        // Note: Using the whopsdk wrapper might require a specific method, 
+        // but raw fetch is safer if SDK types are incomplete.
+        const response = await fetch(`https://api.whop.com/api/v2/companies/${communityId}`, {
+            headers: {
+                'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error("Whop API Error:", await response.text());
+            return { success: false, message: "Failed to fetch Whop data" };
+        }
+
+        const data = await response.json();
+        const companyName = data.title || data.name;
+        const logoUrl = data.image_url || data.logo_url;
+
+        // 2. Update Database
+        const dbCommunityId = await getCommunityId(communityId); // Resolves internal ID if different
+        const { error } = await supabaseAdmin
+            .from('communities')
+            .update({ 
+                name: companyName,
+                logo_url: logoUrl
+            })
+            .eq('id', dbCommunityId);
+
+        if (error) throw error;
+
+        revalidatePath('/'); // Refresh layout
+        return { success: true, message: "Branding synced successfully!" };
+
+    } catch (e: any) {
+        console.error("Sync Branding Error:", e);
+        return { success: false, message: e.message };
+    }
+}
+
 export async function awardBadgeAction(userId: string, badgeName: string) {
-    // 1. Get Badge ID
     const { data: badge, error: badgeError } = await supabaseAdmin
         .from('badges')
         .select('id, community_id')
@@ -114,10 +158,9 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 
     if (badgeError || !badge) {
         console.error(`Server: Badge '${badgeName}' not found.`);
-        return { success: false, message: `Badge '${badgeName}' not found` };
+        return { success: false, message: `Badge '${badgeName}' not found in DB` };
     }
 
-    // 2. Check Exists
     const { data: existing } = await supabaseAdmin
         .from('user_badges')
         .select('id')
@@ -126,16 +169,14 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         .maybeSingle();
 
     if (existing) {
-        return { success: true, message: `User already has ${badgeName}` };
+        return { success: true, message: "User already has this badge" };
     }
 
-    // 3. Fallback Community ID (Essential fix if badge.community_id is null)
     let finalCommunityId = badge.community_id;
     if (!finalCommunityId) {
         finalCommunityId = await getCommunityId();
     }
 
-    // 4. Insert
     const payload = {
         user_id: userId,
         badge_id: badge.id,
@@ -154,7 +195,7 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 
     revalidatePath('/dashboard');
     revalidatePath('/profile/[userId]');
-    return { success: true, message: `Successfully awarded: ${badgeName}` };
+    return { success: true, message: "Badge awarded successfully" };
 }
 
 // --- USER ACTIONS ---

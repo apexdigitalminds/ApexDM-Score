@@ -1,12 +1,25 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link'; 
 import { useRouter, usePathname } from 'next/navigation'; 
 import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, ChartPieIcon, SparklesIcon, LockClosedIcon } from './icons';
 import { useApp } from '@/context/AppContext';
 import Avatar from './Avatar';
 import TrialBanner from './TrialBanner';
+
+// Local Icons for Menu
+const MenuIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    </svg>
+);
+
+const XMarkIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -16,19 +29,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const { selectedUser, isFeatureEnabled, community, isLoading } = useApp();
     const router = useRouter();
     const pathname = usePathname(); 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
-    const navLinkClasses = "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors";
+    // Close mobile menu when route changes
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
+
+    const navLinkClasses = "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors font-medium";
     const activeClass = "bg-slate-700 text-white";
     const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
 
-    // Dynamic Cosmetic Logic
     const pulseColor = selectedUser?.metadata?.avatarPulseColor;
     const isBoosted = !!pulseColor;
 
     const showQuests = isFeatureEnabled('quests');
     const showStore = isFeatureEnabled('store');
     const showAnalytics = isFeatureEnabled('analytics');
-    
     const canWhiteLabel = isFeatureEnabled('white_label');
     const isWhiteLabelActive = canWhiteLabel && (community?.whiteLabelEnabled ?? false);
 
@@ -55,88 +72,95 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
     }, [isWhiteLabelActive, community, isLoading]);
 
+    // Navigation Items Config
+    const navItems = [
+        { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon, show: true },
+        { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
+        { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
+        { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
+        { href: '/analytics', label: 'Analytics', icon: ChartPieIcon, show: selectedUser?.role === 'admin', locked: !showAnalytics },
+        { href: '/admin', label: 'Admin', icon: UserGroupIcon, show: selectedUser?.role === 'admin' },
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
             <TrialBanner />
 
-            <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-10">
+            {/* 🟢 NAVBAR */}
+            <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
+                        
+                        {/* LEFT: Branding */}
                         <div className="flex items-center gap-4">
                             <Link href="/" className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
                                 {!isLoading && isWhiteLabelActive && community?.logoUrl ? (
                                     <>
                                         <img src={community.logoUrl} alt={community.name} className="h-8 w-8 rounded-lg object-cover" />
-                                        <span className="text-white">{community.name}</span>
+                                        <span className="text-white hidden sm:block">{community.name}</span>
                                     </>
                                 ) : (
                                     <>
                                         <LogoIcon className="h-8 w-8"/>
-                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">ApexDM Score</span>
+                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text hidden sm:block">ApexDM Score</span>
+                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text sm:hidden">ApexDM</span>
                                     </>
                                 )}
                             </Link>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        {/* CENTER: Desktop Navigation (Hidden on Mobile) */}
+                        <div className="hidden lg:flex items-center gap-1">
+                            {navItems.filter(i => i.show).map((item) => (
+                                <Link 
+                                    key={item.href} 
+                                    href={item.href} 
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === item.href ? activeClass : inactiveClass}`}
+                                >
+                                    <item.icon className="h-4 w-4" />
+                                    <span>{item.label}</span>
+                                    {item.locked && <LockClosedIcon className="w-3 h-3 text-yellow-400" />}
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* RIGHT: User Profile & Mobile Toggle */}
+                        <div className="flex items-center gap-3">
                             {selectedUser ? (
                                 <>
+                                    {/* Desktop Profile (Hidden Mobile) */}
                                     <Link 
                                         href={`/profile/${selectedUser.id}`} 
-                                        className={`flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
+                                        className={`hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        {/* 🟢 FIXED: Avatar Container sizing and positioning */}
                                         <div 
-                                            className="relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300"
+                                            className="relative rounded-full transition-all duration-300 p-0.5"
                                             style={isBoosted ? { 
-                                                boxShadow: `0 0 10px 2px ${pulseColor}`, // Outer Glow
-                                                border: `2px solid ${pulseColor}`,     // Solid Border
+                                                boxShadow: `0 0 10px 2px ${pulseColor}`, 
+                                                border: `2px solid ${pulseColor}`,
                                                 animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                                             } : { border: '2px solid transparent' }}
                                         >
-                                            {/* Avatar Image - Ensure it fills container */}
                                             <Avatar 
                                                 src={selectedUser.avatarUrl} 
                                                 alt={selectedUser.username || "User"} 
                                                 className="w-8 h-8 rounded-full bg-slate-700 object-cover" 
                                             />
                                         </div>
-                                        <span className="font-semibold text-white hidden sm:inline">{selectedUser.username}</span>
-                                    </Link>
-                                    <Link href="/dashboard" className={`${navLinkClasses} ${pathname === '/dashboard' ? activeClass : inactiveClass}`}>
-                                        <ChartBarIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">Dashboard</span>
-                                    </Link>
-                                    <Link href="/collection" className={`${navLinkClasses} ${pathname === '/collection' ? activeClass : inactiveClass}`}>
-                                        <SparklesIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">Collection</span>
-                                    </Link>
-                                    
-                                    <Link href="/quests" className={`${navLinkClasses} ${pathname === '/quests' ? activeClass : inactiveClass}`}>
-                                        <TargetIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">Quests</span>
-                                        {!showQuests && <LockClosedIcon className="w-3 h-3 text-yellow-400" />} 
-                                    </Link>
-                                    
-                                    <Link href="/store" className={`${navLinkClasses} ${pathname === '/store' ? activeClass : inactiveClass}`}>
-                                        <ShoppingCartIcon className="h-5 w-5" />
-                                        <span className="hidden sm:inline">XP Store</span>
-                                        {!showStore && <LockClosedIcon className="w-3 h-3 text-yellow-400" />}
+                                        <span className="font-semibold text-white text-sm max-w-[100px] truncate">{selectedUser.username}</span>
                                     </Link>
 
-                                    {selectedUser.role === 'admin' && (
-                                        <>
-                                            <Link href="/analytics" className={`${navLinkClasses} ${pathname === '/analytics' ? activeClass : inactiveClass}`}>
-                                                <ChartPieIcon className="h-5 w-5" />
-                                                <span className="hidden sm:inline">Analytics</span>
-                                                {!showAnalytics && <LockClosedIcon className="w-3 h-3 text-yellow-400" />}
-                                            </Link>
-                                            
-                                            <Link href="/admin" className={`${navLinkClasses} ${pathname === '/admin' ? activeClass : inactiveClass}`}>
-                                                <UserGroupIcon className="h-5 w-5" />
-                                                <span className="hidden sm:inline">Admin</span>
-                                            </Link>
-                                        </>
-                                    )}
+                                    {/* Mobile Menu Button */}
+                                    <button
+                                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                        className="lg:hidden p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none"
+                                    >
+                                        {isMobileMenuOpen ? (
+                                            <XMarkIcon className="h-6 w-6" />
+                                        ) : (
+                                            <MenuIcon className="h-6 w-6" />
+                                        )}
+                                    </button>
                                 </>
                             ) : (
                                 <span className="text-sm text-slate-500 italic px-4">Connecting...</span>
@@ -144,6 +168,48 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                     </div>
                 </nav>
+
+                {/* 🟢 MOBILE MENU DRAWER */}
+                {isMobileMenuOpen && selectedUser && (
+                    <div className="lg:hidden border-t border-slate-700 bg-slate-800 absolute w-full left-0 z-50 shadow-2xl">
+                        <div className="p-4 space-y-4">
+                            {/* Mobile User Profile Header */}
+                            <Link 
+                                href={`/profile/${selectedUser.id}`} 
+                                className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl"
+                            >
+                                <div 
+                                    className="relative rounded-full p-0.5"
+                                    style={isBoosted ? { 
+                                        boxShadow: `0 0 10px 2px ${pulseColor}`, 
+                                        border: `2px solid ${pulseColor}` 
+                                    } : { border: '2px solid transparent' }}
+                                >
+                                    <Avatar src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-10 h-10 rounded-full" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-white">{selectedUser.username}</p>
+                                    <p className="text-xs text-slate-400">{selectedUser.xp.toLocaleString()} XP</p>
+                                </div>
+                            </Link>
+
+                            {/* Mobile Nav Links */}
+                            <div className="space-y-1">
+                                {navItems.filter(i => i.show).map((item) => (
+                                    <Link 
+                                        key={item.href} 
+                                        href={item.href} 
+                                        className={`${navLinkClasses} ${pathname === item.href ? activeClass : 'text-slate-300 hover:bg-slate-700'}`}
+                                    >
+                                        <item.icon className="h-5 w-5" />
+                                        <span className="flex-grow">{item.label}</span>
+                                        {item.locked && <LockClosedIcon className="w-4 h-4 text-yellow-400" />}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </header>
 
             <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
