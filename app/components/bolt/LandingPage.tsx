@@ -102,10 +102,10 @@ const LandingPage: React.FC = () => {
         
         {/* UPDATED LINK: Points to Dashboard instead of Signup */}
         <Link
-          href="/pricingpage"
+          href="/pricing"
           className="inline-block bg-white text-purple-700 font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-200 transition-all transform hover:scale-105 shadow-lg"
         >
-          View Pricing
+          View Pricing & Features
         </Link>
       </div>
 

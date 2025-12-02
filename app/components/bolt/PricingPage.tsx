@@ -135,6 +135,8 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="w-full text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
+      {/* 🟢 REMOVED: Custom Header. Now relies on Layout.tsx for the navbar. */}
+      
       <div className="text-center max-w-3xl mx-auto mb-12">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-6 bg-gradient-to-r from-white to-slate-400 text-transparent bg-clip-text">
             Find the right plan for your community
@@ -176,7 +178,7 @@ const PricingPage: React.FC = () => {
       <div className="mt-20 text-center border-t border-slate-800 pt-10">
           <h3 className="text-xl font-bold text-white mb-2">Enterprise or Custom Needs?</h3>
           <p className="text-slate-400 text-sm mb-4">We offer tailored solutions for large-scale communities.</p>
-          <a href="mailto:support@apexdm.com" className="text-purple-400 hover:text-purple-300 font-bold hover:underline">
+          <a href="mailto:apexdigitalminds@gmail.com" className="text-purple-400 hover:text-purple-300 font-bold hover:underline">
               Contact Sales &rarr;
           </a>
       </div>
