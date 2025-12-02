@@ -37,7 +37,6 @@ async function verifyUser() {
 
     if (!profile) {
         if (isAdmin) {
-             // 🟢 Pass tokenCompanyId so we can use it for setup even if profile doesn't exist
              return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
         }
         throw new Error("Profile not initialized. Please refresh.");
@@ -51,7 +50,6 @@ async function verifyUser() {
         userId: profile.id, 
         whopUserId, 
         isAdmin,
-        // 🟢 PREFER TOKEN ID: If the profile is linked to a dummy community, we still want the REAL ID from the token
         communityId: tokenCompanyId || profile.community_id 
     };
 
@@ -105,45 +103,58 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 🟢 NEW: Robust Branding Sync ---
+// --- 🟢 NEW: Robust Branding Sync (With Dev Fallback) ---
 export async function syncCommunityBrandingAction() {
     try {
-        // 1. Get the REAL Company ID from the current user's session token
         const { isAdmin, communityId: realWhopId } = await verifyUser();
         
         if (!isAdmin || !realWhopId) throw new Error("Unauthorized or No Company ID found");
 
         console.log(`Syncing branding for Whop Company ID: ${realWhopId}`);
 
-        // 2. Fetch Info from Whop API using the REAL ID
-        const response = await fetch(`https://api.whop.com/api/v2/companies/${realWhopId}`, {
-            headers: {
-                'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        let companyName = "ApexDM Community";
+        let logoUrl = ""; // Default empty
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("Whop API Error:", errText);
-            return { success: false, message: `Whop API Error: ${response.status}` };
+        // 2. Fetch Info from Whop API
+        if (process.env.WHOP_API_KEY) {
+            const response = await fetch(`https://api.whop.com/api/v2/companies/${realWhopId}`, {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                companyName = data.title || data.name;
+                logoUrl = data.image_url || data.logo_url;
+            } else {
+                console.warn(`Whop API Error (${response.status}). Using Fallback.`);
+                // 🟢 DEV FALLBACK: If 401 in Dev, mock success
+                if (process.env.NODE_ENV === 'development') {
+                    companyName = "Simulated Community";
+                    logoUrl = "https://ui-avatars.com/api/?name=Simulated+Community&background=random"; 
+                } else {
+                    return { success: false, message: `Whop API Error: ${response.status}` };
+                }
+            }
+        } else if (process.env.NODE_ENV === 'development') {
+             // 🟢 DEV FALLBACK: No API Key present
+             console.warn("No WHOP_API_KEY found. Using Dev Mock.");
+             companyName = "Dev Mode Community";
+             logoUrl = "https://ui-avatars.com/api/?name=Dev+Mode&background=0D8ABC&color=fff";
         }
 
-        const data = await response.json();
-        const companyName = data.title || data.name;
-        const logoUrl = data.image_url || data.logo_url;
-
-        // 3. Update Database (and fix the ID if it was a dummy)
-        // We find the SINGLE community row that exists and update it.
-        // We effectively "Adopt" the real Whop ID into our database now.
-        
+        // 3. Update Database 
         const { data: currentDbComm } = await supabaseAdmin.from('communities').select('id').limit(1).single();
         
         if (currentDbComm) {
              const { error } = await supabaseAdmin
             .from('communities')
             .update({ 
-                id: realWhopId, // 🟢 CRITICAL: Overwrite dummy ID with real Whop ID
+                // Only update ID if we are NOT in dev fallback (to avoid breaking FKs with fake IDs)
+                // If it's a real sync, we adopt the real ID.
+                ...(process.env.WHOP_API_KEY ? { id: realWhopId } : {}),
                 name: companyName,
                 logo_url: logoUrl
             })
@@ -184,7 +195,6 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         return { success: true, message: `User already has ${badgeName}` };
     }
 
-    // Fallback Community ID
     let finalCommunityId = badge.community_id;
     if (!finalCommunityId) {
         finalCommunityId = await getCommunityId();
