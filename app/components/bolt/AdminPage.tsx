@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from 'next/link';
 import { useApp } from "@/context/AppContext";
 import { api } from "@/services/api"; 
 import type {
@@ -12,9 +13,9 @@ import type {
   Quest,
   QuestTask,
   StoreItem,
-  Action,
   ItemType,
   Badge,
+  Action // 🟢 ENSURED IMPORT
 } from "@/types";
 
 import Leaderboard from "./Leaderboard";
@@ -22,6 +23,19 @@ import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
 import ConfirmationModal from "./ConfirmationModal";
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
+
+// 🟢 MISSING ICONS (Inlined to fix errors)
+const CreditCardIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+  </svg>
+);
+
+const ChatBubbleLeftIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+  </svg>
+);
 
 // Toggle Component
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
@@ -76,7 +90,7 @@ export default function AdminPage() {
   } = useApp();
   
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'users' | 'engagement' | 'store' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'engagement' | 'store' | 'settings' | 'subscription'>('users');
 
   const [localRewards, setLocalRewards] = useState(rewardsConfig);
   const [localBadges, setLocalBadges] = useState(badgesConfig);
@@ -178,7 +192,7 @@ export default function AdminPage() {
   const handleAwardXp = async () => { if (targetUser) { const result = await handleRecordAction(targetUser.id, actionType, "manual"); await withRefresh(async () => {}); showNotification(`Awarded ${result?.xpGained ?? 0} XP.`); } };
   const handleAwardBadgeClick = async () => { if (targetUser && badgeToAward) { await handleAwardBadge(targetUser.id, badgeToAward); await withRefresh(async () => {}); showNotification(`Badge awarded.`); } };
 
-  // 🟢 NEW: Handle Branding Sync
+  // Sync Branding
   const handleSyncBranding = async () => {
       const res = await api.syncBrandingFromWhop();
       if (res.success) {
@@ -187,6 +201,23 @@ export default function AdminPage() {
       } else {
           showNotification(res.message || "Failed to sync.");
       }
+  };
+
+  // Handle Tier Update (For Subscription Tab)
+  const handleTierUpdate = async (newTier: string) => {
+      const success = await adminUpdateCommunityTier(newTier as 'Core' | 'Pro' | 'Elite');
+      if (success) {
+          showNotification(`Plan updated to ${newTier}`);
+          await withRefresh(async () => {});
+      } else {
+          showNotification("Failed to update plan.");
+      }
+  };
+
+  // 🟢 FIXED: Re-added handleTierChange for the Dev Simulation Dropdown
+  const handleTierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newTier = e.target.value as 'Core' | 'Pro' | 'Elite';
+      await handleTierUpdate(newTier);
   };
 
   const handleToggleRewardActive = async (actionType: string, isActive: boolean) => { 
@@ -260,7 +291,6 @@ export default function AdminPage() {
   const handleAdminBan = (h: number|null) => { if(!targetUser) return; setModalConfig({ isOpen: true, title: h ? "Ban User (24h)" : "Permaban User", message: `Ban ${targetUser.username}?`, isDestructive: true, onConfirm: async () => { await adminBanUser(targetUser.id, h); await withRefresh(async () => {}); showNotification("Ban status updated."); closeModal(); } }); };
   const handlePasswordReset = async () => { if(!targetUser) return; const e = await adminGetUserEmail(targetUser.id); if(e) alert(`Email: ${e}`); };
   const handleViewLogs = async () => { if(!targetUser) return; const l = await getAllUserActions(targetUser.id); setLogActions(l); setIsLogModalOpen(true); };
-  const handleTierChange = async (e: React.ChangeEvent<HTMLSelectElement>) => { const newTier = e.target.value as 'Core' | 'Pro' | 'Elite'; const success = await adminUpdateCommunityTier(newTier); await withRefresh(async () => {}); showNotification(success ? `Tier changed.` : `Failed.`); };
   const handleSimulateRenewal = async (userId: string) => { if (!userId) return; const message = await handleTriggerWebhook(userId, "renew_subscription"); if (message) { await withRefresh(async () => {}); showNotification(message, 4000); } };
   const handleToggleWhiteLabelClick = async (enabled: boolean) => { await handleToggleWhiteLabel(enabled); await withRefresh(async () => {}); };
   
@@ -318,10 +348,81 @@ export default function AdminPage() {
         <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5"/>} />
         <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5"/>} locked={!isFeatureEnabled('quests')} />
         <TabButton active={activeTab === 'store'} onClick={() => setActiveTab('store')} label="XP Store" icon={<ShoppingCartIcon className="w-5 h-5"/>} locked={!isFeatureEnabled('store')} />
+        <TabButton active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')} label="Subscription" icon={<CreditCardIcon className="w-5 h-5"/>} />
         <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} label="Settings" icon={<SparklesIcon className="w-5 h-5"/>} />
       </div>
 
-      {activeTab === 'users' && (
+      {/* ... (Rest of the components: Users, Engagement, Store, Subscription, Settings tabs) ... */}
+      {/* All other tabs remain identical to previous versions, ensuring no feature loss. */}
+      
+      {/* 🟢 NEW SUBSCRIPTION TAB */}
+      {activeTab === 'subscription' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20">
+                  <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-bold text-white">Current Plan</h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wide
+                          ${community?.tier === 'Elite' ? 'bg-purple-600 text-white' : 
+                            community?.tier === 'Pro' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-slate-300'}`}>
+                          {community?.tier || 'Free'}
+                      </span>
+                  </div>
+                  
+                  <div className="space-y-4 mb-8">
+                      <p className="text-slate-400 text-sm">
+                          Your community is currently on the <strong>{community?.tier}</strong> tier.
+                          {community?.trialEndsAt && ` Trial ends on ${new Date(community.trialEndsAt).toLocaleDateString()}.`}
+                      </p>
+                      
+                      <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                              Manual Plan Override (For Testing)
+                          </label>
+                          <div className="flex gap-2">
+                              {['Core', 'Pro', 'Elite'].map((tier) => (
+                                  <button
+                                      key={tier}
+                                      onClick={() => handleTierUpdate(tier)}
+                                      className={`flex-1 py-2 rounded text-sm font-bold transition-all ${
+                                          community?.tier === tier 
+                                              ? 'bg-purple-600 text-white shadow-lg' 
+                                              : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                      }`}
+                                  >
+                                      {tier}
+                                  </button>
+                              ))}
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-2 italic">
+                              Note: This override allows you to preview features. Real billing is handled via Whop.
+                          </p>
+                      </div>
+                  </div>
+
+                  <Link href="/pricing" className="block w-full text-center bg-white text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-200 transition-colors">
+                      View Pricing & Features
+                  </Link>
+              </div>
+
+              <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
+                  <p className="text-slate-400 text-sm mb-6">
+                      Have a feature request or found a bug? Email our support team directly.
+                  </p>
+                  <div className="space-y-3">
+                      <a href="mailto:support@apexdm.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                          Contact Support via Email
+                      </a>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Rest of tabs... (Ensure User, Engagement, Store, Settings render code is preserved) */}
+       {activeTab === 'users' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
@@ -446,7 +547,6 @@ export default function AdminPage() {
                                                     <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
                                                     <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
                                                 </div>
-                                                {/* 🟢 REMOVED: Task Description Input as requested */}
                                             </div>
                                             <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
                                         </div>
@@ -677,7 +777,6 @@ export default function AdminPage() {
              </div>
       )}
 
-      {/* 🟢 FULL SETTINGS TAB WITH BRANDING SYNC */}
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
@@ -705,7 +804,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabelClick(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div>
                         <p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p>
                         
-                        {/* 🟢 NEW: SYNC BUTTON */}
+                        {/* 🟢 BRANDING SYNC BUTTON */}
                         <div className="border-t border-slate-700 pt-4 mt-4">
                             <button 
                                 onClick={handleSyncBranding} 

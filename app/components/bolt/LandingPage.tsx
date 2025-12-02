@@ -92,20 +92,20 @@ const LandingPage: React.FC = () => {
 
       <div className="mt-20 w-full max-w-5xl mx-auto bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center shadow-2xl shadow-purple-500/20">
         <h2 className="text-4xl font-extrabold text-white mb-4">
-          Ready for Whop Integration
+          Whop Integration Ready
         </h2>
         <p className="text-lg text-blue-100 max-w-3xl mx-auto mb-8">
-          Built with OAuth and webhook support. Connect your Whop store to
+          Connect your Whop store to
           automatically reward members for subscriptions, renewals, and community
           participation.
         </p>
         
         {/* UPDATED LINK: Points to Dashboard instead of Signup */}
         <Link
-          href="/dashboard"
+          href="/pricingpage"
           className="inline-block bg-white text-purple-700 font-bold py-3 px-8 rounded-lg text-lg hover:bg-slate-200 transition-all transform hover:scale-105 shadow-lg"
         >
-          Enter App
+          View Pricing
         </Link>
       </div>
 
