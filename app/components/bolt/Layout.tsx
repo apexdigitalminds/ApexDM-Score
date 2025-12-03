@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import Avatar from './Avatar';
 import TrialBanner from './TrialBanner';
 
+// ... (Keep existing MenuIcon / XMarkIcon definitions) ...
 // Local Icons for Menu
 const MenuIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -31,7 +32,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const pathname = usePathname(); 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
-    // Close mobile menu when route changes
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [pathname]);
@@ -62,7 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 if (community.logoUrl) link.href = community.logoUrl;
                 if (community.name) document.title = community.name;
             } else {
-                link.href = '/favicon.ico';
+                link.href = '/favicon.png';
                 document.title = 'ApexDM Score';
             }
         };
@@ -72,7 +72,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
     }, [isWhiteLabelActive, community, isLoading]);
 
-    // Navigation Items Config
+    // 🟢 UPDATED: Role-Based Home Link
+    // 1. If Admin: Go to Landing Page ('/')
+    // 2. If Member: Go to Dashboard ('/dashboard')
+    // 3. Fallback: If loading or no user, go to Landing Page ('/')
+    const homeHref = (selectedUser && selectedUser.role !== 'admin') ? '/dashboard' : '/';
+
     const navItems = [
         { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
@@ -86,14 +91,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
             <TrialBanner />
 
-            {/* 🟢 NAVBAR */}
             <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         
-                        {/* LEFT: Branding */}
+                        {/* LEFT: Branding with Logic */}
                         <div className="flex items-center gap-4">
-                            <Link href="/" className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
+                            <Link href={homeHref} className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
                                 {!isLoading && isWhiteLabelActive && community?.logoUrl ? (
                                     <>
                                         <img src={community.logoUrl} alt={community.name} className="h-8 w-8 rounded-lg object-cover" />
@@ -109,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             </Link>
                         </div>
 
-                        {/* CENTER: Desktop Navigation (Hidden on Mobile) */}
+                        {/* CENTER: Desktop Navigation */}
                         <div className="hidden lg:flex items-center gap-1">
                             {navItems.filter(i => i.show).map((item) => (
                                 <Link 
@@ -128,7 +132,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex items-center gap-3">
                             {selectedUser ? (
                                 <>
-                                    {/* Desktop Profile (Hidden Mobile) */}
                                     <Link 
                                         href={`/profile/${selectedUser.id}`} 
                                         className={`hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
@@ -150,16 +153,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         <span className="font-semibold text-white text-sm max-w-[100px] truncate">{selectedUser.username}</span>
                                     </Link>
 
-                                    {/* Mobile Menu Button */}
                                     <button
                                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                         className="lg:hidden p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none"
                                     >
-                                        {isMobileMenuOpen ? (
-                                            <XMarkIcon className="h-6 w-6" />
-                                        ) : (
-                                            <MenuIcon className="h-6 w-6" />
-                                        )}
+                                        {isMobileMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
                                     </button>
                                 </>
                             ) : (
@@ -169,11 +167,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     </div>
                 </nav>
 
-                {/* 🟢 MOBILE MENU DRAWER */}
+                {/* MOBILE MENU DRAWER */}
                 {isMobileMenuOpen && selectedUser && (
                     <div className="lg:hidden border-t border-slate-700 bg-slate-800 absolute w-full left-0 z-50 shadow-2xl">
                         <div className="p-4 space-y-4">
-                            {/* Mobile User Profile Header */}
                             <Link 
                                 href={`/profile/${selectedUser.id}`} 
                                 className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl"
@@ -193,7 +190,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 </div>
                             </Link>
 
-                            {/* Mobile Nav Links */}
                             <div className="space-y-1">
                                 {navItems.filter(i => i.show).map((item) => (
                                     <Link 
