@@ -12,14 +12,20 @@ const HomeRouteHandler = () => {
     const router = useRouter();
 
     useEffect(() => {
-        // If done loading, and we have a user who is NOT an admin...
-        if (!isLoading && selectedUser && selectedUser.role !== 'admin') {
-            // ...Redirect them straight to the Dashboard.
+        if (isLoading) return;
+
+        // 🔍 DEBUG: Watch the console to see what Role the app sees
+        if (selectedUser) {
+            console.log(`[HomeRoute] User: ${selectedUser.username} | Role: ${selectedUser.role}`);
+        }
+
+        // Logic: If Logged In AND (Not Admin), Redirect to Dashboard
+        if (selectedUser && selectedUser.role !== 'admin') {
             router.push('/dashboard');
         }
     }, [selectedUser, isLoading, router]);
 
-    // Optional: Show a loader while checking roles to prevent "flash" of content
+    // 1. Loading State
     if (isLoading) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -28,8 +34,17 @@ const HomeRouteHandler = () => {
         );
     }
 
-    // If we are here, the user is either an Admin or (rarely) unauthenticated.
-    // In both cases, showing the Landing Page is the safe/correct behavior.
+    // 2. 🛡️ ANTI-FLASH: If we are about to redirect a Member, 
+    //    show the loader instead of rendering the Landing Page.
+    if (selectedUser && selectedUser.role !== 'admin') {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+        );
+    }
+
+    // 3. Render Landing Page (Only for Admins or Public Visitors)
     return (
         <Layout>
             <LandingPage />
