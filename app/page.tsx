@@ -4,9 +4,8 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LandingPage from '../app/components/bolt/LandingPage';
 import Layout from '../app/components/bolt/Layout';
-import { AppProvider, useApp } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext'; 
 
-// 🟢 INTERNAL COMPONENT: Handles the Redirect Logic
 const HomeRouteHandler = () => {
     const { selectedUser, isLoading } = useApp();
     const router = useRouter();
@@ -14,19 +13,26 @@ const HomeRouteHandler = () => {
     useEffect(() => {
         if (isLoading) return;
 
-        // 🔍 DEBUG: Watch the console to see what Role the app sees
+        // 🔍 Debug: Confirm the Root Layout passed the correct user
         if (selectedUser) {
-            console.log(`[HomeRoute] User: ${selectedUser.username} | Role: ${selectedUser.role}`);
+             console.log(`[HomeRoute] User: ${selectedUser.username} | Role: ${selectedUser.role}`);
         }
 
-        // Logic: If Logged In AND (Not Admin), Redirect to Dashboard
-        if (selectedUser && selectedUser.role !== 'admin') {
+        // 1. If Admin: Do nothing. Stay here. Render Landing Page.
+        if (selectedUser?.role === 'admin') return;
+
+        // 2. If Member: Redirect to Dashboard immediately.
+        if (selectedUser) {
             router.push('/dashboard');
         }
+        
+        // 3. If Public (No User): Stay here. Render Landing Page.
     }, [selectedUser, isLoading, router]);
 
-    // 1. Loading State
-    if (isLoading) {
+    // 🛡️ LOADING STATE
+    // If we are loading, OR if we are a Member (who is about to be redirected),
+    // show the spinner to prevent the Landing Page from "flashing" on screen.
+    if (isLoading || (selectedUser && selectedUser.role !== 'admin')) {
         return (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -34,17 +40,7 @@ const HomeRouteHandler = () => {
         );
     }
 
-    // 2. 🛡️ ANTI-FLASH: If we are about to redirect a Member, 
-    //    show the loader instead of rendering the Landing Page.
-    if (selectedUser && selectedUser.role !== 'admin') {
-        return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-            </div>
-        );
-    }
-
-    // 3. Render Landing Page (Only for Admins or Public Visitors)
+    // 🟢 RENDER LANDING PAGE (Admins & Public only)
     return (
         <Layout>
             <LandingPage />
@@ -52,15 +48,7 @@ const HomeRouteHandler = () => {
     );
 };
 
-const PLACEHOLDER_ID = "public-visitor";
-
+// DIRECT EXPORT - Rely on the RootLayout's AppProvider
 export default function Page() {
-  return (
-    <AppProvider 
-        verifiedUserId={PLACEHOLDER_ID} 
-        experienceId={PLACEHOLDER_ID}
-    >
-      <HomeRouteHandler />
-    </AppProvider>
-  );
+  return <HomeRouteHandler />;
 }
