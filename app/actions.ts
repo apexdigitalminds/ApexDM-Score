@@ -103,7 +103,7 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 🟢 NEW: Robust Branding Sync (With Dev Fallback) ---
+// --- 泙 NEW: Robust Branding Sync (With Dev Fallback) ---
 export async function syncCommunityBrandingAction() {
     try {
         const { isAdmin, communityId: realWhopId } = await verifyUser();
@@ -130,7 +130,7 @@ export async function syncCommunityBrandingAction() {
                 logoUrl = data.image_url || data.logo_url;
             } else {
                 console.warn(`Whop API Error (${response.status}). Using Fallback.`);
-                // 🟢 DEV FALLBACK: If 401 in Dev, mock success
+                // 泙 DEV FALLBACK: If 401 in Dev, mock success
                 if (process.env.NODE_ENV === 'development') {
                     companyName = "Simulated Community";
                     logoUrl = "https://ui-avatars.com/api/?name=Simulated+Community&background=random"; 
@@ -139,7 +139,7 @@ export async function syncCommunityBrandingAction() {
                 }
             }
         } else if (process.env.NODE_ENV === 'development') {
-             // 🟢 DEV FALLBACK: No API Key present
+             // 泙 DEV FALLBACK: No API Key present
              console.warn("No WHOP_API_KEY found. Using Dev Mock.");
              companyName = "Dev Mode Community";
              logoUrl = "https://ui-avatars.com/api/?name=Dev+Mode&background=0D8ABC&color=fff";
@@ -427,21 +427,47 @@ export async function adminToggleStoreItemAction(itemId: string, isActive: boole
 }
 
 // REWARDS
-export async function adminAddRewardAction(actionType: string, xp: number) {
+export async function adminAddRewardAction(actionType: string, xp: number, description?: string) {
     await ensureAdmin();
     const communityId = await getCommunityId();
-    const { error } = await supabaseAdmin.from('reward_actions').insert({ community_id: communityId, action_type: actionType, xp_gained: xp });
+    const payload: any = { 
+        community_id: communityId, 
+        action_type: actionType, 
+        xp_gained: xp 
+    };
+    if (description) payload.description = description;
+
+    const { error } = await supabaseAdmin.from('reward_actions').insert(payload);
     return !error;
 }
-export async function adminUpdateRewardAction(actionType: string, data: any) {
+
+export async function adminUpdateRewardAction(currentActionType: string, data: any) {
     await ensureAdmin();
     const updates: any = {};
+    
+    // Standard Fields
     if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
     if (data.isActive !== undefined) updates.is_active = data.isActive; 
-    const { error } = await supabaseAdmin.from('reward_actions').update(updates).eq('action_type', actionType);
+    
+    // 🟢 FIX: Allow updating Description
+    if (data.description !== undefined) updates.description = data.description;
+
+    // 🟢 FIX: Allow Renaming the Action (Action Type)
+    // If the new name is different from the current name, update the key.
+    if (data.actionType && data.actionType !== currentActionType) {
+        updates.action_type = data.actionType;
+    }
+
+    // Update the record identified by the OLD action type
+    const { error } = await supabaseAdmin
+        .from('reward_actions')
+        .update(updates)
+        .eq('action_type', currentActionType);
+
     if (!error) revalidatePath('/admin');
     return !error;
 }
+
 export async function adminDeleteRewardAction(actionType: string, isArchive: boolean) {
     await ensureAdmin();
     if (isArchive) {
@@ -452,6 +478,7 @@ export async function adminDeleteRewardAction(actionType: string, isArchive: boo
         return { success: !error, message: error ? error.message : "Deleted" };
     }
 }
+
 export async function adminRestoreRewardAction(actionType: string) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('reward_actions').update({ is_archived: false }).eq('action_type', actionType);
@@ -531,14 +558,64 @@ export async function adminCreateQuestAction(questData: any) {
     return true;
 }
 
+// 🟢 FIX: Updated Quest Logic (Wipe & Replace Tasks)
 export async function adminUpdateQuestAction(questId: string, questData: any) {
     await ensureAdmin();
-    const { error } = await supabaseAdmin.from('quests').update({
-        title: questData.title, description: questData.description, xp_reward: questData.xpReward
+
+    // 1. Update the Main Quest Details (Title, Description, XP)
+    const { error: questError } = await supabaseAdmin.from('quests').update({
+        title: questData.title, 
+        description: questData.description, 
+        xp_reward: questData.xpReward
     }).eq('id', questId);
-    if (error) return false;
+
+    if (questError) {
+        console.error("Error updating quest details:", questError);
+        return false;
+    }
+
+    // 2. Handle Tasks (If provided)
+    if (questData.tasks && Array.isArray(questData.tasks)) {
+        
+        // A. Delete ALL existing tasks for this quest (Wipe)
+        const { error: deleteError } = await supabaseAdmin
+            .from('quest_tasks')
+            .delete()
+            .eq('quest_id', questId);
+
+        if (deleteError) {
+            console.error("Error clearing old tasks:", deleteError);
+            return false;
+        }
+
+        // B. Format the new tasks for insertion
+        const tasksToInsert = questData.tasks.map((task: any) => ({
+            quest_id: questId,
+            action_type: task.actionType,
+            target_count: task.targetCount,
+            description: task.description || ""
+        }));
+
+        // C. Insert the new tasks (Replace)
+        if (tasksToInsert.length > 0) {
+            const { error: insertError } = await supabaseAdmin
+                .from('quest_tasks')
+                .insert(tasksToInsert);
+
+            if (insertError) {
+                console.error("Error inserting new tasks:", insertError);
+                return false;
+            }
+        }
+    }
+
+    // 3. Revalidate to show changes immediately
+    revalidatePath('/admin');
+    revalidatePath('/quests');
+    
     return true; 
 }
+
 export async function adminDeleteQuestAction(questId: string) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('quests').update({ is_archived: true, is_active: false }).eq('id', questId);
