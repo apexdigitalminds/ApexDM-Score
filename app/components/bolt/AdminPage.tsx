@@ -249,20 +249,46 @@ export default function AdminPage() {
   };
 
   const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); };
-  const handleRewardSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (editRewardAction) { await handleUpdateReward(editRewardAction, { xpGained: newActionXp }); showNotification("Reward updated."); } else { await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp }); showNotification("Reward added."); } cancelEditReward(); await withRefresh(async () => {}); };
+  
+  // 🟢 FIXED: Rewards - Allow Name Editing & Pass New Name to Update Function
+  const handleRewardSubmit = async (e: React.FormEvent) => { 
+      e.preventDefault(); 
+      if (editRewardAction) { 
+          // Include actionType to support renaming
+          await handleUpdateReward(editRewardAction, { xpGained: newActionXp, actionType: newActionName }); 
+          showNotification("Reward updated."); 
+      } else { 
+          await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp }); 
+          showNotification("Reward added."); 
+      } 
+      cancelEditReward(); 
+      await withRefresh(async () => {}); 
+  };
+
   const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
   const handleDeleteRewardClick = (actionType: string) => { setModalConfig({ isOpen: true, title: "Archive Reward?", message: `Archive "${actionType}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteReward(actionType); showNotification("Reward processed."); await withRefresh(async () => {}); closeModal(); } }); };
   const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); await withRefresh(async () => {}); };
 
   const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
+  
+// 🟢 FIXED: Duplicate 'name' property resolved
   const handleAddOrEditBadge = async (e: React.FormEvent) => { 
       e.preventDefault(); 
       const iconToSave = badgeIconType === 'EMOJI' ? newBadgeIcon : newBadgeIcon;
-      const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor }; 
+      // name is already included in badgeData
+      const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor, name: newBadgeName }; 
       
-      if (editBadgeName) { await handleUpdateBadge(editBadgeName, badgeData); showNotification("Badge updated."); } 
-      else { await handleAddBadge({ id: crypto.randomUUID(), name: newBadgeName, ...badgeData }); showNotification("Badge added."); } 
-      cancelEditBadge(); await withRefresh(async () => {}); 
+      if (editBadgeName) { 
+          await handleUpdateBadge(editBadgeName, badgeData); 
+          showNotification("Badge updated."); 
+      } 
+      else { 
+          // 🟢 FIX: Do not spread 'badgeData' AND specify 'name' separately.
+          await handleAddBadge({ id: crypto.randomUUID(), ...badgeData }); 
+          showNotification("Badge added."); 
+      } 
+      cancelEditBadge(); 
+      await withRefresh(async () => {}); 
   };
   
   const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => { 
@@ -496,7 +522,8 @@ export default function AdminPage() {
                     </div>
                      <form onSubmit={handleRewardSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
                         <div className="flex gap-2 mb-2">
-                            <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action ID" required disabled={!!editRewardAction} className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
+                            {/* 🟢 FIXED: Removed disabled={!!editRewardAction} to allow editing */}
+                            <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action ID" required className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
                             <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm" />
                         </div>
                          <div className="flex gap-2">
@@ -584,7 +611,8 @@ export default function AdminPage() {
                 </div>
                 <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4 border border-slate-600">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required disabled={!!editBadgeName} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
+                        {/* 🟢 FIXED: Removed disabled={!!editBadgeName} to allow editing */}
+                        <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
                         <div className="col-span-2"><label className="text-xs text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">

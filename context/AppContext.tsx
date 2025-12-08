@@ -41,7 +41,8 @@ export interface AppContextValue {
   
   // Rewards
   handleAddReward: (reward: Partial<Reward>) => Promise<void>;
-  handleUpdateReward: (actionType: string, data: { xpGained?: number, isActive?: boolean }) => Promise<void>;
+  // 🟢 UPDATED: Added actionType and description to type definition
+  handleUpdateReward: (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, description?: string }) => Promise<void>;
   handleDeleteReward: (actionType: string) => Promise<void>;
   handleRestoreReward: (actionType: string) => Promise<void>;
   
@@ -134,12 +135,11 @@ export const AppProvider = ({
       }
   };
 
-  // 🟢 AUTOMATED BADGE CHECKER (Updated to match your screenshot)
+  // 🟢 AUTOMATED BADGE CHECKER
   const checkAutomatedBadges = async (userId: string) => {
       const user = await api.getUserById(userId);
       if (!user) return;
 
-      // Defined Rules (Must match Admin Panel Names exactly)
       const xpBadges = [
           { xp: 100, name: 'XP Novice' },
           { xp: 1000, name: 'XP Adept' },
@@ -199,8 +199,19 @@ export const AppProvider = ({
       }
   };
 
-  const handleAddReward = async (reward: Partial<Reward>) => { if (!reward.actionType || reward.xpGained == null) return; await api.createReward(reward.actionType, reward.xpGained); await fetchRewards(); };
-  const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean }) => { await api.updateReward(actionType, data); await fetchRewards(); };
+  const handleAddReward = async (reward: Partial<Reward>) => { 
+      if (!reward.actionType || reward.xpGained == null) return; 
+      // Pass description if available
+      await api.createReward(reward.actionType, reward.xpGained); 
+      await fetchRewards(); 
+  };
+
+  // 🟢 UPDATED: Function implementation now passes full data object to API
+  const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, description?: string }) => { 
+      await api.updateReward(actionType, data); 
+      await fetchRewards(); 
+  };
+  
   const handleDeleteReward = async (actionType: string) => { await api.deleteReward(actionType, true); await fetchRewards(); };
   const handleRestoreReward = async (actionType: string) => { await api.restoreReward(actionType); await fetchRewards(); };
 
@@ -235,10 +246,7 @@ export const AppProvider = ({
   const handleRecordAction = async (userId: string, actionType: ActionType, source: 'manual' | 'whop' | 'discord' = "manual") => { 
       try { 
           const result = await api.recordAction(userId, actionType, source); 
-          
-          // 🟢 Trigger Automated Badge Check
           await checkAutomatedBadges(userId);
-
           if (selectedUser && userId === selectedUser.id) { await fetchUserQuestProgress(); await refreshSelectedUser(); }
           await fetchAllUsers();
           return result; 
@@ -250,7 +258,6 @@ export const AppProvider = ({
           const res = await api.awardBadge(userId, badgeName); 
           await fetchAllUsers(); 
           if (selectedUser && userId === selectedUser.id) await refreshSelectedUser();
-          
           return res ? { success: true, message: "Badge Awarded" } : { success: false, message: "Failed to award" }; 
       } catch (e) {
           return { success: false, message: "Error awarding badge" };
@@ -265,9 +272,7 @@ export const AppProvider = ({
   const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
   const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => { 
       const res = await api.adminUpdateUserStats(userId, xp, streak, freezes); 
-      // 🟢 Check badges after admin manual stat update
       await checkAutomatedBadges(userId); 
-      
       await fetchAllUsers(); 
       if (selectedUser && userId === selectedUser.id) await refreshSelectedUser(); 
       return { success: res.success, message: res.success ? "Updated" : "Failed" }; 
@@ -276,9 +281,7 @@ export const AppProvider = ({
   const claimQuestReward = async (id: number) => { 
       const res = await api.claimQuestReward(id); 
       if (res.success) { 
-          // 🟢 Check badges after quest claim
           if (selectedUser) await checkAutomatedBadges(selectedUser.id);
-          
           await fetchUserQuestProgress(); await refreshSelectedUser(); await fetchAllUsers(); 
       }
       return res; 
@@ -287,9 +290,7 @@ export const AppProvider = ({
   const activateInventoryItem = async (id: string) => { 
       const res = await api.activateInventoryItem(id); 
       if (res.success) { 
-          // 🟢 Check badges after using item (if item gave XP)
           if (selectedUser) await checkAutomatedBadges(selectedUser.id);
-          
           await refreshSelectedUser(); await fetchActiveEffects(); 
       }
       return res;

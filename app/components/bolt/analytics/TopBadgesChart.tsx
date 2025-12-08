@@ -41,7 +41,7 @@ const TopBadgesChart: React.FC<TopBadgesChartProps> = ({ data }) => {
              <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8">
                 <CrownIcon className="w-10 h-10 mb-2 text-slate-600"/>
                 <p className="font-semibold">No Badges Awarded</p>
-                <p className="text-sm">Members will earn badges as they gain XP.</p>
+                <p className="text-sm">Users will earn badges as they gain XP.</p>
             </div>
         );
     }

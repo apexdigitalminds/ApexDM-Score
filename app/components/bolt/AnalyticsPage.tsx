@@ -54,8 +54,9 @@ const AnalyticsPage: React.FC = () => {
     const churnRate = data && data.engagement.activeMembers30d > 0 
         ? ((data.growth.churnedMembers14d / data.engagement.activeMembers30d) * 100).toFixed(1)
         : "0.0";
-        
-    const showRetention = isFeatureEnabled('store'); 
+    
+    // 🟢 FIX: Use semantic 'retention' flag instead of 'store'
+    const showRetention = isFeatureEnabled('retention'); 
 
     const activityChartData = data
       ? data.activityBreakdown.map(item => ({
@@ -113,26 +114,26 @@ const AnalyticsPage: React.FC = () => {
                         <MetricCard 
                             icon={<UserGroupIcon className="w-7 h-7 text-blue-400" />}
                             value={data.engagement.activeMembers7d}
-                            label="Active Members"
+                            label="Active Users"
                             description="Users active in the last 7 days."
                         />
                         <MetricCard 
                             icon={<ArrowTrendingUpIcon className="w-7 h-7 text-green-400" />}
                             value={`+${data.engagement.xpEarnedToday.toLocaleString()}`}
                             label="XP Earned Today"
-                            description="Total XP awarded across all members today."
+                            description="Total XP awarded across all users today."
                         />
                         <MetricCard 
                             icon={<UserPlusIcon className="w-7 h-7 text-purple-400" />}
                             value={data.growth.newMembers7d}
-                            label="New Members"
+                            label="New Users"
                             description="Users who joined in the last 7 days."
                         />
                          <MetricCard 
                             icon={<TrendingDownIcon className="w-7 h-7 text-red-400" />}
                             value={`${churnRate}%`}
-                            label="Churn Rate"
-                            description="Members inactive for >14 days."
+                            label="Dormant Rate"
+                            description="Percentage of users inactive for >14 days."
                         />
                     </div>
 
@@ -161,7 +162,7 @@ const AnalyticsPage: React.FC = () => {
                             <div className="space-y-6 flex flex-col justify-center flex-grow">
                                 <div className="text-center">
                                     <p className="text-5xl font-extrabold bg-gradient-to-r from-orange-400 to-red-500 text-transparent bg-clip-text">{data.streakHealth.percentWithActiveStreak}%</p>
-                                    <p className="text-slate-300">of members have an active streak</p>
+                                    <p className="text-slate-300">of users that have an active streak</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-5xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">{data.streakHealth.avgStreakLength}</p>
