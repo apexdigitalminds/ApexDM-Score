@@ -492,16 +492,29 @@ export async function adminAddBadgeAction(name: string, config: any) {
     const { error } = await supabaseAdmin.from('badges').insert({ community_id: communityId, name, ...config });
     return !error;
 }
-export async function adminUpdateBadgeAction(name: string, config: any) {
+export async function adminUpdateBadgeAction(currentName: string, config: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
     const updates: any = {};
+
+    // Standard Fields
     if (config.description !== undefined) updates.description = config.description;
     if (config.icon !== undefined) updates.icon = config.icon;
     if (config.color !== undefined) updates.color = config.color;
     if (config.isActive !== undefined) updates.is_active = config.isActive; 
     
-    const { error } = await supabaseAdmin.from('badges').update(updates).eq('name', name).eq('community_id', communityId);
+    // 🟢 FIX: Allow Renaming the Badge
+    // If a new name is provided and it's different from the current one, update it.
+    if (config.name && config.name !== currentName) {
+        updates.name = config.name;
+    }
+    
+    const { error } = await supabaseAdmin
+        .from('badges')
+        .update(updates)
+        .eq('name', currentName) // Find record by the OLD name
+        .eq('community_id', communityId);
+
     return !error;
 }
 export async function adminDeleteBadgeAction(name: string, isArchive: boolean) {
