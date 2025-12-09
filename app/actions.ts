@@ -20,28 +20,58 @@ async function verifyUser() {
     const payload = await whopsdk.verifyUserToken(await headers());
     const token = payload as any;
     const whopUserId = token.userId;
+    // Whop tokens usually provide the company/store ID in these fields
+    const tokenCompanyId = token.companyId || token.scope_id; 
     const roles = token.roles || [];
-    const tokenCompanyId = token.companyId; 
     
     if (!whopUserId) throw new Error("Unauthorized: No User ID");
 
+    // 1. Check if User is Whop Admin
+    const isWhopAdmin = roles && (roles.includes("owner") || roles.includes("admin") || roles.includes("staff") || roles.includes("moderator"));
+
+    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link)
+    if (isWhopAdmin && tokenCompanyId) {
+        // Check if our DB is still using a placeholder or needs linking
+        const { data: currentComm } = await supabaseAdmin
+            .from('communities')
+            .select('id, whop_store_id')
+            .limit(1)
+            .single();
+
+        // If DB has no Store ID, or it doesn't match the Admin's real ID -> UPDATE IT
+        if (currentComm && currentComm.whop_store_id !== tokenCompanyId) {
+            console.log(`🔗 Lazy Linking: Updating DB from ${currentComm.whop_store_id} to ${tokenCompanyId}`);
+            
+            await supabaseAdmin
+                .from('communities')
+                .update({ 
+                    whop_store_id: tokenCompanyId,
+                    whop_company_id: tokenCompanyId, // Keep both in sync
+                    whop_connected_at: new Date().toISOString()
+                })
+                .eq('id', currentComm.id);
+        }
+    }
+
+    // 3. Standard User Lookup
     const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id, role, community_id')
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
-    const isWhopAdmin = roles && (roles.includes("owner") || roles.includes("admin") || roles.includes("staff") || roles.includes("moderator"));
     const isDbAdmin = profile?.role === 'admin';
     const isAdmin = isWhopAdmin || isDbAdmin;
 
     if (!profile) {
+        // Allow Admins to pass even if profile isn't made yet (to fix initial setups)
         if (isAdmin) {
              return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
         }
         throw new Error("Profile not initialized. Please refresh.");
     }
 
+    // Auto-promote Whop Admins in DB
     if (isWhopAdmin && !isDbAdmin) {
         await supabaseAdmin.from('profiles').update({ role: 'admin' }).eq('id', profile.id);
     }
