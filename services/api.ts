@@ -32,7 +32,7 @@ import {
     getAnalyticsDataServer, 
     syncUserAction,
     awardBadgeAction,
-    syncCommunityBrandingAction // 🟢 NEW IMPORT
+    syncCommunityBrandingAction
 } from '@/app/actions';
 
 import type {
@@ -41,7 +41,6 @@ import type {
 
 // --- DATA TRANSFORMATION HELPERS ---
 const profileFromSupabase = (data: any): User => {
-    // 🟢 UPDATED: Robust Badge Parsing
     let badges: Badge[] = [];
     if (data.badges && Array.isArray(data.badges)) {
         badges = data.badges;
@@ -154,15 +153,45 @@ const activeEffectFromSupabase = (data: any): ActiveEffect => ({
     expiresAt: data.expires_at,
 });
 
+// 🟢 NEW: Context-Aware Community Resolution
+// This ensures we fetch the correct community ID for the logged-in user
+// instead of blindly picking the first row in the database.
 let COMMUNITY_ID: string | null = null;
+
 const getCommunityId = async () => {
+    // 1. Return cached ID if available
     if (COMMUNITY_ID) return COMMUNITY_ID;
-    const { data, error } = await supabase.from('communities').select('id').limit(1).single();
-    if (error || !data) {
-        throw new Error("A community must be configured in the database.");
+
+    // 2. Try to get context from the currently authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+        // Fetch THIS user's specific community_id linkage
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('community_id')
+            .eq('id', user.id)
+            .single();
+            
+        if (profile?.community_id) {
+            COMMUNITY_ID = profile.community_id;
+            console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
+            return COMMUNITY_ID;
+        }
     }
-    COMMUNITY_ID = data.id;
-    return COMMUNITY_ID;
+
+    // 3. Fallback (Only if no user is logged in, or for public pages in Dev)
+    // Warning: This grabs the *first* community it finds. 
+    // In Production, this should only happen if you have a single-tenant setup.
+    console.warn("⚠️ No user context found. Falling back to default community.");
+    const { data } = await supabase.from('communities').select('id').limit(1).single();
+    
+    if (data) {
+        COMMUNITY_ID = data.id;
+        return data.id;
+    }
+
+    throw new Error("No community context could be resolved. Please install the app.");
 };
 
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
@@ -182,7 +211,8 @@ const fetchBadgesForUser = async (userId: string): Promise<Badge[]> => {
 export const api = {
     // READ
     getUsers: async (): Promise<User[]> => {
-        const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).order('xp', { ascending: false });
+        const communityId = await getCommunityId(); // Ensure context
+        const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('community_id', communityId).order('xp', { ascending: false });
         if (error) return [];
         return data.map(profileFromSupabase);
     },
@@ -230,7 +260,8 @@ export const api = {
 
     // CONFIGS
     getRewardsConfig: async (): Promise<RewardsConfig> => {
-        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active'); 
+        const communityId = await getCommunityId();
+        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active').eq('community_id', communityId); 
         if (error) return {};
         return data.reduce((acc, r) => ({ ...acc, [r.action_type]: { xpGained: r.xp_gained, isArchived: r.is_archived, isActive: r.is_active } }), {} as any);
     },
@@ -257,18 +288,19 @@ export const api = {
         return !error;
     },
 
-    // 🟢 NEW: Sync Branding API Wrapper
     syncBrandingFromWhop: async () => {
         return await syncCommunityBrandingAction();
     },
 
     // QUESTS
     getQuests: async (): Promise<Quest[]> => {
-        const { data } = await supabase.from('quests').select('*, quest_tasks(*)').eq('is_active', true).eq('is_archived', false).order('created_at');
+        const communityId = await getCommunityId();
+        const { data } = await supabase.from('quests').select('*, quest_tasks(*)').eq('community_id', communityId).eq('is_active', true).eq('is_archived', false).order('created_at');
         return (data || []).map(questFromSupabase);
     },
     getQuestsAdmin: async (): Promise<Quest[]> => {
-        const { data } = await supabase.from('quests').select('*, quest_tasks(*)').order('created_at', { ascending: false });
+        const communityId = await getCommunityId();
+        const { data } = await supabase.from('quests').select('*, quest_tasks(*)').eq('community_id', communityId).order('created_at', { ascending: false });
         return (data || []).map(questFromSupabase);
     },
     getUserQuestProgress: async (userId: string): Promise<UserQuestProgress[]> => {
@@ -278,7 +310,8 @@ export const api = {
 
     // STORE
     getStoreItems: async (): Promise<StoreItem[]> => {
-        const { data } = await supabase.from('store_items').select('*').order('cost_xp'); 
+        const communityId = await getCommunityId();
+        const { data } = await supabase.from('store_items').select('*').eq('community_id', communityId).order('cost_xp'); 
         return (data || []).map(storeItemFromSupabase);
     },
     getUserItemUsage: async (userId: string) => {

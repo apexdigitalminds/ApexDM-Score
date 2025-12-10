@@ -827,3 +827,83 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         return null; 
     }
 }
+// 🟢 NEW: Reliable Provisioning Logic
+// Call this when an app is installed or a membership is created
+export async function ensureWhopContext(whopStoreId: string, whopUserId: string) {
+    if (!whopStoreId || !whopUserId) {
+        console.error("❌ Provisioning failed: Missing Store ID or User ID");
+        return false;
+    }
+
+    console.log(`🛠️ Provisioning for Store: ${whopStoreId}, User: ${whopUserId}`);
+
+    // 1. Ensure Community Exists (Upsert by Whop Store ID)
+    // We check if a community with this whop_store_id exists. If not, create it.
+    let communityId: string | null = null;
+
+    const { data: existingComm } = await supabaseAdmin
+        .from('communities')
+        .select('id')
+        .eq('whop_store_id', whopStoreId)
+        .maybeSingle();
+
+    if (existingComm) {
+        communityId = existingComm.id;
+    } else {
+        // Create new Community Record
+        const { data: newComm, error: commError } = await supabaseAdmin
+            .from('communities')
+            .insert({
+                whop_store_id: whopStoreId,
+                whop_company_id: whopStoreId, // Keep synced
+                name: "New Community (Pending Sync)", // Placeholder until branding sync
+                subscription_tier: "Free", // Default
+                white_label_enabled: false
+            })
+            .select('id')
+            .single();
+        
+        if (commError || !newComm) {
+            console.error("❌ Failed to create community:", commError);
+            return false;
+        }
+        communityId = newComm.id;
+    }
+
+    // 2. Ensure Admin Profile Exists & Is Linked
+    if (communityId) {
+        const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, community_id, role')
+            .eq('whop_user_id', whopUserId)
+            .maybeSingle();
+
+        if (existingProfile) {
+            // Update existing user to be Admin of THIS community
+            // (Only if they aren't already linked correctly)
+            if (existingProfile.community_id !== communityId || existingProfile.role !== 'admin') {
+                await supabaseAdmin
+                    .from('profiles')
+                    .update({ 
+                        community_id: communityId,
+                        role: 'admin' 
+                    })
+                    .eq('id', existingProfile.id);
+                console.log(`✅ User ${whopUserId} promoted to Admin of ${communityId}`);
+            }
+        } else {
+            // Create new Admin Profile
+            await supabaseAdmin.from('profiles').insert({
+                whop_user_id: whopUserId,
+                community_id: communityId,
+                username: `Admin_${whopUserId.substring(0,4)}`,
+                role: 'admin',
+                xp: 0,
+                streak: 0
+            });
+            console.log(`✅ New Admin Profile created for ${whopUserId}`);
+        }
+    }
+
+    return true;
+}
