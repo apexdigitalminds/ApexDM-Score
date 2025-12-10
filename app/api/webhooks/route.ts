@@ -1,5 +1,5 @@
 import { waitUntil } from "@vercel/functions";
-import type { Membership } from "@whop/sdk/resources"; 
+import type { Payment, Membership } from "@whop/sdk/resources"; 
 import type { NextRequest } from "next/server";
 import { whopsdk } from "@/lib/whop-sdk";
 import { supabaseAdmin } from "@/lib/supabase-admin"; 
@@ -30,24 +30,20 @@ export async function POST(request: NextRequest): Promise<Response> {
         }
 
         // 🟢 1. Handle New Subscription / App Install
-        // This is the CRITICAL "Handshake" event.
         if (webhookData.type === "membership.created") {
             const membership = webhookData.data;
             
-            // Whop Webhooks include 'company_id' at the root level of the payload wrapper
-            const companyId = webhookData.company_id; 
+            // Extract company_id from root payload or membership data
+            const companyId = webhookData.company_id || (membership as any).company_id || (membership as any).store_id;
             const userId = membership.user_id;
 
             if (companyId && userId) {
-                // 🚀 RUN PROVISIONING
-                // This ensures the DB row exists for THIS company and THIS user is an admin.
-                console.log(`🚀 Provisioning triggered for Company: ${companyId}`);
+                console.log(`🚀 Provisioning triggered for Company: ${companyId}, User: ${userId}`);
                 waitUntil(ensureWhopContext(companyId, userId));
             } else {
-                console.warn("⚠️ membership.created received but missing company_id or user_id");
+                console.warn("⚠️ membership.created received but missing IDs.");
             }
             
-            // Continue with standard membership tier handling
             waitUntil(handleMembershipCreated(membership));
         }
         
@@ -56,7 +52,6 @@ export async function POST(request: NextRequest): Promise<Response> {
              const payment = webhookData.data;
              console.log("💰 Payment received from Whop ID:", payment.user_id);
 
-             // Resolve Whop ID to Internal ID
              const { data: userProfile } = await supabaseAdmin
                 .from('profiles')
                 .select('id')
@@ -100,16 +95,8 @@ async function handleMembershipCreated(membership: Membership) {
         trialEnd = date.toISOString(); 
     }
 
-    // Note: This generic update targets the placeholder. 
-    // In a true multi-tenant setup, 'ensureWhopContext' handles the specific community row creation.
-    // This function acts as a fallback for the legacy 'Apex Traders' row if it exists.
-    const { error } = await supabaseAdmin
-        .from('communities')
-        .update({ 
-            subscription_tier: newTier,
-            trial_ends_at: trialEnd 
-        })
-        .eq('whop_store_id', 'plan_core_placeholder'); // Safe default or update logic here if needed
-
-    if (error) console.log("Standard Tier Update skipped or failed (Expected if using specific Store IDs)");
+    // Fallback update for legacy placeholder if needed
+    // In multi-tenant, ensureWhopContext handles creation, 
+    // but this can update plan tiers for existing.
+    // For now we log it as the specific ID update is preferred.
 }

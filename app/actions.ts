@@ -20,33 +20,29 @@ async function verifyUser() {
     const payload = await whopsdk.verifyUserToken(await headers());
     const token = payload as any;
     const whopUserId = token.userId;
-    // Whop tokens usually provide the company/store ID in these fields
-    const tokenCompanyId = token.companyId || token.scope_id; 
     const roles = token.roles || [];
+    const tokenCompanyId = token.companyId || token.scope_id; 
     
     if (!whopUserId) throw new Error("Unauthorized: No User ID");
 
     // 1. Check if User is Whop Admin
     const isWhopAdmin = roles && (roles.includes("owner") || roles.includes("admin") || roles.includes("staff") || roles.includes("moderator"));
 
-    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link)
+    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link backup)
     if (isWhopAdmin && tokenCompanyId) {
-        // Check if our DB is still using a placeholder or needs linking
         const { data: currentComm } = await supabaseAdmin
             .from('communities')
             .select('id, whop_store_id')
             .limit(1)
             .single();
 
-        // If DB has no Store ID, or it doesn't match the Admin's real ID -> UPDATE IT
         if (currentComm && currentComm.whop_store_id !== tokenCompanyId) {
             console.log(`🔗 Lazy Linking: Updating DB from ${currentComm.whop_store_id} to ${tokenCompanyId}`);
-            
             await supabaseAdmin
                 .from('communities')
                 .update({ 
                     whop_store_id: tokenCompanyId,
-                    whop_company_id: tokenCompanyId, // Keep both in sync
+                    whop_company_id: tokenCompanyId, 
                     whop_connected_at: new Date().toISOString()
                 })
                 .eq('id', currentComm.id);
@@ -64,14 +60,12 @@ async function verifyUser() {
     const isAdmin = isWhopAdmin || isDbAdmin;
 
     if (!profile) {
-        // Allow Admins to pass even if profile isn't made yet (to fix initial setups)
         if (isAdmin) {
              return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
         }
         throw new Error("Profile not initialized. Please refresh.");
     }
 
-    // Auto-promote Whop Admins in DB
     if (isWhopAdmin && !isDbAdmin) {
         await supabaseAdmin.from('profiles').update({ role: 'admin' }).eq('id', profile.id);
     }
@@ -114,6 +108,7 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 
     try {
+        // Fallback for sync action if profile doesn't exist
         const communityId = await getCommunityId();
         const placeholderUsername = `User_${whopId.substring(0, 6)}`; 
         
@@ -133,7 +128,6 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
     }
 }
 
-// --- 泙 NEW: Robust Branding Sync (With Dev Fallback) ---
 export async function syncCommunityBrandingAction() {
     try {
         const { isAdmin, communityId: realWhopId } = await verifyUser();
@@ -143,9 +137,8 @@ export async function syncCommunityBrandingAction() {
         console.log(`Syncing branding for Whop Company ID: ${realWhopId}`);
 
         let companyName = "ApexDM Community";
-        let logoUrl = ""; // Default empty
+        let logoUrl = ""; 
 
-        // 2. Fetch Info from Whop API
         if (process.env.WHOP_API_KEY) {
             const response = await fetch(`https://api.whop.com/api/v2/companies/${realWhopId}`, {
                 headers: {
@@ -160,7 +153,6 @@ export async function syncCommunityBrandingAction() {
                 logoUrl = data.image_url || data.logo_url;
             } else {
                 console.warn(`Whop API Error (${response.status}). Using Fallback.`);
-                // 泙 DEV FALLBACK: If 401 in Dev, mock success
                 if (process.env.NODE_ENV === 'development') {
                     companyName = "Simulated Community";
                     logoUrl = "https://ui-avatars.com/api/?name=Simulated+Community&background=random"; 
@@ -169,22 +161,18 @@ export async function syncCommunityBrandingAction() {
                 }
             }
         } else if (process.env.NODE_ENV === 'development') {
-             // 泙 DEV FALLBACK: No API Key present
              console.warn("No WHOP_API_KEY found. Using Dev Mock.");
              companyName = "Dev Mode Community";
              logoUrl = "https://ui-avatars.com/api/?name=Dev+Mode&background=0D8ABC&color=fff";
         }
 
-        // 3. Update Database 
         const { data: currentDbComm } = await supabaseAdmin.from('communities').select('id').limit(1).single();
         
         if (currentDbComm) {
              const { error } = await supabaseAdmin
             .from('communities')
             .update({ 
-                // Only update ID if we are NOT in dev fallback (to avoid breaking FKs with fake IDs)
-                // If it's a real sync, we adopt the real ID.
-                ...(process.env.WHOP_API_KEY ? { id: realWhopId } : {}),
+                ...(process.env.WHOP_API_KEY ? { whop_store_id: realWhopId, whop_company_id: realWhopId } : {}),
                 name: companyName,
                 logo_url: logoUrl
             })
@@ -209,10 +197,7 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         .eq('name', badgeName)
         .single();
 
-    if (badgeError || !badge) {
-        console.error(`Server: Badge '${badgeName}' not found.`);
-        return { success: false, message: `Badge '${badgeName}' not found in DB` };
-    }
+    if (badgeError || !badge) return { success: false, message: `Badge '${badgeName}' not found in DB` };
 
     const { data: existing } = await supabaseAdmin
         .from('user_badges')
@@ -221,14 +206,9 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         .eq('badge_id', badge.id)
         .maybeSingle();
 
-    if (existing) {
-        return { success: true, message: `User already has ${badgeName}` };
-    }
+    if (existing) return { success: true, message: `User already has ${badgeName}` };
 
-    let finalCommunityId = badge.community_id;
-    if (!finalCommunityId) {
-        finalCommunityId = await getCommunityId();
-    }
+    let finalCommunityId = badge.community_id || await getCommunityId();
 
     const payload = {
         user_id: userId,
@@ -237,14 +217,9 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
         earned_at: new Date().toISOString()
     };
 
-    const { error: insertError } = await supabaseAdmin
-        .from('user_badges')
-        .insert(payload);
+    const { error: insertError } = await supabaseAdmin.from('user_badges').insert(payload);
 
-    if (insertError) {
-        console.error("Server: Insert failed", insertError);
-        return { success: false, message: `DB Error: ${insertError.message}` };
-    }
+    if (insertError) return { success: false, message: `DB Error: ${insertError.message}` };
 
     revalidatePath('/dashboard');
     revalidatePath('/profile/[userId]');
@@ -252,7 +227,6 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 }
 
 // --- USER ACTIONS ---
-
 export async function updateUserProfile(updates: any, targetId?: string) {
   const { userId, isAdmin } = await verifyUser();
   if (!userId) throw new Error("User not found");
@@ -367,7 +341,6 @@ export async function claimQuestRewardAction(progressId: number) {
 }
 
 // --- ADMIN ACTIONS ---
-
 export async function adminUpdateUserStatsAction(targetUserId: string, xp: number, streak: number, freezes: number) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', targetUserId);
@@ -424,7 +397,6 @@ export async function adminCreateStoreItemAction(itemData: any) {
 
 export async function adminUpdateStoreItemAction(itemId: string, itemData: any) {
     await ensureAdmin();
-    
     const updates: any = {};
     if (itemData.name) updates.name = itemData.name;
     if (itemData.description) updates.description = itemData.description;
@@ -474,21 +446,13 @@ export async function adminAddRewardAction(actionType: string, xp: number, descr
 export async function adminUpdateRewardAction(currentActionType: string, data: any) {
     await ensureAdmin();
     const updates: any = {};
-    
-    // Standard Fields
     if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
     if (data.isActive !== undefined) updates.is_active = data.isActive; 
-    
-    // 🟢 FIX: Allow updating Description
     if (data.description !== undefined) updates.description = data.description;
-
-    // 🟢 FIX: Allow Renaming the Action (Action Type)
-    // If the new name is different from the current name, update the key.
     if (data.actionType && data.actionType !== currentActionType) {
         updates.action_type = data.actionType;
     }
 
-    // Update the record identified by the OLD action type
     const { error } = await supabaseAdmin
         .from('reward_actions')
         .update(updates)
@@ -526,15 +490,10 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
     await ensureAdmin();
     const communityId = await getCommunityId();
     const updates: any = {};
-
-    // Standard Fields
     if (config.description !== undefined) updates.description = config.description;
     if (config.icon !== undefined) updates.icon = config.icon;
     if (config.color !== undefined) updates.color = config.color;
     if (config.isActive !== undefined) updates.is_active = config.isActive; 
-    
-    // 🟢 FIX: Allow Renaming the Badge
-    // If a new name is provided and it's different from the current one, update it.
     if (config.name && config.name !== currentName) {
         updates.name = config.name;
     }
@@ -542,7 +501,7 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
     const { error } = await supabaseAdmin
         .from('badges')
         .update(updates)
-        .eq('name', currentName) // Find record by the OLD name
+        .eq('name', currentName)
         .eq('community_id', communityId);
 
     return !error;
@@ -601,11 +560,8 @@ export async function adminCreateQuestAction(questData: any) {
     return true;
 }
 
-// 🟢 FIX: Updated Quest Logic (Wipe & Replace Tasks)
 export async function adminUpdateQuestAction(questId: string, questData: any) {
     await ensureAdmin();
-
-    // 1. Update the Main Quest Details (Title, Description, XP)
     const { error: questError } = await supabaseAdmin.from('quests').update({
         title: questData.title, 
         description: questData.description, 
@@ -617,21 +573,10 @@ export async function adminUpdateQuestAction(questId: string, questData: any) {
         return false;
     }
 
-    // 2. Handle Tasks (If provided)
     if (questData.tasks && Array.isArray(questData.tasks)) {
-        
-        // A. Delete ALL existing tasks for this quest (Wipe)
-        const { error: deleteError } = await supabaseAdmin
-            .from('quest_tasks')
-            .delete()
-            .eq('quest_id', questId);
+        const { error: deleteError } = await supabaseAdmin.from('quest_tasks').delete().eq('quest_id', questId);
+        if (deleteError) return false;
 
-        if (deleteError) {
-            console.error("Error clearing old tasks:", deleteError);
-            return false;
-        }
-
-        // B. Format the new tasks for insertion
         const tasksToInsert = questData.tasks.map((task: any) => ({
             quest_id: questId,
             action_type: task.actionType,
@@ -639,20 +584,11 @@ export async function adminUpdateQuestAction(questId: string, questData: any) {
             description: task.description || ""
         }));
 
-        // C. Insert the new tasks (Replace)
         if (tasksToInsert.length > 0) {
-            const { error: insertError } = await supabaseAdmin
-                .from('quest_tasks')
-                .insert(tasksToInsert);
-
-            if (insertError) {
-                console.error("Error inserting new tasks:", insertError);
-                return false;
-            }
+            await supabaseAdmin.from('quest_tasks').insert(tasksToInsert);
         }
     }
 
-    // 3. Revalidate to show changes immediately
     revalidatePath('/admin');
     revalidatePath('/quests');
     
@@ -685,10 +621,11 @@ export async function recordActionServer(userId: string, actionType: ActionType,
     if (activeEffects && activeEffects.length > 0) xp_to_add = Math.round(xp_to_add * (activeEffects[0].modifier || 1));
 
     await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: xp_to_add });
-    const { data: community } = await supabaseAdmin.from('communities').select('id').single();
     
-    if (community) {
-        await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: community.id, action_type: actionType, xp_gained: xp_to_add, source: source });
+    // Fetch the correct community for the user to log the action properly
+    const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
+    if (userProfile?.community_id) {
+        await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
     }
     
     return { xpGained: xp_to_add };
@@ -827,8 +764,8 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         return null; 
     }
 }
+
 // 🟢 NEW: Reliable Provisioning Logic
-// Call this when an app is installed or a membership is created
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string) {
     if (!whopStoreId || !whopUserId) {
         console.error("❌ Provisioning failed: Missing Store ID or User ID");
@@ -837,10 +774,10 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
 
     console.log(`🛠️ Provisioning for Store: ${whopStoreId}, User: ${whopUserId}`);
 
-    // 1. Ensure Community Exists (Upsert by Whop Store ID)
-    // We check if a community with this whop_store_id exists. If not, create it.
     let communityId: string | null = null;
+    let isNewCommunity = false;
 
+    // 1. Ensure Community Exists
     const { data: existingComm } = await supabaseAdmin
         .from('communities')
         .select('id')
@@ -850,14 +787,14 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
     if (existingComm) {
         communityId = existingComm.id;
     } else {
-        // Create new Community Record
+        isNewCommunity = true;
         const { data: newComm, error: commError } = await supabaseAdmin
             .from('communities')
             .insert({
                 whop_store_id: whopStoreId,
-                whop_company_id: whopStoreId, // Keep synced
-                name: "New Community (Pending Sync)", // Placeholder until branding sync
-                subscription_tier: "Free", // Default
+                whop_company_id: whopStoreId, 
+                name: "New Community (Pending Sync)", 
+                subscription_tier: "Free", 
                 white_label_enabled: false
             })
             .select('id')
@@ -870,7 +807,7 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
         communityId = newComm.id;
     }
 
-    // 2. Ensure Admin Profile Exists & Is Linked
+    // 2. Ensure Profile Exists & Is Linked Correctly
     if (communityId) {
         const { data: existingProfile } = await supabaseAdmin
             .from('profiles')
@@ -878,30 +815,31 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
+        // First user for a NEW community gets Admin role.
+        // Existing community joiners get Member role.
+        const targetRole = isNewCommunity ? 'admin' : 'member';
+
         if (existingProfile) {
-            // Update existing user to be Admin of THIS community
-            // (Only if they aren't already linked correctly)
-            if (existingProfile.community_id !== communityId || existingProfile.role !== 'admin') {
+            if (existingProfile.community_id !== communityId) {
                 await supabaseAdmin
                     .from('profiles')
                     .update({ 
                         community_id: communityId,
-                        role: 'admin' 
+                        role: existingProfile.role === 'admin' ? 'admin' : targetRole 
                     })
                     .eq('id', existingProfile.id);
-                console.log(`✅ User ${whopUserId} promoted to Admin of ${communityId}`);
+                console.log(`✅ User ${whopUserId} moved to Community ${communityId}`);
             }
         } else {
-            // Create new Admin Profile
             await supabaseAdmin.from('profiles').insert({
                 whop_user_id: whopUserId,
                 community_id: communityId,
-                username: `Admin_${whopUserId.substring(0,4)}`,
-                role: 'admin',
+                username: `User_${whopUserId.substring(0,4)}`,
+                role: targetRole,
                 xp: 0,
                 streak: 0
             });
-            console.log(`✅ New Admin Profile created for ${whopUserId}`);
+            console.log(`✅ New Profile created for ${whopUserId} as ${targetRole}`);
         }
     }
 

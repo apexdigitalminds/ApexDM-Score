@@ -154,8 +154,6 @@ const activeEffectFromSupabase = (data: any): ActiveEffect => ({
 });
 
 // 🟢 NEW: Context-Aware Community Resolution
-// This ensures we fetch the correct community ID for the logged-in user
-// instead of blindly picking the first row in the database.
 let COMMUNITY_ID: string | null = null;
 
 const getCommunityId = async () => {
@@ -175,22 +173,14 @@ const getCommunityId = async () => {
             
         if (profile?.community_id) {
             COMMUNITY_ID = profile.community_id;
-            console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
+            // console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
             return COMMUNITY_ID;
         }
     }
 
-    // 3. Fallback (Only if no user is logged in, or for public pages in Dev)
-    // Warning: This grabs the *first* community it finds. 
-    // In Production, this should only happen if you have a single-tenant setup.
-    console.warn("⚠️ No user context found. Falling back to default community.");
-    const { data } = await supabase.from('communities').select('id').limit(1).single();
-    
-    if (data) {
-        COMMUNITY_ID = data.id;
-        return data.id;
-    }
-
+    // 3. Fallback logic removed to prevent data leaks.
+    // If no user context, we must throw error or force login.
+    console.warn("⚠️ No user context found for community resolution.");
     throw new Error("No community context could be resolved. Please install the app.");
 };
 
