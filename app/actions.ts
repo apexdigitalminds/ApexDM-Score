@@ -21,6 +21,7 @@ async function verifyUser() {
     const token = payload as any;
     const whopUserId = token.userId;
     const roles = token.roles || [];
+    // companyId is standard, scope_id is sometimes used in older tokens
     const tokenCompanyId = token.companyId || token.scope_id; 
     
     if (!whopUserId) throw new Error("Unauthorized: No User ID");
@@ -28,7 +29,7 @@ async function verifyUser() {
     // 1. Check if User is Whop Admin
     const isWhopAdmin = roles && (roles.includes("owner") || roles.includes("admin") || roles.includes("staff") || roles.includes("moderator"));
 
-    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link backup)
+    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link backup for Admins)
     if (isWhopAdmin && tokenCompanyId) {
         const { data: currentComm } = await supabaseAdmin
             .from('communities')
@@ -50,20 +51,41 @@ async function verifyUser() {
     }
 
     // 3. Standard User Lookup
-    const { data: profile } = await supabaseAdmin
+    let { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('id, role, community_id')
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
+    // 🔴 THE FIX: If profile is missing, CREATE IT NOW
+    // This ensures that simply opening the app fixes the missing data.
+    if (!profile) {
+        if (tokenCompanyId) {
+            console.log(`🛠️ Auto-Provisioning User on App Load: ${whopUserId}`);
+            const success = await ensureWhopContext(tokenCompanyId, whopUserId);
+            
+            if (success) {
+                // Fetch the profile again now that it exists
+                const { data: newProfile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id, role, community_id')
+                    .eq('whop_user_id', whopUserId)
+                    .maybeSingle();
+                
+                profile = newProfile;
+            }
+        }
+    }
+
     const isDbAdmin = profile?.role === 'admin';
     const isAdmin = isWhopAdmin || isDbAdmin;
 
     if (!profile) {
+        // Fallback if provisioning failed (e.g. no company ID in token)
         if (isAdmin) {
              return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
         }
-        throw new Error("Profile not initialized. Please refresh.");
+        throw new Error("Profile initialization failed. Please refresh the page.");
     }
 
     if (isWhopAdmin && !isDbAdmin) {
