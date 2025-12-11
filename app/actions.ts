@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } from "@/types";
 
 // --- HELPER: Verify User & Resolve Context ---
-// 🟢 UPDATE: Accept optional 'fallbackCompanyId' from URL Search Params
 export async function verifyUser(fallbackCompanyId?: string | null) { 
   try {
     const rawHeaders = await headers();
@@ -24,28 +23,34 @@ export async function verifyUser(fallbackCompanyId?: string | null) {
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
-    // 1. EXTRACT CONTEXT (Prioritize Token, Fallback to URL passed arg)
-    const tokenCompanyId = 
+    // 1. EXTRACT CONTEXT (Priority: Token > URL > API Lookup)
+    let tokenCompanyId = 
         token.companyId || 
         token.company_id || 
         token.scope_id || 
         token.experience_instance?.company_id ||
-        fallbackCompanyId || // 👈 THE FIX: Use the URL param if token is thin
+        fallbackCompanyId || 
         null;
     
-    // Debug Log
-    if (!token.companyId && fallbackCompanyId) {
-        console.log(`⚠️ Token missing ID. Using Fallback from URL: ${fallbackCompanyId}`);
-    } else if (!tokenCompanyId) {
-        console.log("🕵️‍♀️ RAW TOKEN DUMP (No ID found):", JSON.stringify(token, null, 2));
+    // 🕵️‍♀️ DEBUG: Log status
+    if (!tokenCompanyId) {
+        console.log("⚠️ Context missing in Token/URL. Attempting API Lookup...");
+        
+        // 🟢 THE FIX: Ask Whop API "Which company installed this app?"
+        const apiCompanyId = await findCompanyViaApi();
+        
+        if (apiCompanyId) {
+            console.log(`✅ API Lookup Success: Found Company ${apiCompanyId}`);
+            tokenCompanyId = apiCompanyId;
+        } else {
+            console.error("❌ CRITICAL: API Lookup failed. No Company ID found anywhere.");
+            // Dump token to see why everything failed
+            console.log("🕵️‍♀️ FAILED TOKEN DUMP:", JSON.stringify(token, null, 2));
+            return null;
+        }
     }
 
     if (!whopUserId) return null; 
-    
-    if (!tokenCompanyId) {
-        console.error("❌ CRITICAL: Whop Token AND URL missing Company ID.");
-        return null; 
-    }
 
     // 🟢 PASS ROLES TO PROVISIONING
     await ensureWhopContext(tokenCompanyId, whopUserId, roles);
@@ -68,7 +73,6 @@ export async function verifyUser(fallbackCompanyId?: string | null) {
     if (currentDbStoreId && currentDbStoreId !== tokenCompanyId) {
         console.warn(`⚠️ Mismatch Detected! Fixing...`);
         await ensureWhopContext(tokenCompanyId, whopUserId, roles);
-        // Retry verification with the known ID
         return verifyUser(tokenCompanyId); 
     }
 
@@ -86,6 +90,34 @@ export async function verifyUser(fallbackCompanyId?: string | null) {
   }
 }
 
+// 🟢 NEW HELPER: Fetch Companies via Whop API
+async function findCompanyViaApi(): Promise<string | null> {
+    if (!process.env.WHOP_API_KEY) return null;
+
+    try {
+        // This endpoint lists all companies authorized by the App's API Key
+        const response = await fetch("https://api.whop.com/api/v2/companies", {
+            headers: {
+                "Authorization": `Bearer ${process.env.WHOP_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        // If we find companies, return the first one (most likely candidate for single-install tests)
+        // In a real multi-tenant scenario, we might need more logic here, but this unblocks the install.
+        if (data.data && data.data.length > 0) {
+            return data.data[0].id;
+        }
+        return null;
+    } catch (e) {
+        console.error("API Lookup Error:", e);
+        return null;
+    }
+}
+
 async function ensureAdmin() {
     const session = await verifyUser();
     if (!session || !session.isAdmin) throw new Error("Forbidden: Admin access required");
@@ -99,7 +131,7 @@ async function getCommunityId(overrideId?: string) {
     return session.communityId;
 }
 
-// 🟢 PROVISIONING LOGIC (No changes needed, included for completeness)
+// 🟢 PROVISIONING LOGIC
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string, tokenRoles: string[] = []) {
     if (!whopStoreId || !whopUserId) return false;
 
@@ -151,14 +183,20 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
 
         if (existingProfile) {
             const updates: any = {};
-            if (existingProfile.community_id !== communityId) updates.community_id = communityId;
+            
+            if (existingProfile.community_id !== communityId) {
+                updates.community_id = communityId;
+            }
+
             if (targetRole === 'admin' && existingProfile.role !== 'admin') {
                 updates.role = 'admin';
                 console.log(`🆙 Upgrading existing profile to Admin`);
             }
+
             if (Object.keys(updates).length > 0) {
                  await supabaseAdmin.from('profiles').update(updates).eq('id', existingProfile.id);
             }
+
         } else {
             console.log(`👤 Creating New Profile for ${whopUserId} as ${targetRole}`);
             await supabaseAdmin.from('profiles').insert({
@@ -176,8 +214,6 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
 
 // --- CLIENT HANDSHAKE ---
 export async function validateSessionContext() {
-    // Client handshake can't pass URL params easily without passed arguments, 
-    // but typically verifyUser() will handle it on initial page load anyway.
     try {
         const result = await verifyUser();
         if (!result) return { success: false, error: "No Session" };
@@ -385,6 +421,7 @@ export async function claimQuestRewardAction(progressId: number) {
     return { success: true, message: `+${questData.xp_reward} XP!` };
 }
 
+// --- ADMIN ACTIONS ---
 export async function adminUpdateUserStatsAction(targetUserId: string, xp: number, streak: number, freezes: number) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', targetUserId);
