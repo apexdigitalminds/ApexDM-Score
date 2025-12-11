@@ -7,12 +7,20 @@ import { revalidatePath } from "next/cache";
 import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } from "@/types";
 
 // --- HELPER: Verify User & Resolve Context ---
-async function verifyUser() {
+export async function verifyUser() { 
   try {
     const rawHeaders = await headers();
-    const payload = await whopsdk.verifyUserToken(rawHeaders);
-    const token = payload as any;
     
+    // 🛡️ SAFE GUARD: Handle missing token gracefully
+    let payload;
+    try {
+        payload = await whopsdk.verifyUserToken(rawHeaders);
+    } catch (sdkError) {
+        // No token = Public User
+        return null; 
+    }
+    
+    const token = payload as any;
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
@@ -24,17 +32,14 @@ async function verifyUser() {
         token.experience_instance?.company_id ||
         null;
     
-    console.log(`🕵️‍♀️ Auth Context | User: ${whopUserId} | Token Store ID: ${tokenCompanyId} | Roles: ${roles}`);
-
-    if (!whopUserId) throw new Error("Unauthorized: No User ID");
+    if (!whopUserId) return null; 
     
     if (!tokenCompanyId) {
-        console.error("❌ CRITICAL: Whop Token missing Company ID. Cannot verify community.");
-        throw new Error("App Context Missing. Please contact support.");
+        console.error("❌ CRITICAL: Whop Token missing Company ID.");
+        return null; 
     }
 
     // 🟢 PASS ROLES TO PROVISIONING
-    // We pass the roles array so ensureWhopContext knows if this user SHOULD be an admin.
     await ensureWhopContext(tokenCompanyId, whopUserId, roles);
 
     // 3. Fetch Profile
@@ -44,7 +49,7 @@ async function verifyUser() {
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
-    if (!profile) throw new Error("Profile creation failed.");
+    if (!profile) return null;
 
     // 4. CHECK ALIGNMENT
     const communitiesData = profile.communities as any;
@@ -55,36 +60,37 @@ async function verifyUser() {
     if (currentDbStoreId && currentDbStoreId !== tokenCompanyId) {
         console.warn(`⚠️ Mismatch Detected! Fixing...`);
         await ensureWhopContext(tokenCompanyId, whopUserId, roles);
-        return verifyUser(); 
+        return verifyUser(); // Recursively retry
     }
 
     return { 
         userId: profile.id, 
         whopUserId, 
         isAdmin: profile.role === 'admin',
-        communityId: profile.community_id 
+        communityId: profile.community_id,
+        role: profile.role
     };
 
   } catch (error: any) {
     console.error("❌ Verify User Error:", error.message);
-    throw new Error(error.message || "Unauthorized");
+    return null; 
   }
 }
 
 async function ensureAdmin() {
-    const { isAdmin } = await verifyUser();
-    if (!isAdmin) throw new Error("Forbidden: Admin access required");
+    const session = await verifyUser();
+    if (!session || !session.isAdmin) throw new Error("Forbidden: Admin access required");
+    return session;
 }
 
 async function getCommunityId(overrideId?: string) {
     if (overrideId) return overrideId;
-    const { communityId } = await verifyUser();
-    if (communityId) return communityId;
-    throw new Error("No Community Context Found.");
+    const session = await verifyUser();
+    if (!session || !session.communityId) throw new Error("No Community Context Found.");
+    return session.communityId;
 }
 
 // 🟢 UPDATED PROVISIONING LOGIC
-// Added 'tokenRoles' argument to strictly determine Admin status
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string, tokenRoles: string[] = []) {
     if (!whopStoreId || !whopUserId) return false;
 
@@ -131,10 +137,8 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
-        // 🧠 LOGIC FIX: Determine role from TOKEN, not just "isNewCommunity"
+        // 🧠 LOGIC FIX: Determine role from TOKEN
         const isWhopAdmin = tokenRoles.some(r => ['owner', 'admin', 'staff', 'creator'].includes(r));
-        
-        // If it's a new community OR the token says Admin, make them Admin.
         const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
         if (existingProfile) {
@@ -161,7 +165,7 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
                 whop_user_id: whopUserId,
                 community_id: communityId,
                 username: `User_${whopUserId.substring(0,4)}`,
-                role: targetRole, // <--- Uses the fixed logic
+                role: targetRole,
                 xp: 0,
                 streak: 0
             });
@@ -170,7 +174,28 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
     return true;
 }
 
-// --- KEEP EXISTING FUNCTIONS BELOW (No changes needed) ---
+// --- CLIENT HANDSHAKE ---
+export async function validateSessionContext() {
+    try {
+        console.log("🤝 Handshake: Validating Session Context...");
+        const result = await verifyUser();
+        
+        if (!result) {
+            return { success: false, error: "No Session" };
+        }
+
+        return { 
+            success: true, 
+            communityId: result.communityId,
+            isAdmin: result.isAdmin
+        };
+    } catch (error: any) {
+        console.error("❌ Handshake Failed:", error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// --- AUTH & SYNC ---
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
     const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
     if (existingUser) return existingUser;
@@ -179,10 +204,10 @@ export async function syncUserAction(whopId: string, whopRole: "admin" | "member
 
 export async function syncCommunityBrandingAction() {
     try {
-        const { isAdmin, communityId } = await verifyUser();
-        if (!isAdmin || !communityId) throw new Error("Unauthorized");
+        const session = await verifyUser();
+        if (!session || !session.isAdmin || !session.communityId) throw new Error("Unauthorized");
 
-        const { data: comm } = await supabaseAdmin.from('communities').select('whop_store_id').eq('id', communityId).single();
+        const { data: comm } = await supabaseAdmin.from('communities').select('whop_store_id').eq('id', session.communityId).single();
         const realWhopId = comm?.whop_store_id;
 
         if (!realWhopId) throw new Error("No Whop Store ID linked");
@@ -210,7 +235,7 @@ export async function syncCommunityBrandingAction() {
         await supabaseAdmin
             .from('communities')
             .update({ name: companyName, logo_url: logoUrl })
-            .eq('id', communityId);
+            .eq('id', session.communityId);
 
         revalidatePath('/'); 
         return { success: true, message: `Synced as: ${companyName}` };
@@ -220,9 +245,6 @@ export async function syncCommunityBrandingAction() {
         return { success: false, message: e.message };
     }
 }
-
-// ... (Paste the rest of your User/Admin actions: awardBadgeAction, updateUserProfile, etc. here)
-// ... These functions rely on verifyUser() so they will automatically inherit the fix.
 
 export async function awardBadgeAction(userId: string, badgeName: string) {
     const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
@@ -260,11 +282,13 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
     return { success: true, message: `Successfully awarded: ${badgeName}` };
 }
 
+// --- USER ACTIONS ---
 export async function updateUserProfile(updates: any, targetId?: string) {
-  const { userId, isAdmin } = await verifyUser();
-  if (!userId) throw new Error("User not found");
-  const idToUpdate = targetId || userId;
-  if (idToUpdate !== userId && !isAdmin) throw new Error("Forbidden");
+  const session = await verifyUser();
+  if (!session || !session.userId) throw new Error("User not found");
+  
+  const idToUpdate = targetId || session.userId;
+  if (idToUpdate !== session.userId && !session.isAdmin) throw new Error("Forbidden");
 
   const safeUpdates: any = {};
   if (updates.avatarUrl) safeUpdates.avatar_url = updates.avatarUrl;
@@ -276,13 +300,13 @@ export async function updateUserProfile(updates: any, targetId?: string) {
 }
 
 export async function equipCosmeticAction(item: StoreItem) {
-  const { userId } = await verifyUser();
-  if (!userId) throw new Error("User not found");
+  const session = await verifyUser();
+  if (!session || !session.userId) throw new Error("User not found");
   
-  const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', userId).eq('item_id', item.id).single();
+  const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', session.userId).eq('item_id', item.id).single();
   if (!ownership) return { success: false, message: "You do not own this item." };
 
-  const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
+  const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', session.userId).single();
   const currentMeta = profile?.metadata || {};
 
   if (item.itemType === 'NAME_COLOR') currentMeta.nameColor = item.metadata?.color;
@@ -294,16 +318,16 @@ export async function equipCosmeticAction(item: StoreItem) {
   if (item.itemType === 'FRAME') currentMeta.frameUrl = item.metadata?.imageUrl;
   if (item.itemType === 'AVATAR_PULSE') currentMeta.avatarPulseColor = item.metadata?.color;
 
-  const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', userId);
+  const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);
   if (error) return { success: false, message: error.message };
   return { success: true, message: "Equipped successfully!" };
 }
 
 export async function unequipCosmeticAction(type: string) {
-  const { userId } = await verifyUser();
-  if (!userId) throw new Error("User not found");
+  const session = await verifyUser();
+  if (!session || !session.userId) throw new Error("User not found");
 
-  const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', userId).single();
+  const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', session.userId).single();
   const currentMeta = profile?.metadata || {};
 
   if (type === 'NAME_COLOR') delete currentMeta.nameColor;
@@ -312,15 +336,15 @@ export async function unequipCosmeticAction(type: string) {
   if (type === 'FRAME') delete currentMeta.frameUrl;
   if (type === 'AVATAR_PULSE') delete currentMeta.avatarPulseColor;
 
-  const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', userId);
+  const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);
   if (error) return { success: false, message: error.message };
   return { success: true, message: "Unequipped successfully!" };
 }
 
 export async function buyStoreItemAction(itemId: string) {
-    const { userId } = await verifyUser();
-    if (!userId) throw new Error("User not found");
-    const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: userId, p_item_id: itemId });
+    const session = await verifyUser();
+    if (!session || !session.userId) throw new Error("User not found");
+    const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: session.userId, p_item_id: itemId });
     if (error) return { success: false, message: error.message };
     return data;
 }
@@ -333,14 +357,14 @@ export async function activateInventoryItemAction(inventoryId: string) {
 }
 
 export async function claimQuestRewardAction(progressId: number) {
-    const { userId } = await verifyUser();
-    if (!userId) throw new Error("User not found");
+    const session = await verifyUser();
+    if (!session || !session.userId) throw new Error("User not found");
     
     const { data: updatedProgress, error } = await supabaseAdmin
         .from('user_quest_progress')
         .update({ is_claimed: true })
         .eq('id', progressId)
-        .eq('user_id', userId)
+        .eq('user_id', session.userId)
         .eq('is_completed', true)
         .eq('is_claimed', false)
         .select()
@@ -353,16 +377,16 @@ export async function claimQuestRewardAction(progressId: number) {
 
     if (!questData) return { success: false, message: "Quest data missing." };
 
-    await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: questData.xp_reward });
+    await supabaseAdmin.rpc('increment_user_xp', { p_user_id: session.userId, p_xp_to_add: questData.xp_reward });
 
     if (questData.badge_reward_id) {
-        const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
+        const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', session.userId).single();
         
-        const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', userId).eq('badge_id', questData.badge_reward_id);
+        const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', session.userId).eq('badge_id', questData.badge_reward_id);
         
         if (count === 0 && userProfile) {
               await supabaseAdmin.from('user_badges').insert({ 
-                  user_id: userId, 
+                  user_id: session.userId, 
                   badge_id: questData.badge_reward_id, 
                   community_id: userProfile.community_id,
                   earned_at: new Date().toISOString()
@@ -372,6 +396,7 @@ export async function claimQuestRewardAction(progressId: number) {
     return { success: true, message: `+${questData.xp_reward} XP!` };
 }
 
+// --- ADMIN ACTIONS ---
 export async function adminUpdateUserStatsAction(targetUserId: string, xp: number, streak: number, freezes: number) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', targetUserId);
@@ -379,8 +404,8 @@ export async function adminUpdateUserStatsAction(targetUserId: string, xp: numbe
 }
 
 export async function adminUpdateUserRoleAction(targetUserId: string, role: string) {
-    const { userId, isAdmin } = await verifyUser();
-    if (!isAdmin && userId !== targetUserId) throw new Error("Forbidden");
+    const session = await verifyUser();
+    if (!session || (!session.isAdmin && session.userId !== targetUserId)) throw new Error("Forbidden");
     const { error } = await supabaseAdmin.from('profiles').update({ role }).eq('id', targetUserId);
     return { success: !error };
 }
@@ -659,8 +684,10 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
 export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<AnalyticsData | null> {
     try {
-        const { isAdmin, communityId } = await verifyUser();
-        if (!isAdmin || !communityId) return null;
+        const session = await verifyUser();
+        if (!session || !session.isAdmin || !session.communityId) return null;
+        
+        const communityId = session.communityId;
 
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -785,26 +812,5 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
     } catch (error: any) { 
         console.error("Server Analytics Error:", error);
         return null; 
-    }
-}
-
-// 🟢 NEW: Client-Side Handshake
-// This forces the "Self-Healing" logic to run immediately upon Page Load.
-export async function validateSessionContext() {
-    try {
-        console.log("🤝 Handshake: Validating Session Context...");
-        
-        // This runs the strict verifyUser logic we wrote.
-        // It WILL fix the DB if the user is in the wrong community.
-        const result = await verifyUser();
-        
-        return { 
-            success: true, 
-            communityId: result.communityId,
-            isAdmin: result.isAdmin
-        };
-    } catch (error: any) {
-        console.error("❌ Handshake Failed:", error.message);
-        return { success: false, error: error.message };
     }
 }
