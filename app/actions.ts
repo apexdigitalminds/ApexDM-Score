@@ -21,73 +21,55 @@ async function verifyUser() {
     const token = payload as any;
     const whopUserId = token.userId;
     const roles = token.roles || [];
-    // companyId is standard, scope_id is sometimes used in older tokens
+    
+    // 🔍 STRICT CONTEXT: We trust this ID above all else.
+    // 'companyId' is the modern standard; 'scope_id' is legacy.
     const tokenCompanyId = token.companyId || token.scope_id; 
     
     if (!whopUserId) throw new Error("Unauthorized: No User ID");
 
-    // 1. Check if User is Whop Admin
+    // 1. Check if User is a Whop Admin (Owner/Staff of the current instance)
     const isWhopAdmin = roles && (roles.includes("owner") || roles.includes("admin") || roles.includes("staff") || roles.includes("moderator"));
 
-    // 2. SELF-HEALING: Link DB to Real Company ID (Lazy Link backup for Admins)
-    if (isWhopAdmin && tokenCompanyId) {
-        const { data: currentComm } = await supabaseAdmin
-            .from('communities')
-            .select('id, whop_store_id')
-            .limit(1)
-            .single();
-
-        if (currentComm && currentComm.whop_store_id !== tokenCompanyId) {
-            console.log(`🔗 Lazy Linking: Updating DB from ${currentComm.whop_store_id} to ${tokenCompanyId}`);
-            await supabaseAdmin
-                .from('communities')
-                .update({ 
-                    whop_store_id: tokenCompanyId,
-                    whop_company_id: tokenCompanyId, 
-                    whop_connected_at: new Date().toISOString()
-                })
-                .eq('id', currentComm.id);
-        }
+    // 2. SELF-HEALING: If we have a Company ID, ensure it exists in DB IMMEDIATELY.
+    // We do not wait for webhooks. We do not fallback. We enforce this context.
+    if (tokenCompanyId) {
+        // This function will strictly find/create THIS specific company ID.
+        await ensureWhopContext(tokenCompanyId, whopUserId);
     }
 
-    // 3. Standard User Lookup
-    let { data: profile } = await supabaseAdmin
+    // 3. Fetch Profile strictly by Whop User ID
+    const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('id, role, community_id')
+        .select('id, role, community_id, communities(whop_store_id)')
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
-    // 🔴 THE FIX: If profile is missing, CREATE IT NOW
-    // This ensures that simply opening the app fixes the missing data.
     if (!profile) {
-        if (tokenCompanyId) {
-            console.log(`🛠️ Auto-Provisioning User on App Load: ${whopUserId}`);
-            const success = await ensureWhopContext(tokenCompanyId, whopUserId);
-            
-            if (success) {
-                // Fetch the profile again now that it exists
-                const { data: newProfile } = await supabaseAdmin
-                    .from('profiles')
-                    .select('id, role, community_id')
-                    .eq('whop_user_id', whopUserId)
-                    .maybeSingle();
-                
-                profile = newProfile;
-            }
-        }
-    }
-
-    const isDbAdmin = profile?.role === 'admin';
-    const isAdmin = isWhopAdmin || isDbAdmin;
-
-    if (!profile) {
-        // Fallback if provisioning failed (e.g. no company ID in token)
-        if (isAdmin) {
-             return { userId: null, whopUserId, isAdmin: true, communityId: tokenCompanyId };
-        }
         throw new Error("Profile initialization failed. Please refresh the page.");
     }
 
+    // 4. VERIFY ALIGNMENT: Does the User's DB community match the Token's company?
+    // FIX: Handle Supabase join returning an array or an object
+    const communitiesData = profile.communities as any;
+    const dbStoreId = Array.isArray(communitiesData) 
+        ? communitiesData[0]?.whop_store_id 
+        : communitiesData?.whop_store_id;
+
+    if (tokenCompanyId && dbStoreId && dbStoreId !== tokenCompanyId) {
+        console.log(`⚠️ Context Mismatch! User in ${dbStoreId}, Token says ${tokenCompanyId}. Fixing...`);
+        
+        // Force the switch to the correct community
+        await ensureWhopContext(tokenCompanyId, whopUserId);
+        
+        // Force a reload of the profile after the fix
+        return verifyUser(); 
+    }
+
+    const isDbAdmin = profile.role === 'admin';
+    const isAdmin = isWhopAdmin || isDbAdmin;
+
+    // Ensure DB Role matches Whop Role (if they are admin in Whop, make them admin in DB)
     if (isWhopAdmin && !isDbAdmin) {
         await supabaseAdmin.from('profiles').update({ role: 'admin' }).eq('id', profile.id);
     }
@@ -96,7 +78,7 @@ async function verifyUser() {
         userId: profile.id, 
         whopUserId, 
         isAdmin,
-        communityId: tokenCompanyId || profile.community_id 
+        communityId: profile.community_id // Use the strictly resolved DB ID
     };
 
   } catch (error: any) {
@@ -110,51 +92,38 @@ async function ensureAdmin() {
     if (!isAdmin) throw new Error("Forbidden: Admin access required");
 }
 
+// 🟢 STRICT GET: No more falling back to random communities
 async function getCommunityId(overrideId?: string) {
     if (overrideId) return overrideId;
-    const { data: community } = await supabaseAdmin.from('communities').select('id').limit(1).single();
-    if (!community) throw new Error("Community not found");
-    return community.id;
+    
+    // We try to get the ID from the current user's verifyUser context
+    const { communityId } = await verifyUser();
+    if (communityId) return communityId;
+
+    throw new Error("No Community Context Found. Cannot perform action.");
 }
 
 // --- AUTH & SYNC ---
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
     const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
 
-    if (existingUser) {
-        if (whopRole === 'admin' && existingUser.role !== 'admin') {
-            await supabaseAdmin.from('profiles').update({ role: 'admin' }).eq('id', existingUser.id);
-            existingUser.role = 'admin';
-        }
-        return existingUser;
-    }
+    if (existingUser) return existingUser;
 
-    try {
-        // Fallback for sync action if profile doesn't exist
-        const communityId = await getCommunityId();
-        const placeholderUsername = `User_${whopId.substring(0, 6)}`; 
-        
-        const { data: newUser, error } = await supabaseAdmin.from('profiles').insert({
-            whop_user_id: whopId,
-            community_id: communityId,
-            username: placeholderUsername,
-            role: whopRole,
-            xp: 0,
-            streak: 0
-        }).select('*').single();
-
-        if (error) return null;
-        return newUser;
-    } catch (err) {
-        return null;
-    }
+    // We cannot reliably sync a user without knowing WHICH community they belong to.
+    // In this strict version, we return null to force them to open the app (triggering verifyUser)
+    return null;
 }
 
 export async function syncCommunityBrandingAction() {
     try {
-        const { isAdmin, communityId: realWhopId } = await verifyUser();
-        
-        if (!isAdmin || !realWhopId) throw new Error("Unauthorized or No Company ID found");
+        const { isAdmin, communityId } = await verifyUser();
+        if (!isAdmin || !communityId) throw new Error("Unauthorized");
+
+        // Fetch the real Whop ID from our DB to query the API
+        const { data: comm } = await supabaseAdmin.from('communities').select('whop_store_id').eq('id', communityId).single();
+        const realWhopId = comm?.whop_store_id;
+
+        if (!realWhopId) throw new Error("No Whop Store ID linked to this community");
 
         console.log(`Syncing branding for Whop Company ID: ${realWhopId}`);
 
@@ -174,35 +143,16 @@ export async function syncCommunityBrandingAction() {
                 companyName = data.title || data.name;
                 logoUrl = data.image_url || data.logo_url;
             } else {
-                console.warn(`Whop API Error (${response.status}). Using Fallback.`);
-                if (process.env.NODE_ENV === 'development') {
-                    companyName = "Simulated Community";
-                    logoUrl = "https://ui-avatars.com/api/?name=Simulated+Community&background=random"; 
-                } else {
-                    return { success: false, message: `Whop API Error: ${response.status}` };
-                }
+                 console.warn(`Whop API Error (${response.status})`);
             }
-        } else if (process.env.NODE_ENV === 'development') {
-             console.warn("No WHOP_API_KEY found. Using Dev Mock.");
-             companyName = "Dev Mode Community";
-             logoUrl = "https://ui-avatars.com/api/?name=Dev+Mode&background=0D8ABC&color=fff";
-        }
+        } 
 
-        const { data: currentDbComm } = await supabaseAdmin.from('communities').select('id').limit(1).single();
-        
-        if (currentDbComm) {
-             const { error } = await supabaseAdmin
+        const { error } = await supabaseAdmin
             .from('communities')
-            .update({ 
-                ...(process.env.WHOP_API_KEY ? { whop_store_id: realWhopId, whop_company_id: realWhopId } : {}),
-                name: companyName,
-                logo_url: logoUrl
-            })
-            .eq('id', currentDbComm.id);
+            .update({ name: companyName, logo_url: logoUrl })
+            .eq('id', communityId);
 
-            if (error) throw error;
-        }
-
+        if (error) throw error;
         revalidatePath('/'); 
         return { success: true, message: `Synced as: ${companyName}` };
 
@@ -213,13 +163,18 @@ export async function syncCommunityBrandingAction() {
 }
 
 export async function awardBadgeAction(userId: string, badgeName: string) {
+    // Strict resolve: Badge must belong to the USER'S community
+    const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
+    if (!userProfile) return { success: false, message: "User not found" };
+
     const { data: badge, error: badgeError } = await supabaseAdmin
         .from('badges')
-        .select('id, community_id')
+        .select('id')
         .eq('name', badgeName)
+        .eq('community_id', userProfile.community_id) // STRICT CHECK
         .single();
 
-    if (badgeError || !badge) return { success: false, message: `Badge '${badgeName}' not found in DB` };
+    if (badgeError || !badge) return { success: false, message: `Badge '${badgeName}' not found in this community` };
 
     const { data: existing } = await supabaseAdmin
         .from('user_badges')
@@ -230,21 +185,17 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 
     if (existing) return { success: true, message: `User already has ${badgeName}` };
 
-    let finalCommunityId = badge.community_id || await getCommunityId();
-
     const payload = {
         user_id: userId,
         badge_id: badge.id,
-        community_id: finalCommunityId,
+        community_id: userProfile.community_id,
         earned_at: new Date().toISOString()
     };
 
     const { error: insertError } = await supabaseAdmin.from('user_badges').insert(payload);
-
     if (insertError) return { success: false, message: `DB Error: ${insertError.message}` };
 
     revalidatePath('/dashboard');
-    revalidatePath('/profile/[userId]');
     return { success: true, message: `Successfully awarded: ${badgeName}` };
 }
 
@@ -345,18 +296,17 @@ export async function claimQuestRewardAction(progressId: number) {
     await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: questData.xp_reward });
 
     if (questData.badge_reward_id) {
+        const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
+        
         const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', userId).eq('badge_id', questData.badge_reward_id);
         
-        if (count === 0) {
-             const { data: community } = await supabaseAdmin.from('communities').select('id').single();
-             if (community) {
-                  await supabaseAdmin.from('user_badges').insert({ 
-                      user_id: userId, 
-                      badge_id: questData.badge_reward_id, 
-                      community_id: community.id,
-                      earned_at: new Date().toISOString()
-                  });
-             }
+        if (count === 0 && userProfile) {
+              await supabaseAdmin.from('user_badges').insert({ 
+                  user_id: userId, 
+                  badge_id: questData.badge_reward_id, 
+                  community_id: userProfile.community_id,
+                  earned_at: new Date().toISOString()
+              });
         }
     }
     return { success: true, message: `+${questData.xp_reward} XP!` };
@@ -656,10 +606,8 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 // ANALYTICS (Server Side)
 export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<AnalyticsData | null> {
     try {
-        const { isAdmin, communityId: tokenCommunityId } = await verifyUser();
-        if (!isAdmin) return null;
-
-        const communityId = await getCommunityId(tokenCommunityId);
+        const { isAdmin, communityId } = await verifyUser();
+        if (!isAdmin || !communityId) return null;
 
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -787,7 +735,7 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
     }
 }
 
-// 🟢 NEW: Reliable Provisioning Logic
+// 🟢 NEW: Reliable Provisioning Logic with STRICT Context
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string) {
     if (!whopStoreId || !whopUserId) {
         console.error("❌ Provisioning failed: Missing Store ID or User ID");
@@ -799,11 +747,11 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
     let communityId: string | null = null;
     let isNewCommunity = false;
 
-    // 1. Ensure Community Exists
+    // 1. Ensure Community Exists - STRICTLY by whop_store_id
     const { data: existingComm } = await supabaseAdmin
         .from('communities')
         .select('id')
-        .eq('whop_store_id', whopStoreId)
+        .eq('whop_store_id', whopStoreId) // STRICT
         .maybeSingle();
 
     if (existingComm) {
@@ -843,6 +791,7 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string)
 
         if (existingProfile) {
             if (existingProfile.community_id !== communityId) {
+                // FORCE UPDATE to correct community
                 await supabaseAdmin
                     .from('profiles')
                     .update({ 
