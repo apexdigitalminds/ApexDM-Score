@@ -7,11 +7,12 @@ import { revalidatePath } from "next/cache";
 import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } from "@/types";
 
 // --- HELPER: Verify User & Resolve Context ---
-export async function verifyUser() { 
+// 🟢 UPDATE: Accept optional 'fallbackCompanyId' from URL Search Params
+export async function verifyUser(fallbackCompanyId?: string | null) { 
   try {
     const rawHeaders = await headers();
     
-    // 🛡️ SAFE GUARD: Return null instead of crashing if SDK fails
+    // 🛡️ SAFE GUARD: Handle missing token gracefully
     let payload;
     try {
         payload = await whopsdk.verifyUserToken(rawHeaders);
@@ -23,24 +24,26 @@ export async function verifyUser() {
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
-    // 🕵️‍♀️ DEBUG: DUMP THE ENTIRE TOKEN TO LOGS
-    console.log("------------------------------------------------");
-    console.log("🕵️‍♀️ RAW TOKEN DUMP FOR DEBUGGING:");
-    console.log(JSON.stringify(token, null, 2)); 
-    console.log("------------------------------------------------");
-
-    // 1. EXTRACT CONTEXT (Try every possible location)
+    // 1. EXTRACT CONTEXT (Prioritize Token, Fallback to URL passed arg)
     const tokenCompanyId = 
         token.companyId || 
         token.company_id || 
         token.scope_id || 
         token.experience_instance?.company_id ||
+        fallbackCompanyId || // 👈 THE FIX: Use the URL param if token is thin
         null;
     
+    // Debug Log
+    if (!token.companyId && fallbackCompanyId) {
+        console.log(`⚠️ Token missing ID. Using Fallback from URL: ${fallbackCompanyId}`);
+    } else if (!tokenCompanyId) {
+        console.log("🕵️‍♀️ RAW TOKEN DUMP (No ID found):", JSON.stringify(token, null, 2));
+    }
+
     if (!whopUserId) return null; 
     
     if (!tokenCompanyId) {
-        console.error("❌ CRITICAL: Whop Token missing Company ID. See dump above.");
+        console.error("❌ CRITICAL: Whop Token AND URL missing Company ID.");
         return null; 
     }
 
@@ -65,7 +68,8 @@ export async function verifyUser() {
     if (currentDbStoreId && currentDbStoreId !== tokenCompanyId) {
         console.warn(`⚠️ Mismatch Detected! Fixing...`);
         await ensureWhopContext(tokenCompanyId, whopUserId, roles);
-        return verifyUser(); 
+        // Retry verification with the known ID
+        return verifyUser(tokenCompanyId); 
     }
 
     return { 
@@ -95,11 +99,11 @@ async function getCommunityId(overrideId?: string) {
     return session.communityId;
 }
 
-// 🟢 UPDATED PROVISIONING LOGIC
+// 🟢 PROVISIONING LOGIC (No changes needed, included for completeness)
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string, tokenRoles: string[] = []) {
     if (!whopStoreId || !whopUserId) return false;
 
-    console.log(`🛠️ Ensuring Context: Store[${whopStoreId}] for User[${whopUserId}]`);
+    // console.log(`🛠️ Ensuring Context: Store[${whopStoreId}] for User[${whopUserId}]`);
 
     let communityId: string | null = null;
     let isNewCommunity = false;
@@ -142,26 +146,19 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
-        // 🧠 LOGIC: Token Roles are the Source of Truth
         const isWhopAdmin = tokenRoles.some(r => ['owner', 'admin', 'staff', 'creator'].includes(r));
         const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
         if (existingProfile) {
             const updates: any = {};
-            
-            if (existingProfile.community_id !== communityId) {
-                updates.community_id = communityId;
-            }
-
+            if (existingProfile.community_id !== communityId) updates.community_id = communityId;
             if (targetRole === 'admin' && existingProfile.role !== 'admin') {
                 updates.role = 'admin';
                 console.log(`🆙 Upgrading existing profile to Admin`);
             }
-
             if (Object.keys(updates).length > 0) {
                  await supabaseAdmin.from('profiles').update(updates).eq('id', existingProfile.id);
             }
-
         } else {
             console.log(`👤 Creating New Profile for ${whopUserId} as ${targetRole}`);
             await supabaseAdmin.from('profiles').insert({
@@ -177,23 +174,20 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
     return true;
 }
 
-// --- CLIENT HANDSHAKE (Safe Version) ---
+// --- CLIENT HANDSHAKE ---
 export async function validateSessionContext() {
+    // Client handshake can't pass URL params easily without passed arguments, 
+    // but typically verifyUser() will handle it on initial page load anyway.
     try {
         const result = await verifyUser();
         if (!result) return { success: false, error: "No Session" };
-
-        return { 
-            success: true, 
-            communityId: result.communityId,
-            isAdmin: result.isAdmin
-        };
+        return { success: true, communityId: result.communityId, isAdmin: result.isAdmin };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
 }
 
-// --- KEEP EXISTING FUNCTIONS BELOW (No changes needed) ---
+// --- AUTH & SYNC ---
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
     const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
     if (existingUser) return existingUser;
@@ -391,7 +385,6 @@ export async function claimQuestRewardAction(progressId: number) {
     return { success: true, message: `+${questData.xp_reward} XP!` };
 }
 
-// --- ADMIN ACTIONS ---
 export async function adminUpdateUserStatsAction(targetUserId: string, xp: number, streak: number, freezes: number) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', targetUserId);
