@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from 'next/headers';
 import { whopsdk } from "@/lib/whop-sdk"; 
-import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export const metadata: Metadata = {
   title: "ApexDM Score",
@@ -23,52 +22,24 @@ export default async function RootLayout({
   
   let verifiedUserId: string | undefined;
   let verifiedRole: "admin" | "member" = "member"; 
-  
-  // 🟢 FIX: Dynamic IDs instead of hardcoded placeholders
   let experienceId = ""; 
-  let companyId = "";
 
   try {
-    // 1. Verify Token
     const payload = await whopsdk.verifyUserToken(await headers());
     const token = payload as any; 
-    
     verifiedUserId = token.userId;
-    
-    // 🟢 FIX: Extract Context from Token
-    // Whop token usually contains these if opened inside an experience/company context
     experienceId = token.experienceId || "";
-    companyId = token.companyId || "";
     
+    // We do NOT write to the DB here. actions.ts handles that.
     const roles = token.roles || [];
-
-    // 2. Determine Role
-    const isAdmin = roles.some((r: string) => 
+    verifiedRole = roles.some((r: string) => 
         ['owner', 'admin', 'staff', 'moderator'].includes(r)
-    );
-    verifiedRole = isAdmin ? "admin" : "member";
+    ) ? "admin" : "member";
 
-    // 3. Secure Role Sync
-    if (verifiedUserId) {
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', verifiedUserId)
-            .single();
-            
-        if (profile && profile.role !== verifiedRole) {
-            console.log(`🔄 Syncing Role for ${verifiedUserId}: ${profile.role} -> ${verifiedRole}`);
-            await supabaseAdmin
-                .from('profiles')
-                .update({ role: verifiedRole })
-                .eq('id', verifiedUserId);
-        }
-    }
-    
-    console.log(`✅ Auth Success: ${verifiedUserId} (${verifiedRole}) Exp: ${experienceId}`);
+    console.log(`✅ Layout Auth: ${verifiedUserId} (${verifiedRole})`);
 
   } catch (e) {
-    console.error("❌ Server Auth Failed (Layout):", e);
+    // Silent fail in Layout to prevent blocking public pages
   }
   
   return (
@@ -77,7 +48,7 @@ export default async function RootLayout({
         <WhopApp>
           <AppProvider 
             verifiedUserId={verifiedUserId || 'GUEST'} 
-            experienceId={experienceId || 'no_experience'} // Fallback only if truly missing
+            experienceId={experienceId || 'no_experience'} 
             verifiedRole={verifiedRole} 
           >
             {children}

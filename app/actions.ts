@@ -11,20 +11,25 @@ export async function verifyUser() {
   try {
     const rawHeaders = await headers();
     
-    // 🛡️ SAFE GUARD: Handle missing token gracefully
+    // 🛡️ SAFE GUARD: Return null instead of crashing if SDK fails
     let payload;
     try {
         payload = await whopsdk.verifyUserToken(rawHeaders);
     } catch (sdkError) {
-        // No token = Public User
-        return null; 
+        return null;
     }
     
     const token = payload as any;
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
-    // 1. EXTRACT CONTEXT
+    // 🕵️‍♀️ DEBUG: DUMP THE ENTIRE TOKEN TO LOGS
+    console.log("------------------------------------------------");
+    console.log("🕵️‍♀️ RAW TOKEN DUMP FOR DEBUGGING:");
+    console.log(JSON.stringify(token, null, 2)); 
+    console.log("------------------------------------------------");
+
+    // 1. EXTRACT CONTEXT (Try every possible location)
     const tokenCompanyId = 
         token.companyId || 
         token.company_id || 
@@ -35,7 +40,7 @@ export async function verifyUser() {
     if (!whopUserId) return null; 
     
     if (!tokenCompanyId) {
-        console.error("❌ CRITICAL: Whop Token missing Company ID.");
+        console.error("❌ CRITICAL: Whop Token missing Company ID. See dump above.");
         return null; 
     }
 
@@ -60,7 +65,7 @@ export async function verifyUser() {
     if (currentDbStoreId && currentDbStoreId !== tokenCompanyId) {
         console.warn(`⚠️ Mismatch Detected! Fixing...`);
         await ensureWhopContext(tokenCompanyId, whopUserId, roles);
-        return verifyUser(); // Recursively retry
+        return verifyUser(); 
     }
 
     return { 
@@ -137,19 +142,17 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
-        // 🧠 LOGIC FIX: Determine role from TOKEN
+        // 🧠 LOGIC: Token Roles are the Source of Truth
         const isWhopAdmin = tokenRoles.some(r => ['owner', 'admin', 'staff', 'creator'].includes(r));
         const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
         if (existingProfile) {
             const updates: any = {};
             
-            // Fix Community Link
             if (existingProfile.community_id !== communityId) {
                 updates.community_id = communityId;
             }
 
-            // Fix Role (Only Upgrade, never Downgrade)
             if (targetRole === 'admin' && existingProfile.role !== 'admin') {
                 updates.role = 'admin';
                 console.log(`🆙 Upgrading existing profile to Admin`);
@@ -174,15 +177,11 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
     return true;
 }
 
-// --- CLIENT HANDSHAKE ---
+// --- CLIENT HANDSHAKE (Safe Version) ---
 export async function validateSessionContext() {
     try {
-        console.log("🤝 Handshake: Validating Session Context...");
         const result = await verifyUser();
-        
-        if (!result) {
-            return { success: false, error: "No Session" };
-        }
+        if (!result) return { success: false, error: "No Session" };
 
         return { 
             success: true, 
@@ -190,12 +189,11 @@ export async function validateSessionContext() {
             isAdmin: result.isAdmin
         };
     } catch (error: any) {
-        console.error("❌ Handshake Failed:", error.message);
         return { success: false, error: error.message };
     }
 }
 
-// --- AUTH & SYNC ---
+// --- KEEP EXISTING FUNCTIONS BELOW (No changes needed) ---
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
     const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
     if (existingUser) return existingUser;
@@ -211,8 +209,6 @@ export async function syncCommunityBrandingAction() {
         const realWhopId = comm?.whop_store_id;
 
         if (!realWhopId) throw new Error("No Whop Store ID linked");
-
-        console.log(`Syncing branding for Whop Company ID: ${realWhopId}`);
         
         let companyName = "ApexDM Community";
         let logoUrl = ""; 
@@ -282,7 +278,6 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
     return { success: true, message: `Successfully awarded: ${badgeName}` };
 }
 
-// --- USER ACTIONS ---
 export async function updateUserProfile(updates: any, targetId?: string) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
