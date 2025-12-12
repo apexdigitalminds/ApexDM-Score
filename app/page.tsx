@@ -1,23 +1,28 @@
-// app/page.tsx
-import { verifyUser } from './actions';
-import HomeClient from '../app/components/HomeClient';
+import { redirect } from 'next/navigation';
+import LandingPage from './components/bolt/LandingPage'; // Adjust path if needed
+import Layout from './components/bolt/Layout'; // Adjust path if needed
 
-// Server Components receive 'searchParams' as a prop
 export default async function Page({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-    // 1. Extract Company/Experience ID from URL (e.g. ?company_id=xyz)
-    // Whop typically sends: company_id or experience_id
+    // 1. Extract Whop Context from URL (iframe params)
     const companyId = 
         (searchParams['companyId'] as string) || 
         (searchParams['company_id'] as string) || 
         (searchParams['experience_id'] as string);
 
-    // 2. Run Verify Logic with Fallback
-    const user = await verifyUser(companyId);
+    // 2. Redirect to the Dynamic Dashboard
+    if (companyId) {
+        console.log(`🔀 Landing Page Redirecting to: /dashboard/${companyId}`);
+        redirect(`/dashboard/${companyId}`);
+    }
 
-    // 3. Pass result to Client
-    return <HomeClient user={user} />;
+    // 3. Fallback
+    return (
+        <Layout>
+            <LandingPage />
+        </Layout>
+    );
 }

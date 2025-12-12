@@ -1,26 +1,46 @@
-"use client";
+import { redirect } from "next/navigation";
+import { api } from "@/services/api"; 
+import { verifyUser } from "@/app/actions"; 
+// 🟢 FIX: Use the '@' alias to find the component reliably
+import DashboardClient from "@/app/components/DashboardClient"; 
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-// FIX: Adjust import path to match your structure
-import AdminDashboard from '../../components/bolt/AdminDashboard';
-import AdminRoute from '../../components/bolt/AdminRoute';
-
-export default function Page() {
-  const params = useParams();
-  
-  // Helper to ensure companyId is a string (Next.js params can sometimes be arrays)
-  const companyId = Array.isArray(params?.companyId) 
-    ? params.companyId[0] 
-    : params?.companyId;
+export default async function DashboardPage({
+  params,
+}: {
+  params: { companyId: string };
+}) {
+  const { companyId } = params;
 
   if (!companyId) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Error: No Company ID found in URL.</div>;
+    console.error("❌ No Company ID in route params");
+    redirect("/"); 
   }
 
+  console.log(`🔍 Dashboard Loading for Company: ${companyId}`);
+
+  // 1. PROVISIONING HANDSHAKE
+  // We pass the route ID directly to the server action.
+  const session = await verifyUser(companyId);
+
+  if (!session) {
+    console.error("❌ Auth Failed for Company:", companyId);
+    redirect("/"); 
+  }
+
+  // 2. Fetch Data
+  const [userProfile, actions, communityInfo] = await Promise.all([
+    api.getCurrentUserProfile(),
+    api.getUserActions(session.userId),
+    api.getCommunityInfo(),
+  ]);
+
+  // 3. Render Client Component
   return (
-    <AdminRoute>
-      <AdminDashboard companyId={companyId} />
-    </AdminRoute>
+    <DashboardClient 
+      user={userProfile} 
+      actions={actions} 
+      community={communityInfo} 
+      companyId={companyId}
+    />
   );
 }
