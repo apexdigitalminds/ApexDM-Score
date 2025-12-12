@@ -6,19 +6,21 @@ import DashboardClient from "@/app/components/DashboardClient";
 export default async function ExperiencePage({
   params,
 }: {
-  params: { experienceId: string };
+  // 🟢 FIX: Define params as a Promise for Next.js 15 compatibility
+  params: Promise<{ experienceId: string }>;
 }) {
-  const { experienceId } = params;
+  // 🟢 FIX: Await the params object
+  const { experienceId } = await params;
 
   if (!experienceId) {
     console.error("❌ No Experience ID in route params");
+    // Fallback: Try to grab it from the URL if params failed (Edge case)
     redirect("/"); 
   }
 
   console.log(`🔍 Experience Loading: ${experienceId}`);
 
   // 1. PROVISIONING HANDSHAKE
-  // This triggers the DB creation logic you need.
   const session = await verifyUser();
 
   if (!session) {
@@ -44,9 +46,6 @@ export default async function ExperiencePage({
       user={userProfile} 
       actions={actions} 
       community={communityInfo}
-      // 🟢 FIX: Use '.id' (UUID) instead of '.whop_store_id'.
-      // The API service doesn't return whop_store_id in the mapped object, 
-      // but 'id' is always present and valid for the client to use.
       companyId={communityInfo?.id || ""}
     />
   );
