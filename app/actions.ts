@@ -6,8 +6,62 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { revalidatePath } from "next/cache";
 import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } from "@/types";
 
+// 🟢 NEW HELPER: Debugging Version
+export async function getCompanyIdFromExperience(experienceId: string): Promise<string | null> {
+    // 1. Check API Key
+    if (!process.env.WHOP_API_KEY) {
+        console.error("❌ CRITICAL: WHOP_API_KEY is missing in Vercel Environment Variables.");
+        return null;
+    }
+
+    try {
+        console.log(`🔍 API Lookup: Fetching data for Experience ID: ${experienceId}`);
+        
+        const response = await fetch(`https://api.whop.com/api/v2/experiences/${experienceId}`, {
+            headers: {
+                "Authorization": `Bearer ${process.env.WHOP_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`❌ API Request Failed: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error("❌ API Error Body:", errorText);
+            return null;
+        }
+
+        const data = await response.json();
+        
+        // 🔍 DEBUG: DUMP THE API RESPONSE
+        console.log("------------------------------------------------");
+        console.log("🕵️‍♀️ WHOP API RESPONSE DUMP:");
+        console.log(JSON.stringify(data, null, 2));
+        console.log("------------------------------------------------");
+
+        // Try to find the Company ID in known locations
+        const foundId = 
+            data.company_id || 
+            data.company?.id || 
+            data.parent_company_id || 
+            data.experience?.company_id || 
+            null;
+
+        if (foundId) {
+            console.log(`✅ ID Resolved: ${foundId}`);
+        } else {
+            console.error("❌ ID Resolution Failed: 'company_id' not found in dump above.");
+        }
+
+        return foundId;
+
+    } catch (e: any) {
+        console.error("❌ Experience Lookup Exception:", e.message);
+        return null;
+    }
+}
+
 // --- HELPER: Verify User & Resolve Context ---
-// 🟢 CHANGED: We now prioritize the 'routeCompanyId' passed from the Page
 export async function verifyUser(routeCompanyId?: string) { 
   try {
     const rawHeaders = await headers();
@@ -17,20 +71,23 @@ export async function verifyUser(routeCompanyId?: string) {
     try {
         payload = await whopsdk.verifyUserToken(rawHeaders);
     } catch (sdkError) {
-        return null;
+        // If SDK fails, continue (we might rely on route params)
     }
     
-    const token = payload as any;
+    const token = payload as any || {};
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
     // 1. DETERMINE CONTEXT ID
-    // If the route param is present (B2B standard), USE IT. It is the Source of Truth.
     const targetCompanyId = routeCompanyId || 
         token.companyId || 
         token.experience_instance?.company_id;
     
-    if (!whopUserId) return null; 
+    // Log why we might fail
+    if (!whopUserId) {
+        // console.log("⚠️ verifyUser: No User ID found in token."); 
+        return null;
+    }
     
     if (!targetCompanyId) {
         console.error("❌ CRITICAL: No Company ID found in Route OR Token.");
@@ -38,7 +95,6 @@ export async function verifyUser(routeCompanyId?: string) {
     }
 
     // 🟢 2. PROVISIONING HANDSHAKE
-    // We pass the ID we found directly to the provisioning logic.
     await ensureWhopContext(targetCompanyId, whopUserId, roles);
 
     // 3. Fetch Profile
@@ -56,11 +112,10 @@ export async function verifyUser(routeCompanyId?: string) {
         ? communitiesData[0]?.whop_store_id 
         : communitiesData?.whop_store_id;
 
-    // If the user is linked to 'Old Store' but visiting 'New Store Dashboard', move them.
     if (currentDbStoreId && currentDbStoreId !== targetCompanyId) {
         console.warn(`⚠️ Moving User from ${currentDbStoreId} -> ${targetCompanyId}`);
         await ensureWhopContext(targetCompanyId, whopUserId, roles);
-        return verifyUser(targetCompanyId); // Retry
+        return verifyUser(targetCompanyId); 
     }
 
     return { 
@@ -94,8 +149,6 @@ async function getCommunityId(overrideId?: string) {
 export async function ensureWhopContext(whopStoreId: string, whopUserId: string, tokenRoles: string[] = []) {
     if (!whopStoreId || !whopUserId) return false;
 
-    // console.log(`🛠️ Ensuring Context: Store[${whopStoreId}] for User[${whopUserId}]`);
-
     let communityId: string | null = null;
     let isNewCommunity = false;
 
@@ -112,15 +165,12 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
         isNewCommunity = true;
         console.log(`✨ Creating NEW Community for Store ID: ${whopStoreId}`);
         
-        // 🟢 OPTIONAL: If you want to sync real name instantly
-        // You can add the Whop API call here using 'whopStoreId' to get the real name
-        // For now, we set a placeholder to ensure the ID is created.
         const { data: newComm, error } = await supabaseAdmin
             .from('communities')
             .insert({
                 whop_store_id: whopStoreId,
                 whop_company_id: whopStoreId, 
-                name: "New Community", // Will be updated by Sync Action later
+                name: "New Community", 
                 subscription_tier: "Free"
             })
             .select('id')
@@ -141,28 +191,19 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
-        // 🧠 LOGIC: Token Roles are the Source of Truth
         const isWhopAdmin = tokenRoles.some(r => ['owner', 'admin', 'staff', 'creator'].includes(r));
-        
-        // If it's a new community OR the token says Admin, make them Admin.
         const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
         if (existingProfile) {
             const updates: any = {};
-            
-            if (existingProfile.community_id !== communityId) {
-                updates.community_id = communityId;
-            }
-
+            if (existingProfile.community_id !== communityId) updates.community_id = communityId;
             if (targetRole === 'admin' && existingProfile.role !== 'admin') {
                 updates.role = 'admin';
                 console.log(`🆙 Upgrading existing profile to Admin`);
             }
-
             if (Object.keys(updates).length > 0) {
                  await supabaseAdmin.from('profiles').update(updates).eq('id', existingProfile.id);
             }
-
         } else {
             console.log(`👤 Creating New Profile for ${whopUserId} as ${targetRole}`);
             await supabaseAdmin.from('profiles').insert({
@@ -803,29 +844,5 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
     } catch (error: any) { 
         console.error("Server Analytics Error:", error);
         return null; 
-    }
-}
-// 🟢 NEW HELPER: Resolve Company ID from Experience ID
-export async function getCompanyIdFromExperience(experienceId: string): Promise<string | null> {
-    if (!process.env.WHOP_API_KEY) return null;
-
-    try {
-        const response = await fetch(`https://api.whop.com/api/v2/experiences/${experienceId}`, {
-            headers: {
-                "Authorization": `Bearer ${process.env.WHOP_API_KEY}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (!response.ok) {
-            console.error(`❌ Failed to fetch experience ${experienceId}: ${response.statusText}`);
-            return null;
-        }
-
-        const data = await response.json();
-        return data.company_id || data.company?.id || null;
-    } catch (e) {
-        console.error("Experience Lookup Error:", e);
-        return null;
     }
 }
