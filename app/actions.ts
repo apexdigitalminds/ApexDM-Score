@@ -6,61 +6,6 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { revalidatePath } from "next/cache";
 import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } from "@/types";
 
-// 🟢 NEW HELPER: Debugging Version
-export async function getCompanyIdFromExperience(experienceId: string): Promise<string | null> {
-    // 1. Check API Key
-    if (!process.env.WHOP_API_KEY) {
-        console.error("❌ CRITICAL: WHOP_API_KEY is missing in Vercel Environment Variables.");
-        return null;
-    }
-
-    try {
-        console.log(`🔍 API Lookup: Fetching data for Experience ID: ${experienceId}`);
-        
-        const response = await fetch(`https://api.whop.com/api/v2/experiences/${experienceId}`, {
-            headers: {
-                "Authorization": `Bearer ${process.env.WHOP_API_KEY}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (!response.ok) {
-            console.error(`❌ API Request Failed: ${response.status} ${response.statusText}`);
-            const errorText = await response.text();
-            console.error("❌ API Error Body:", errorText);
-            return null;
-        }
-
-        const data = await response.json();
-        
-        // 🔍 DEBUG: DUMP THE API RESPONSE
-        console.log("------------------------------------------------");
-        console.log("🕵️‍♀️ WHOP API RESPONSE DUMP:");
-        console.log(JSON.stringify(data, null, 2));
-        console.log("------------------------------------------------");
-
-        // Try to find the Company ID in known locations
-        const foundId = 
-            data.company_id || 
-            data.company?.id || 
-            data.parent_company_id || 
-            data.experience?.company_id || 
-            null;
-
-        if (foundId) {
-            console.log(`✅ ID Resolved: ${foundId}`);
-        } else {
-            console.error("❌ ID Resolution Failed: 'company_id' not found in dump above.");
-        }
-
-        return foundId;
-
-    } catch (e: any) {
-        console.error("❌ Experience Lookup Exception:", e.message);
-        return null;
-    }
-}
-
 // --- HELPER: Verify User & Resolve Context ---
 export async function verifyUser(routeCompanyId?: string) { 
   try {
@@ -71,59 +16,66 @@ export async function verifyUser(routeCompanyId?: string) {
     try {
         payload = await whopsdk.verifyUserToken(rawHeaders);
     } catch (sdkError) {
-        // If SDK fails, continue (we might rely on route params)
+        return null;
     }
     
     const token = payload as any || {};
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || []; 
 
-    // 1. DETERMINE CONTEXT ID
-    const targetCompanyId = routeCompanyId || 
-        token.companyId || 
-        token.experience_instance?.company_id;
-    
-    // Log why we might fail
-    if (!whopUserId) {
-        // console.log("⚠️ verifyUser: No User ID found in token."); 
-        return null;
-    }
-    
-    if (!targetCompanyId) {
-        console.error("❌ CRITICAL: No Company ID found in Route OR Token.");
-        return null; 
-    }
+    if (!whopUserId) return null;
 
-    // 🟢 2. PROVISIONING HANDSHAKE
-    await ensureWhopContext(targetCompanyId, whopUserId, roles);
-
-    // 3. Fetch Profile
-    const { data: profile } = await supabaseAdmin
+    // 🟢 STRATEGY 1: CHECK DATABASE FIRST (Canonical Path)
+    // Per your research: The Webhook should have already created the user.
+    // If they exist, we do NOT need the Company ID from the token to log them in.
+    const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
         .select('id, role, community_id, communities(whop_store_id)')
         .eq('whop_user_id', whopUserId)
         .maybeSingle();
 
-    if (!profile) return null;
-
-    // 4. ALIGNMENT CHECK
-    const communitiesData = profile.communities as any;
-    const currentDbStoreId = Array.isArray(communitiesData) 
-        ? communitiesData[0]?.whop_store_id 
-        : communitiesData?.whop_store_id;
-
-    if (currentDbStoreId && currentDbStoreId !== targetCompanyId) {
-        console.warn(`⚠️ Moving User from ${currentDbStoreId} -> ${targetCompanyId}`);
-        await ensureWhopContext(targetCompanyId, whopUserId, roles);
-        return verifyUser(targetCompanyId); 
+    if (existingProfile) {
+        // ✅ SUCCESS: User found. 
+        // We trust the DB state.
+        return { 
+            userId: existingProfile.id, 
+            whopUserId, 
+            isAdmin: existingProfile.role === 'admin',
+            communityId: existingProfile.community_id,
+            role: existingProfile.role
+        };
     }
 
+    // 🟢 STRATEGY 2: PROVISION NEW USER (Fallback)
+    // We only reach here if the user is NOT in the DB (e.g. Webhook failed or new member).
+    // Now we STRICTLY require a Company ID to create them.
+    const targetCompanyId = routeCompanyId || 
+        token.companyId || 
+        token.experience_instance?.company_id;
+    
+    if (!targetCompanyId) {
+        console.error("❌ CRITICAL: User not in DB, and no Company ID available to create them.");
+        return null; 
+    }
+
+    // Provision new user
+    await ensureWhopContext(targetCompanyId, whopUserId, roles);
+    
+    // Fetch the newly created profile
+    const { data: newProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, community_id')
+        .eq('whop_user_id', whopUserId)
+        .maybeSingle();
+
+    if (!newProfile) return null;
+
     return { 
-        userId: profile.id, 
+        userId: newProfile.id, 
         whopUserId, 
-        isAdmin: profile.role === 'admin',
-        communityId: profile.community_id,
-        role: profile.role
+        isAdmin: newProfile.role === 'admin',
+        communityId: newProfile.community_id,
+        role: newProfile.role
     };
 
   } catch (error: any) {
@@ -164,7 +116,6 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
     } else {
         isNewCommunity = true;
         console.log(`✨ Creating NEW Community for Store ID: ${whopStoreId}`);
-        
         const { data: newComm, error } = await supabaseAdmin
             .from('communities')
             .insert({
@@ -191,15 +142,16 @@ export async function ensureWhopContext(whopStoreId: string, whopUserId: string,
             .eq('whop_user_id', whopUserId)
             .maybeSingle();
 
+        // 🧠 LOGIC: Token Roles are the Source of Truth for new installs
         const isWhopAdmin = tokenRoles.some(r => ['owner', 'admin', 'staff', 'creator'].includes(r));
         const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
         if (existingProfile) {
             const updates: any = {};
             if (existingProfile.community_id !== communityId) updates.community_id = communityId;
+            // Only upgrade, never downgrade via automation
             if (targetRole === 'admin' && existingProfile.role !== 'admin') {
                 updates.role = 'admin';
-                console.log(`🆙 Upgrading existing profile to Admin`);
             }
             if (Object.keys(updates).length > 0) {
                  await supabaseAdmin.from('profiles').update(updates).eq('id', existingProfile.id);
@@ -279,6 +231,8 @@ export async function syncCommunityBrandingAction() {
     }
 }
 
+// ... (KEEP ALL OTHER FUNCTIONS BELOW: awardBadgeAction, updateUserProfile, etc.) ...
+// These do NOT need changes as they all use verifyUser() which we fixed above.
 export async function awardBadgeAction(userId: string, badgeName: string) {
     const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
     if (!userProfile) return { success: false, message: "User not found" };
@@ -428,7 +382,6 @@ export async function claimQuestRewardAction(progressId: number) {
     return { success: true, message: `+${questData.xp_reward} XP!` };
 }
 
-// --- ADMIN ACTIONS ---
 export async function adminUpdateUserStatsAction(targetUserId: string, xp: number, streak: number, freezes: number) {
     await ensureAdmin();
     const { error } = await supabaseAdmin.from('profiles').update({ xp, streak, streak_freezes: freezes }).eq('id', targetUserId);
