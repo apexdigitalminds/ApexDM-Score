@@ -805,3 +805,27 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         return null; 
     }
 }
+// 🟢 NEW HELPER: Resolve Company ID from Experience ID
+export async function getCompanyIdFromExperience(experienceId: string): Promise<string | null> {
+    if (!process.env.WHOP_API_KEY) return null;
+
+    try {
+        const response = await fetch(`https://api.whop.com/api/v2/experiences/${experienceId}`, {
+            headers: {
+                "Authorization": `Bearer ${process.env.WHOP_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`❌ Failed to fetch experience ${experienceId}: ${response.statusText}`);
+            return null;
+        }
+
+        const data = await response.json();
+        return data.company_id || data.company?.id || null;
+    } catch (e) {
+        console.error("Experience Lookup Error:", e);
+        return null;
+    }
+}
