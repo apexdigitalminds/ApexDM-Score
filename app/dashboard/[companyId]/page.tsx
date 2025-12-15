@@ -1,40 +1,54 @@
+// File: app/dashboard/[companyId]/page.tsx
+
 import { redirect } from "next/navigation";
 import { api } from "@/services/api"; 
 import { verifyUser } from "@/app/actions"; 
-// 🟢 FIX: Use the '@' alias to find the component reliably
 import DashboardClient from "@/app/components/DashboardClient"; 
 
 export default async function DashboardPage({
   params,
 }: {
-  params: { companyId: string };
+  // 🟢 Update: Promise type for Next.js 15+ compatibility
+  params: Promise<{ companyId: string }>;
 }) {
-  const { companyId } = params;
+  // 🟢 Update: Await the params
+  const { companyId } = await params;
 
   if (!companyId) {
     console.error("❌ No Company ID in route params");
     redirect("/"); 
   }
 
-  console.log(`🔍 Dashboard Loading for Company: ${companyId}`);
+  console.log(`🎯 Dashboard Loading for Company: ${companyId}`);
 
-  // 1. PROVISIONING HANDSHAKE
-  // We pass the route ID directly to the server action.
+  // 🟢 AUTH: Pass the ID explicitly. 
+  // If the user isn't in the DB, this ID allows actions.ts to create them.
   const session = await verifyUser(companyId);
 
   if (!session) {
     console.error("❌ Auth Failed for Company:", companyId);
-    redirect("/"); 
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
+        <div className="text-center max-w-md px-4">
+          <h1 className="text-2xl font-bold mb-2">🚫 Access Denied</h1>
+          <p className="mb-4">Unable to verify your access to this company.</p>
+          <p className="text-xs text-slate-500 mt-4">
+            Company ID: {companyId}
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  // 2. Fetch Data
+  console.log(`✅ User authenticated: ${session.userId} (${session.role})`);
+
+  // 🟢 DATA: Fetch using the verified session
   const [userProfile, actions, communityInfo] = await Promise.all([
     api.getCurrentUserProfile(),
     api.getUserActions(session.userId),
     api.getCommunityInfo(),
   ]);
 
-  // 3. Render Client Component
   return (
     <DashboardClient 
       user={userProfile} 
