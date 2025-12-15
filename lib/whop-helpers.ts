@@ -23,9 +23,9 @@ export async function getCompanyIdFromExperience(
       return null;
     }
     
-    // Call Whop API v5 to get experience details
+    // 🟢 CORRECT ENDPOINT: /v5/app/experiences (note the /app/ prefix)
     const response = await fetch(
-      `https://api.whop.com/api/v5/experiences/${experienceId}`,
+      `https://api.whop.com/api/v5/app/experiences/${experienceId}`,
       {
         headers: {
           Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
@@ -38,32 +38,46 @@ export async function getCompanyIdFromExperience(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Whop API Error [${response.status}]:`, errorText);
+      
+      // More specific error messages
+      if (response.status === 404) {
+        console.error(`   Experience not found: ${experienceId}`);
+        console.error(`   This usually means:`);
+        console.error(`   1. The experienceId is invalid or expired`);
+        console.error(`   2. The experience was deleted`);
+        console.error(`   3. Your WHOP_API_KEY doesn't have access to this experience`);
+      } else if (response.status === 401) {
+        console.error(`   Unauthorized - check your WHOP_API_KEY`);
+      }
+      
       return null;
     }
 
     const data = await response.json();
     
-    // Log the response structure for debugging
-    console.log(`📦 Experience data structure:`, {
-      hasCompany: !!data.company,
-      companyId: data.company?.id,
-      experienceId: data.id,
+    // 🟢 CORRECT STRUCTURE: company_id is a direct field, not nested
+    console.log(`📦 Experience API Response:`, {
+      id: data.id,
+      name: data.name,
+      company_id: data.company_id,
+      app_id: data.app_id,
+      access_level: data.access_level,
     });
     
-    // The company_id is in data.company.id
-    const companyId = data.company?.id;
+    const companyId = data.company_id;
     
     if (companyId) {
       console.log(`✅ Resolved company_id: ${companyId}`);
       return companyId;
     }
 
-    console.error("❌ No company.id found in experience response");
+    console.error("❌ No company_id found in experience response");
     console.error("   Full response:", JSON.stringify(data, null, 2));
     return null;
     
   } catch (error: any) {
     console.error("❌ Error fetching company from experience:", error.message);
+    console.error("   Stack:", error.stack);
     return null;
   }
 }
