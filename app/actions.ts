@@ -151,12 +151,14 @@ export async function verifyUser(routeCompanyId?: string) {
  * @param whopStoreId - The Whop company/store ID
  * @param whopUserId - The Whop user ID
  * @param tokenRoles - Roles from Whop token (owner, admin, member, etc.)
+ * @param productTitle - The product/plan name from Whop (e.g., "Core", "Pro", "Elite")
  * @returns true if successful, false otherwise
  */
 export async function ensureWhopContext(
   whopStoreId: string,
   whopUserId: string,
-  tokenRoles: string[] = []
+  tokenRoles: string[] = [],
+  productTitle?: string
 ) {
   if (!whopStoreId || !whopUserId) {
     console.error("❌ ensureWhopContext: Missing required parameters");
@@ -169,6 +171,7 @@ export async function ensureWhopContext(
   console.log(`   Store ID: ${whopStoreId}`);
   console.log(`   User ID: ${whopUserId}`);
   console.log(`   Roles: [${tokenRoles.join(', ')}]`);
+  console.log(`   Product/Tier: ${productTitle || 'Not provided'}`);
 
   let communityId: string | null = null;
   let isNewCommunity = false;
@@ -179,7 +182,7 @@ export async function ensureWhopContext(
   
   const { data: existingComm, error: findError } = await supabaseAdmin
     .from('communities')
-    .select('id, name, whop_store_id')
+    .select('id, name, whop_store_id, subscription_tier')
     .eq('whop_store_id', whopStoreId)
     .maybeSingle();
 
@@ -191,19 +194,43 @@ export async function ensureWhopContext(
   if (existingComm) {
     communityId = existingComm.id;
     console.log(`✅ Community found: "${existingComm.name}" (${communityId})`);
+    console.log(`   Current tier: ${existingComm.subscription_tier}`);
+    
+    // 🔄 Update tier if we have new tier information and it's different
+    if (productTitle && existingComm.subscription_tier !== productTitle) {
+      console.log(`🔄 Updating community tier: ${existingComm.subscription_tier} → ${productTitle}`);
+      
+      const { error: updateError } = await supabaseAdmin
+        .from('communities')
+        .update({ subscription_tier: productTitle })
+        .eq('id', communityId);
+      
+      if (updateError) {
+        console.error("⚠️ Failed to update community tier:", updateError);
+        // Don't fail the whole operation, just log it
+      } else {
+        console.log(`✅ Community tier updated to: ${productTitle}`);
+      }
+    }
+    
   } else {
     isNewCommunity = true;
     console.log(`✨ Creating NEW community for store: ${whopStoreId}`);
+    
+    // 🎯 Determine initial tier
+    // Priority: productTitle from webhook > "Free" as fallback
+    const initialTier = productTitle || "Free";
+    console.log(`   Initial tier: ${initialTier}`);
     
     const { data: newComm, error: createError } = await supabaseAdmin
       .from('communities')
       .insert({
         whop_store_id: whopStoreId,
-        whop_company_id: whopStoreId, // Store in both fields for compatibility
-        name: `Community ${whopStoreId.substring(0, 8)}`, // Temporary name
-        subscription_tier: "bronze", // Match your schema default
+        whop_company_id: whopStoreId,
+        name: `Community ${whopStoreId.substring(0, 8)}`,
+        subscription_tier: initialTier, // Use the product title as tier
       })
-      .select('id, name')
+      .select('id, name, subscription_tier')
       .single();
     
     if (createError || !newComm) {
@@ -213,6 +240,7 @@ export async function ensureWhopContext(
     
     communityId = newComm.id;
     console.log(`✅ Community created: "${newComm.name}" (${communityId})`);
+    console.log(`   Tier: ${newComm.subscription_tier}`);
   }
 
   // =============================================================================
@@ -240,26 +268,20 @@ export async function ensureWhopContext(
     ['owner', 'admin', 'staff', 'creator', 'moderator'].includes(r.toLowerCase())
   );
   
-  // First user in new community = admin, OR if they have admin role in Whop
   const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
   if (existingProfile) {
-    // User exists - update if needed
     console.log(`👤 User profile found: ${existingProfile.username} (${existingProfile.id})`);
     console.log(`   Current community: ${existingProfile.community_id}`);
     console.log(`   Current role: ${existingProfile.role}`);
     
     const updates: any = {};
     
-    // Update community if different
     if (existingProfile.community_id !== communityId) {
       console.log(`🔄 Moving user to new community`);
-      console.log(`   From: ${existingProfile.community_id}`);
-      console.log(`   To: ${communityId}`);
       updates.community_id = communityId;
     }
     
-    // Only upgrade roles, never downgrade automatically
     if (targetRole === 'admin' && existingProfile.role !== 'admin') {
       console.log(`⬆️ Upgrading user role: ${existingProfile.role} → admin`);
       updates.role = 'admin';
@@ -281,7 +303,6 @@ export async function ensureWhopContext(
     }
     
   } else {
-    // Create new profile
     console.log(`👤 Creating NEW profile`);
     console.log(`   User: ${whopUserId}`);
     console.log(`   Role: ${targetRole}`);
@@ -301,7 +322,6 @@ export async function ensureWhopContext(
     
     if (createError) {
       console.error("❌ Failed to create profile:", createError);
-      console.error("   Error details:", JSON.stringify(createError, null, 2));
       return false;
     }
     console.log(`✅ Profile created as ${targetRole}`);

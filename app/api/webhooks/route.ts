@@ -34,48 +34,55 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     // 🟢 Events that should trigger user/community provisioning
     const provisioningEvents = [
-      "app.installed",           // App is installed to a company
-      "membership.created",       // New user gets access
-      "membership.went_valid",   // User's membership becomes active
-      "membership_activated",     // Legacy event name
-      "payment_succeeded",        // User makes a payment
-      "payment.succeeded"         // User makes a payment (alternate)
+      "app.installed",
+      "membership.created",
+      "membership.went_valid",
+      "membership.activated",
+      "membership_activated",
+      "payment_succeeded",
+      "payment.succeeded"
     ];
 
     if (provisioningEvents.includes(webhookData.type)) {
       const payload = webhookData.data || webhookData;
       
       // 🔍 AGGRESSIVE ID EXTRACTION
-      // Whop's webhook structure varies by event type, so we check all possible locations
       const companyId = 
-        webhookData.company_id ||           // Root level
-        payload.company_id ||               // Inside data
-        payload.company?.id ||              // Nested in company object
-        payload.team_id ||                  // Some events use team_id
-        payload.experience?.company_id ||   // Inside experience
-        webhookData.data?.company_id ||     // Double-nested
-        payload.membership?.company_id;     // Inside membership
+        webhookData.company_id ||
+        payload.company_id ||
+        payload.company?.id ||
+        payload.team_id ||
+        payload.experience?.company_id ||
+        webhookData.data?.company_id ||
+        payload.membership?.company_id;
 
       const userId = 
-        payload.user_id ||                  // Inside data
-        payload.user?.id ||                 // Nested in user object
-        webhookData.user_id ||              // Root level
-        payload.membership?.user_id ||      // Inside membership
-        webhookData.data?.user_id ||        // Double-nested
-        payload.membership?.user?.id;       // Deep nested
+        payload.user_id ||
+        payload.user?.id ||
+        webhookData.user_id ||
+        payload.membership?.user_id ||
+        webhookData.data?.user_id ||
+        payload.membership?.user?.id;
+
+      // 🎯 EXTRACT SUBSCRIPTION TIER from product title
+      const productTitle = 
+        payload.product?.title ||
+        payload.product?.name ||
+        payload.access_pass?.name ||
+        payload.plan?.name ||
+        webhookData.product?.title;
 
       console.log(`🔍 ID Extraction Results:`);
       console.log(`   Company ID: ${companyId || '❌ NOT FOUND'}`);
       console.log(`   User ID: ${userId || '❌ NOT FOUND'}`);
+      console.log(`   Product/Tier: ${productTitle || '❌ NOT FOUND'}`);
 
-      // Validate we have both IDs
+      // Validate we have both required IDs
       if (!companyId || !userId) {
         console.error(`❌ MISSING REQUIRED IDS`);
         console.error(`   Event: ${webhookData.type}`);
         console.error(`   Company ID: ${companyId || 'MISSING'}`);
         console.error(`   User ID: ${userId || 'MISSING'}`);
-        console.error(`   `);
-        console.error(`   Full payload above - check structure`);
         
         return new Response(JSON.stringify({ 
           success: false,
@@ -91,18 +98,16 @@ export async function POST(request: NextRequest): Promise<Response> {
       }
 
       // 🎭 Determine User Role
-      let roles = ['member']; // Default role
+      let roles = ['member'];
       
       if (webhookData.type === 'app.installed') {
-        // First install = make them admin
         roles = ['admin', 'owner'];
         console.log(`👑 App Install Event - User will be ADMIN`);
       } else if (payload.roles && Array.isArray(payload.roles)) {
-        // Use roles from webhook if provided
         roles = payload.roles;
         console.log(`👤 Using roles from webhook: [${roles.join(', ')}]`);
       } else {
-        console.log(`👤 Default role: member`);
+        console.log(`👤 Default role: member (will be upgraded to admin if first user)`);
       }
 
       // 🚀 Start Provisioning
@@ -111,11 +116,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       console.log(`   Company: ${companyId}`);
       console.log(`   User: ${userId}`);
       console.log(`   Roles: [${roles.join(', ')}]`);
+      console.log(`   Tier: ${productTitle || 'Free (will be synced later)'}`);
       console.log(`🚀 ========================================`);
 
-      // Run provisioning asynchronously (don't block webhook response)
+      // Run provisioning asynchronously with tier information
       waitUntil(
-        ensureWhopContext(companyId, userId, roles)
+        ensureWhopContext(companyId, userId, roles, productTitle)
           .then((success) => {
             if (success) {
               console.log(`✅ Provisioning completed for ${userId}`);
@@ -132,14 +138,14 @@ export async function POST(request: NextRequest): Promise<Response> {
         success: true, 
         message: "Provisioning started",
         company_id: companyId,
-        user_id: userId
+        user_id: userId,
+        tier: productTitle || 'unknown'
       }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
       
     } else {
-      // Event is not one we need to act on
       console.log(`ℹ️ Event "${webhookData.type}" ignored (not a provisioning event)`);
       
       return new Response(JSON.stringify({ 
