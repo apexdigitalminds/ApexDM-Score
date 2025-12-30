@@ -325,7 +325,15 @@ export const AppProvider = ({
     useEffect(() => {
         const initAuth = async () => {
             let user = null;
-            if (verifiedUserId && verifiedUserId !== "GUEST") { user = await api.getUserByWhopId(verifiedUserId, verifiedRole); }
+            if (verifiedUserId && verifiedUserId !== "GUEST") {
+                user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
+                //🟢 FIX: Set API context IMMEDIATELY after getting user
+                // @ts-ignore - database field is community_id, not communityId
+                if (user?.community_id) {
+                    // @ts-ignore
+                    setApiContext(user.community_id);
+                }
+            }
             setSelectedUser(user);
             setIsWhopConnected(!!user);
             await fetchCommunity();
