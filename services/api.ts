@@ -1,9 +1,9 @@
 import { supabase } from './supabase';
-import { 
-    updateUserProfile, 
-    buyStoreItemAction, 
-    activateInventoryItemAction, 
-    equipCosmeticAction, 
+import {
+    updateUserProfile,
+    buyStoreItemAction,
+    activateInventoryItemAction,
+    equipCosmeticAction,
     unequipCosmeticAction,
     claimQuestRewardAction,
     adminCreateStoreItemAction,
@@ -29,7 +29,7 @@ import {
     adminRestoreQuestAction,
     adminToggleQuestAction,
     recordActionServer,
-    getAnalyticsDataServer, 
+    getAnalyticsDataServer,
     syncUserAction,
     awardBadgeAction,
     syncCommunityBrandingAction
@@ -47,7 +47,7 @@ const profileFromSupabase = (data: any): User => {
     } else if (data.user_badges && Array.isArray(data.user_badges)) {
         badges = data.user_badges
             .map((join: any) => {
-                const badgeData = join.badges || join.badge; 
+                const badgeData = join.badges || join.badge;
                 return badgeData ? badgeFromSupabase(badgeData) : null;
             })
             .filter((b: Badge | null): b is Badge => b !== null);
@@ -65,9 +65,9 @@ const profileFromSupabase = (data: any): User => {
         role: data.role,
         whopUser: data.whop_user_id ? { id: data.whop_user_id, username: data.username } : undefined,
         bannedUntil: data.banned_until,
-        badges, 
+        badges,
         level: Math.floor((data.xp ?? 0) / 100),
-        metadata: data.metadata || {}, 
+        metadata: data.metadata || {},
     };
 };
 
@@ -82,14 +82,14 @@ const actionFromSupabase = (data: any): Action => ({
 });
 
 const badgeFromSupabase = (data: any): Badge => ({
-  id: data.id,
-  name: data.name,
-  description: data.description,
-  icon: data.icon,
-  color: data.color,
-  communityId: data.community_id ?? "",
-  isActive: data.is_active ?? !data.is_archived,
-  isArchived: data.is_archived
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    icon: data.icon,
+    color: data.color,
+    communityId: data.community_id ?? "",
+    isActive: data.is_active ?? !data.is_archived,
+    isArchived: data.is_archived
 });
 
 const questFromSupabase = (data: any): Quest => ({
@@ -132,7 +132,7 @@ const storeItemFromSupabase = (data: any): StoreItem => ({
     itemType: data.item_type,
     durationHours: data.duration_hours,
     modifier: data.modifier,
-    metadata: data.metadata || {}, 
+    metadata: data.metadata || {},
 });
 
 const inventoryItemFromSupabase = (data: any): UserInventoryItem => ({
@@ -162,7 +162,7 @@ const getCommunityId = async () => {
 
     // 2. Try to get context from the currently authenticated user
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
         // Fetch THIS user's specific community_id linkage
         const { data: profile } = await supabase
@@ -170,7 +170,7 @@ const getCommunityId = async () => {
             .select('community_id')
             .eq('id', user.id)
             .single();
-            
+
         if (profile?.community_id) {
             COMMUNITY_ID = profile.community_id;
             // console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
@@ -184,13 +184,21 @@ const getCommunityId = async () => {
     throw new Error("No community context could be resolved. Please install the app.");
 };
 
+// 🟢 NEW: Function to manually set the community context
+// This is called by AppProvider when we know the companyId from the URL or Whop
+export const setApiContext = (communityId: string) => {
+    COMMUNITY_ID = communityId;
+    console.log("✅ API Context set to community:", communityId);
+};
+
+
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
 
 // Helper to manually fetch badges
 const fetchBadgesForUser = async (userId: string): Promise<Badge[]> => {
     const { data: userBadges } = await supabase.from('user_badges').select('badge_id').eq('user_id', userId);
     const badgeIds = userBadges?.map((ub: any) => ub.badge_id) || [];
-    
+
     if (badgeIds.length > 0) {
         const { data: badgeDefs } = await supabase.from('badges').select('*').in('id', badgeIds);
         return (badgeDefs || []).map(badgeFromSupabase);
@@ -213,8 +221,8 @@ export const api = {
 
         // Manual Fetch
         const badges = await fetchBadgesForUser(userId);
-        (profile as any).badges = badges; 
-        
+        (profile as any).badges = badges;
+
         return profileFromSupabase(profile);
     },
 
@@ -224,7 +232,7 @@ export const api = {
             // Manual Fetch Badges
             const badges = await fetchBadgesForUser(userData.id);
             (userData as any).badges = badges;
-            
+
             return profileFromSupabase(userData);
         }
         return null;
@@ -243,7 +251,7 @@ export const api = {
     },
 
     getAllUserActions: async (userId: string): Promise<Action[]> => {
-         const { data, error } = await supabase.from('actions_log').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('actions_log').select('*').eq('user_id', userId).order('created_at', { ascending: false });
         if (error) return [];
         return data.map(actionFromSupabase);
     },
@@ -251,7 +259,7 @@ export const api = {
     // CONFIGS
     getRewardsConfig: async (): Promise<RewardsConfig> => {
         const communityId = await getCommunityId();
-        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active').eq('community_id', communityId); 
+        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active').eq('community_id', communityId);
         if (error) return {};
         return data.reduce((acc, r) => ({ ...acc, [r.action_type]: { xpGained: r.xp_gained, isArchived: r.is_archived, isActive: r.is_active } }), {} as any);
     },
@@ -272,7 +280,7 @@ export const api = {
         } catch (e) { return null; }
     },
 
-    updateCommunityBranding: async (enabled: boolean) => { 
+    updateCommunityBranding: async (enabled: boolean) => {
         const communityId = await getCommunityId();
         const { error } = await supabase.from('communities').update({ white_label_enabled: enabled }).eq('id', communityId);
         return !error;
@@ -301,11 +309,11 @@ export const api = {
     // STORE
     getStoreItems: async (): Promise<StoreItem[]> => {
         const communityId = await getCommunityId();
-        const { data } = await supabase.from('store_items').select('*').eq('community_id', communityId).order('cost_xp'); 
+        const { data } = await supabase.from('store_items').select('*').eq('community_id', communityId).order('cost_xp');
         return (data || []).map(storeItemFromSupabase);
     },
     getUserItemUsage: async (userId: string) => {
-        const { data } = await supabase.from('item_usage_logs').select('*').eq('user_id', userId).order('used_at', { ascending: false }).limit(5); 
+        const { data } = await supabase.from('item_usage_logs').select('*').eq('user_id', userId).order('used_at', { ascending: false }).limit(5);
         return data || [];
     },
     getUserInventory: async (userId: string): Promise<UserInventoryItem[]> => {
@@ -335,11 +343,11 @@ export const api = {
     updateUserProfile: async (updates: { avatarUrl?: string; username?: string }, userId?: string) => {
         return await updateUserProfile(updates, userId);
     },
-    
+
     buyStoreItem: async (userId: string, itemId: string) => {
         return await buyStoreItemAction(itemId);
     },
-    
+
     activateInventoryItem: async (inventoryId: string) => {
         return await activateInventoryItemAction(inventoryId);
     },
@@ -408,13 +416,13 @@ export const api = {
         const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
         return data.publicUrl;
     },
-    
+
     adminGetUserEmail: async () => null,
     adminUpdateCommunityTier: async (tier: any) => { return await adminUpdateCommunityTierAction(tier); },
-    
+
     triggerWebhook: async (userId: string, actionType: string) => {
-         return api.recordAction(userId, actionType as ActionType, 'whop').then(result =>
+        return api.recordAction(userId, actionType as ActionType, 'whop').then(result =>
             result ? `Webhook simulated.` : "Failed."
-         );
+        );
     },
 };

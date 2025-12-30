@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Reward, Badge, Quest, StoreItem, Profile, Action, Community, AnalyticsData, UserQuestProgress, ActiveEffect, UserInventoryItem, BadgeConfig, ActionType } from "@/types";
-import { api } from "@/services/api";
+import { api, setApiContext } from "@/services/api"; // 🟢 FIX: Import setApiContext
 
 export interface AppContextValue {
     selectedUser: Profile | null;
@@ -115,7 +115,13 @@ export const AppProvider = ({
     const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
 
     const fetchAllUsers = async () => { const users = await api.getUsers(); setAllUsers(users); };
-    const fetchCommunity = async () => { const commData = await api.getCommunityInfo(); if (commData) setCommunity(commData); };
+    const fetchCommunity = async () => {
+        const commData = await api.getCommunityInfo();
+        if (commData) {
+            setCommunity(commData);
+            setApiContext(commData.id); // 🟢 FIX: Set API context for multi-tenancy
+        }
+    };
     const fetchRewards = async () => { const config = await api.getRewardsConfig(); setRewardsConfig(config as any); };
     const fetchBadges = async () => { const config = await api.getBadgesConfig(); setBadgesConfig(config); };
     const fetchQuests = async () => { const quests = await api.getQuestsAdmin(); setQuestsAdmin(quests); };
