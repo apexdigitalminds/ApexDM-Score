@@ -25,7 +25,7 @@ export interface AppContextValue {
     adminUpdateUserRole: (userId: string, role: "member" | "admin") => Promise<{ success: boolean; message: string }>;
     adminBanUser: (userId: string, durationHours: number | null) => Promise<{ success: boolean; message: string }>;
     adminGetUserEmail: (userId: string) => Promise<string | null>;
-    adminUpdateCommunityTier: (newTier: "Core" | "Pro" | "Elite") => Promise<boolean>;
+    adminUpdateCommunityTier: (newTier: "Core" | "Pro" | "Elite" | "trial") => Promise<boolean>;
     adminUpdateUserStats: (userId: string, xp: number, streak: number, freezes: number) => Promise<{ success: boolean; message: string }>;
 
     // Configs
@@ -84,6 +84,7 @@ export interface AppContextValue {
 
     // Utils
     isFeatureEnabled: (feature: string) => boolean;
+    getTrialStatus: () => { isActive: boolean; daysRemaining: number }; // 🆕 Trial status helper
     analyticsData: AnalyticsData | null;
     refreshAnalytics: (range?: "7d" | "30d") => Promise<void>;
     handleToggleWhiteLabel: (enabled: boolean) => Promise<void>;
@@ -277,7 +278,7 @@ export const AppProvider = ({
     const adminUpdateUserRole = async (userId: string, role: "member" | "admin") => { const res = await api.adminUpdateUserRole(userId, role); return { success: res.success, message: res.success ? "Role updated" : "Failed" }; };
     const adminBanUser = async (userId: string, h: number | null) => { const res = await api.adminBanUser(userId, h); return { success: res.success, message: res.success ? "Updated" : "Failed" }; };
     const adminGetUserEmail = async (userId: string) => { return await (api as any).adminGetUserEmail(userId); };
-    const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
+    const adminUpdateCommunityTier = async (newTier: "Core" | "Pro" | "Elite" | "trial") => { const success = await api.adminUpdateCommunityTier(newTier); if (success) setCommunity((prev) => prev ? { ...prev, tier: newTier } : prev); return success; };
     const adminUpdateUserStats = async (userId: string, xp: number, streak: number, freezes: number) => {
         const res = await api.adminUpdateUserStats(userId, xp, streak, freezes);
         await checkAutomatedBadges(userId);
@@ -314,13 +315,40 @@ export const AppProvider = ({
 
     const isFeatureEnabled = (feature: string) => {
         const f = feature.toLowerCase();
+
+        // 🆕 Check if trial is active
+        if (community?.tier === 'trial' && community?.trialEndsAt) {
+            const trialActive = new Date(community.trialEndsAt) > new Date();
+            if (trialActive) {
+                return true; // Active trial = Elite access
+            }
+            // Trial expired = no access (TrialExpiredModal will handle UI)
+            return false;
+        }
+
+        // Existing trial check (legacy support)
         if (community?.trialEndsAt) { if (new Date(community.trialEndsAt) > new Date()) return true; }
+
         const tierValue = (community?.tier || "free").toLowerCase();
         if (f === 'dashboard') return true;
         if (tierValue === 'elite') return true;
         if (tierValue === 'pro') { return !['store', 'retention', 'inventory', 'white_label'].includes(f); }
         if (tierValue === 'core') { return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard'].includes(f); }
         return false;
+    };
+
+    // 🆕 Get trial status and days remaining
+    const getTrialStatus = () => {
+        if (community?.tier !== 'trial' || !community?.trialEndsAt) {
+            return { isActive: false, daysRemaining: 0 };
+        }
+
+        const now = new Date();
+        const endsAt = new Date(community.trialEndsAt);
+        const isActive = endsAt > now;
+        const daysRemaining = Math.ceil((endsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        return { isActive, daysRemaining: Math.max(0, daysRemaining) };
     };
 
     useEffect(() => {
@@ -386,7 +414,7 @@ export const AppProvider = ({
                 handleCreateStoreItem, handleUpdateStoreItem, handleDeleteStoreItem, handleToggleStoreItemActive, handleRestoreStoreItem,
                 handleRecordAction, handleAwardBadge, handleTriggerWebhook,
                 userQuestProgress, claimQuestReward, getUserInventory: api.getUserInventory, getActiveEffects: api.getActiveEffects, activateInventoryItem, handleBuyStoreItem,
-                isFeatureEnabled, analyticsData, refreshAnalytics, getUserItemUsage: api.getUserItemUsage,
+                isFeatureEnabled, getTrialStatus, analyticsData, refreshAnalytics, getUserItemUsage: api.getUserItemUsage,
                 handleToggleWhiteLabel,
                 activeEffects,
             }}

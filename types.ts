@@ -5,14 +5,14 @@
 // ------------------------------------------------
 // 🧩 ActionType (Enum)
 // ------------------------------------------------
-export type ActionType = 
-  | 'daily_login' 
-  | 'complete_module' 
-  | 'watch_content' 
-  | 'post_comment' 
-  | 'attend_call' 
-  | 'renew_subscription' 
-  | 'referral' 
+export type ActionType =
+  | 'daily_login'
+  | 'complete_module'
+  | 'watch_content'
+  | 'post_comment'
+  | 'attend_call'
+  | 'renew_subscription'
+  | 'referral'
   | 'feedback'
   | 'log_trade'
   | 'ask_good_question'
@@ -41,21 +41,21 @@ export interface Action {
 // ------------------------------------------------
 // 🎒 Items & Inventory (Cosmetics)
 // ------------------------------------------------
-export type ItemType = 
-  | 'INSTANT'        
-  | 'TIMED_EFFECT'   
-  | 'NAME_COLOR'     
-  | 'TITLE'          
-  | 'BANNER'         
+export type ItemType =
+  | 'INSTANT'
+  | 'TIMED_EFFECT'
+  | 'NAME_COLOR'
+  | 'TITLE'
+  | 'BANNER'
   | 'FRAME'
-  | 'AVATAR_PULSE';         
+  | 'AVATAR_PULSE';
 
 export interface ItemMetadata {
-  color?: string;       
+  color?: string;
   text?: string;
-  titlePosition?: 'prefix' | 'suffix';        
-  imageUrl?: string;    
-  [key: string]: any;   
+  titlePosition?: 'prefix' | 'suffix';
+  imageUrl?: string;
+  [key: string]: any;
 }
 
 export interface StoreItem {
@@ -69,9 +69,9 @@ export interface StoreItem {
   isArchived: boolean;
   createdAt?: string;
   itemType: ItemType;
-  durationHours?: number; 
-  modifier?: number;      
-  metadata?: ItemMetadata; 
+  durationHours?: number;
+  modifier?: number;
+  metadata?: ItemMetadata;
 }
 
 export interface UserInventoryItem {
@@ -103,8 +103,8 @@ export interface Badge {
   icon: string;
   color: string;
   communityId: string;
-  isActive: boolean;   
-  isArchived?: boolean; 
+  isActive: boolean;
+  isArchived?: boolean;
 }
 
 export interface WhopUser {
@@ -133,13 +133,13 @@ export interface Profile {
   badges?: Badge[];
   activeEffects?: ActiveEffect[];
   metadata?: {
-      nameColor?: string;
-      title?: string;
-      titlePosition?: 'prefix' | 'suffix';
-      bannerUrl?: string;
-      frameUrl?: string;
-      avatarPulseColor?: string;
-      [key: string]: any;
+    nameColor?: string;
+    title?: string;
+    titlePosition?: 'prefix' | 'suffix';
+    bannerUrl?: string;
+    frameUrl?: string;
+    avatarPulseColor?: string;
+    [key: string]: any;
   };
 }
 
@@ -169,12 +169,12 @@ export interface Quest {
 }
 
 export interface UserQuestProgress {
-  id?: number; 
+  id?: number;
   userId: string;
   questId: string;
   progress: Record<string, number>;
   isClaimed: boolean;
-  completed: boolean; 
+  completed: boolean;
   updatedAt?: string;
 }
 
@@ -185,7 +185,7 @@ export interface Reward {
   xpGained: number;
   isActive: boolean;
   isArchived: boolean;
-  actionType?: string; 
+  actionType?: string;
 }
 
 export interface BadgeConfig {
@@ -205,8 +205,9 @@ export interface Community {
   name: string;
   description?: string;
   logoUrl?: string;
-  tier: 'Free' | 'Core' | 'Pro' | 'Elite'; 
-  trialEndsAt?: string | null; 
+  tier: 'Free' | 'Core' | 'Pro' | 'Elite' | 'trial'; // 🆕 Added 'trial' tier
+  trialEndsAt?: string | null;
+  trialUsed?: boolean; // 🆕 Track if user has used their trial
   createdAt?: string;
   whiteLabelEnabled?: boolean;
 }
@@ -254,7 +255,7 @@ export interface AnalyticsData {
     totalItems: number;
     xpSpent: number;
     mostPopularItem: string;
-    totalSpent: number; 
+    totalSpent: number;
     items: { name: string; count: number }[];
   };
 }
@@ -266,7 +267,7 @@ export type User = Profile; // Legacy alias
 
 // Analytics Page Helper Types
 export interface ChartData {
-  label?: string; 
+  label?: string;
   actionType?: string;
   value?: number;
   count?: number;

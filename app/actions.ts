@@ -22,10 +22,10 @@ import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } fro
  * @param routeCompanyId - Optional company_id from the route (e.g., from experienceId lookup)
  * @returns Session object with userId, role, etc. or null if auth fails
  */
-export async function verifyUser(routeCompanyId?: string) { 
+export async function verifyUser(routeCompanyId?: string) {
   try {
     const rawHeaders = await headers();
-    
+
     // 🛡️ Step 1: Verify Whop Token
     let payload;
     try {
@@ -34,10 +34,10 @@ export async function verifyUser(routeCompanyId?: string) {
       console.error("❌ SDK Token Verification Failed:", sdkError);
       return null;
     }
-    
+
     const token = payload as any || {};
     const whopUserId = token.userId || token.sub;
-    const roles = token.roles || []; 
+    const roles = token.roles || [];
 
     if (!whopUserId) {
       console.error("❌ No whopUserId in token");
@@ -62,11 +62,11 @@ export async function verifyUser(routeCompanyId?: string) {
       // ✅ User exists in database
       const communityData = existingProfile.communities as any;
       const userCompanyId = communityData?.whop_store_id || communityData?.whop_company_id;
-      
+
       console.log(`✅ User found in DB: ${existingProfile.username} (${existingProfile.id})`);
       console.log(`   Community: ${communityData?.name} (${existingProfile.community_id})`);
       console.log(`   Role: ${existingProfile.role}`);
-      
+
       // 🔍 Optional: Verify company match (for security/debugging)
       if (routeCompanyId && userCompanyId && userCompanyId !== routeCompanyId) {
         console.warn(`⚠️ COMPANY MISMATCH:`);
@@ -77,10 +77,10 @@ export async function verifyUser(routeCompanyId?: string) {
         console.warn(`   2. Security issue (investigate)`);
         // For now we allow it, but you could block cross-company access here
       }
-      
-      return { 
-        userId: existingProfile.id, 
-        whopUserId, 
+
+      return {
+        userId: existingProfile.id,
+        whopUserId,
         isAdmin: existingProfile.role === 'admin',
         communityId: existingProfile.community_id,
         role: existingProfile.role
@@ -93,7 +93,7 @@ export async function verifyUser(routeCompanyId?: string) {
     console.log(`   1. First time login (normal)`);
     console.log(`   2. Webhook hasn't fired yet (wait 30 sec)`);
     console.log(`   3. Webhook failed (check logs)`);
-    
+
     if (!routeCompanyId) {
       console.error("❌ CRITICAL: Cannot provision user without company_id");
       console.error("   User: ${whopUserId}");
@@ -101,19 +101,19 @@ export async function verifyUser(routeCompanyId?: string) {
       console.error("   ");
       console.error("   Fix: Ensure you're calling verifyUser(companyId)");
       console.error("   In experiences route: use getCompanyIdFromExperience()");
-      return null; 
+      return null;
     }
 
     // Provision the user NOW
     console.log(`🚀 Provisioning user ${whopUserId} for company ${routeCompanyId}`);
-    
+
     const provisioned = await ensureWhopContext(routeCompanyId, whopUserId, roles);
-    
+
     if (!provisioned) {
       console.error("❌ Provisioning failed - check ensureWhopContext logs above");
       return null;
     }
-    
+
     // 🟢 Step 4: Fetch Newly Created Profile
     const { data: newProfile, error: newProfileError } = await supabaseAdmin
       .from('profiles')
@@ -129,9 +129,9 @@ export async function verifyUser(routeCompanyId?: string) {
 
     console.log(`✅ User provisioned successfully: ${newProfile.username} (${newProfile.id}) as ${newProfile.role}`);
 
-    return { 
-      userId: newProfile.id, 
-      whopUserId, 
+    return {
+      userId: newProfile.id,
+      whopUserId,
       isAdmin: newProfile.role === 'admin',
       communityId: newProfile.community_id,
       role: newProfile.role
@@ -140,8 +140,52 @@ export async function verifyUser(routeCompanyId?: string) {
   } catch (error: any) {
     console.error("❌ verifyUser Fatal Error:", error.message);
     console.error(error.stack);
-    return null; 
+    return null;
   }
+}
+
+/**
+ * Maps Whop plan IDs to application tiers
+ * @param planId - Whop plan_id from webhook payload
+ * @param productTitle - Fallback to product title if plan_id not found
+ * @returns Tier name and whether it's a trial
+ */
+function mapPlanIdToTier(planId?: string, productTitle?: string): { tier: string; isTrial: boolean } {
+  // 🎯 Whop Plan ID Mappings
+  const PLAN_MAP: Record<string, { tier: string; isTrial: boolean }> = {
+    // Core Tier
+    'plan_e4FFt094Axfgf': { tier: 'Core', isTrial: false },  // Core Monthly
+    'plan_HfEDkPud0jADY': { tier: 'Core', isTrial: false },  // Core Annual
+
+    // Pro Tier
+    'plan_O0478GuOZrGgB': { tier: 'Pro', isTrial: false },   // Pro Monthly
+    'plan_05xorDNeY0eQs': { tier: 'Pro', isTrial: false },   // Pro Annual
+
+    // Elite Tier
+    'plan_hytzupiY3xjGm': { tier: 'Elite', isTrial: false }, // Elite Monthly
+    'plan_RXAfXSbUVzWgl': { tier: 'Elite', isTrial: false }, // Elite Annual
+
+    // 🆕 Trial Tier (14-Day Elite)
+    'plan_1O9ya9RWXWrzr': { tier: 'trial', isTrial: true },  // Trial Monthly
+    'plan_zfvJ8bKMvthir': { tier: 'trial', isTrial: true },  // Trial Annual
+  };
+
+  // Try plan_id first
+  if (planId && PLAN_MAP[planId]) {
+    return PLAN_MAP[planId];
+  }
+
+  // Fallback to product title parsing
+  if (productTitle) {
+    const title = productTitle.toLowerCase();
+    if (title.includes('trial')) return { tier: 'trial', isTrial: true };
+    if (title.includes('elite')) return { tier: 'Elite', isTrial: false };
+    if (title.includes('pro')) return { tier: 'Pro', isTrial: false };
+    if (title.includes('core')) return { tier: 'Core', isTrial: false };
+  }
+
+  // Default to Free if nothing matches
+  return { tier: 'Free', isTrial: false };
 }
 
 /**
@@ -152,13 +196,15 @@ export async function verifyUser(routeCompanyId?: string) {
  * @param whopUserId - The Whop user ID
  * @param tokenRoles - Roles from Whop token (owner, admin, member, etc.)
  * @param productTitle - The product/plan name from Whop (e.g., "Core", "Pro", "Elite")
+ * @param planId - The Whop plan_id for accurate tier mapping
  * @returns true if successful, false otherwise
  */
 export async function ensureWhopContext(
   whopStoreId: string,
   whopUserId: string,
   tokenRoles: string[] = [],
-  productTitle?: string
+  productTitle?: string,
+  planId?: string  // 🆕 Added planId parameter
 ) {
   if (!whopStoreId || !whopUserId) {
     console.error("❌ ensureWhopContext: Missing required parameters");
@@ -172,6 +218,20 @@ export async function ensureWhopContext(
   console.log(`   User ID: ${whopUserId}`);
   console.log(`   Roles: [${tokenRoles.join(', ')}]`);
   console.log(`   Product/Tier: ${productTitle || 'Not provided'}`);
+  console.log(`   Plan ID: ${planId || 'Not provided'}`);
+
+  // 🎯 Map plan ID to tier
+  const { tier: mappedTier, isTrial } = mapPlanIdToTier(planId, productTitle);
+  console.log(`   Mapped Tier: ${mappedTier} ${isTrial ? '(TRIAL)' : ''}`);
+
+  // 🆕 Calculate trial expiration if needed
+  let trialEndsAt: string | null = null;
+  if (isTrial) {
+    const now = new Date();
+    const expirationDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+    trialEndsAt = expirationDate.toISOString();
+    console.log(`   Trial expires: ${trialEndsAt}`);
+  }
 
   let communityId: string | null = null;
   let isNewCommunity = false;
@@ -179,7 +239,7 @@ export async function ensureWhopContext(
   // =============================================================================
   // 🟢 STEP 1: Find or Create Community
   // =============================================================================
-  
+
   const { data: existingComm, error: findError } = await supabaseAdmin
     .from('communities')
     .select('id, name, whop_store_id, subscription_tier')
@@ -195,49 +255,69 @@ export async function ensureWhopContext(
     communityId = existingComm.id;
     console.log(`✅ Community found: "${existingComm.name}" (${communityId})`);
     console.log(`   Current tier: ${existingComm.subscription_tier}`);
-    
+
     // 🔄 Update tier if we have new tier information and it's different
-    if (productTitle && existingComm.subscription_tier !== productTitle) {
-      console.log(`🔄 Updating community tier: ${existingComm.subscription_tier} → ${productTitle}`);
-      
+    if (mappedTier && existingComm.subscription_tier !== mappedTier) {
+      console.log(`🔄 Updating community tier: ${existingComm.subscription_tier} → ${mappedTier}`);
+
+      const updateData: any = { subscription_tier: mappedTier };
+
+      // 🆕 Set trial fields if tier is trial
+      if (isTrial) {
+        updateData.trial_ends_at = trialEndsAt;
+        updateData.trial_used = true;
+        console.log(`   Setting trial expiration: ${trialEndsAt}`);
+      } else {
+        // Clear trial fields if upgrading from trial to paid
+        updateData.trial_ends_at = null;
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from('communities')
-        .update({ subscription_tier: productTitle })
+        .update(updateData)
         .eq('id', communityId);
-      
+
       if (updateError) {
         console.error("⚠️ Failed to update community tier:", updateError);
         // Don't fail the whole operation, just log it
       } else {
-        console.log(`✅ Community tier updated to: ${productTitle}`);
+        console.log(`✅ Community tier updated to: ${mappedTier}`);
       }
     }
-    
+
   } else {
     isNewCommunity = true;
     console.log(`✨ Creating NEW community for store: ${whopStoreId}`);
-    
-    // 🎯 Determine initial tier
-    // Priority: productTitle from webhook > "Free" as fallback
-    const initialTier = productTitle || "Free";
-    console.log(`   Initial tier: ${initialTier}`);
-    
+
+    // 🎯 Determine initial tier using plan ID mapping
+    const initialTier = mappedTier;
+    console.log(`   Initial tier: ${initialTier}${isTrial ? ' (TRIAL - 14 days)' : ''}`);
+
+    const insertData: any = {
+      whop_store_id: whopStoreId,
+      whop_company_id: whopStoreId,
+      name: `Community ${whopStoreId.substring(0, 8)}`,
+      subscription_tier: initialTier,
+    };
+
+    // 🆕 Add trial fields if tier is trial
+    if (isTrial) {
+      insertData.trial_ends_at = trialEndsAt;
+      insertData.trial_used = true;
+      console.log(`   Trial expiration set: ${trialEndsAt}`);
+    }
+
     const { data: newComm, error: createError } = await supabaseAdmin
       .from('communities')
-      .insert({
-        whop_store_id: whopStoreId,
-        whop_company_id: whopStoreId,
-        name: `Community ${whopStoreId.substring(0, 8)}`,
-        subscription_tier: initialTier, // Use the product title as tier
-      })
+      .insert(insertData)
       .select('id, name, subscription_tier')
       .single();
-    
+
     if (createError || !newComm) {
       console.error("❌ Failed to create community:", createError);
       return false;
     }
-    
+
     communityId = newComm.id;
     console.log(`✅ Community created: "${newComm.name}" (${communityId})`);
     console.log(`   Tier: ${newComm.subscription_tier}`);
@@ -246,7 +326,7 @@ export async function ensureWhopContext(
   // =============================================================================
   // 🟢 STEP 2: Link User to Community
   // =============================================================================
-  
+
   if (!communityId) {
     console.error("❌ No communityId after community resolution");
     return false;
@@ -264,35 +344,35 @@ export async function ensureWhopContext(
   }
 
   // Determine target role
-  const isWhopAdmin = tokenRoles.some(r => 
+  const isWhopAdmin = tokenRoles.some(r =>
     ['owner', 'admin', 'staff', 'creator', 'moderator'].includes(r.toLowerCase())
   );
-  
+
   const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
   if (existingProfile) {
     console.log(`👤 User profile found: ${existingProfile.username} (${existingProfile.id})`);
     console.log(`   Current community: ${existingProfile.community_id}`);
     console.log(`   Current role: ${existingProfile.role}`);
-    
+
     const updates: any = {};
-    
+
     if (existingProfile.community_id !== communityId) {
       console.log(`🔄 Moving user to new community`);
       updates.community_id = communityId;
     }
-    
+
     if (targetRole === 'admin' && existingProfile.role !== 'admin') {
       console.log(`⬆️ Upgrading user role: ${existingProfile.role} → admin`);
       updates.role = 'admin';
     }
-    
+
     if (Object.keys(updates).length > 0) {
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
         .update(updates)
         .eq('id', existingProfile.id);
-      
+
       if (updateError) {
         console.error("❌ Failed to update profile:", updateError);
         return false;
@@ -301,13 +381,13 @@ export async function ensureWhopContext(
     } else {
       console.log(`✅ Profile already correct - no updates needed`);
     }
-    
+
   } else {
     console.log(`👤 Creating NEW profile`);
     console.log(`   User: ${whopUserId}`);
     console.log(`   Role: ${targetRole}`);
     console.log(`   Community: ${communityId}`);
-    
+
     const { error: createError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -319,14 +399,14 @@ export async function ensureWhopContext(
         streak: 0,
         streak_freezes: 0,
       });
-    
+
     if (createError) {
       console.error("❌ Failed to create profile:", createError);
       return false;
     }
     console.log(`✅ Profile created as ${targetRole}`);
   }
-  
+
   console.log(`✅ ensureWhopContext completed successfully`);
   return true;
 }
@@ -379,9 +459,9 @@ export async function syncCommunityBrandingAction() {
     const realWhopId = comm?.whop_store_id;
 
     if (!realWhopId) throw new Error("No Whop Store ID linked");
-    
+
     let companyName = "ApexDM Community";
-    let logoUrl = ""; 
+    let logoUrl = "";
 
     if (process.env.WHOP_API_KEY) {
       const response = await fetch(`https://api.whop.com/api/v2/companies/${realWhopId}`, {
@@ -396,14 +476,14 @@ export async function syncCommunityBrandingAction() {
         companyName = data.title || data.name;
         logoUrl = data.image_url || data.logo_url;
       }
-    } 
+    }
 
     await supabaseAdmin
       .from('communities')
       .update({ name: companyName, logo_url: logoUrl })
       .eq('id', session.communityId);
 
-    revalidatePath('/'); 
+    revalidatePath('/');
     return { success: true, message: `Synced as: ${companyName}` };
 
   } catch (e: any) {
@@ -451,7 +531,7 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 export async function updateUserProfile(updates: any, targetId?: string) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
-  
+
   const idToUpdate = targetId || session.userId;
   if (idToUpdate !== session.userId && !session.isAdmin) throw new Error("Forbidden");
 
@@ -467,7 +547,7 @@ export async function updateUserProfile(updates: any, targetId?: string) {
 export async function equipCosmeticAction(item: StoreItem) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
-  
+
   const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', session.userId).eq('item_id', item.id).single();
   if (!ownership) return { success: false, message: "You do not own this item." };
 
@@ -515,7 +595,7 @@ export async function buyStoreItemAction(itemId: string) {
 }
 
 export async function activateInventoryItemAction(inventoryId: string) {
-  await verifyUser(); 
+  await verifyUser();
   const { data, error } = await supabaseAdmin.rpc('activate_inventory_item', { p_inventory_id: inventoryId });
   if (error) return { success: false, message: error.message };
   return data;
@@ -524,7 +604,7 @@ export async function activateInventoryItemAction(inventoryId: string) {
 export async function claimQuestRewardAction(progressId: number) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
-  
+
   const { data: updatedProgress, error } = await supabaseAdmin
     .from('user_quest_progress')
     .update({ is_claimed: true })
@@ -546,13 +626,13 @@ export async function claimQuestRewardAction(progressId: number) {
 
   if (questData.badge_reward_id) {
     const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', session.userId).single();
-    
+
     const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', session.userId).eq('badge_id', questData.badge_reward_id);
-    
+
     if (count === 0 && userProfile) {
-      await supabaseAdmin.from('user_badges').insert({ 
-        user_id: session.userId, 
-        badge_id: questData.badge_reward_id, 
+      await supabaseAdmin.from('user_badges').insert({
+        user_id: session.userId,
+        badge_id: questData.badge_reward_id,
         community_id: userProfile.community_id,
         earned_at: new Date().toISOString()
       });
@@ -597,16 +677,16 @@ export async function adminUpdateCommunityTierAction(tier: any) {
 export async function adminCreateStoreItemAction(itemData: any) {
   await ensureAdmin();
   const communityId = await getCommunityId();
-  
+
   const dbPayload = {
     community_id: communityId,
     name: itemData.name,
     description: itemData.description,
-    cost_xp: itemData.cost, 
+    cost_xp: itemData.cost,
     icon: itemData.icon,
-    item_type: itemData.itemType, 
-    is_available: itemData.isActive, 
-    duration_hours: itemData.durationHours, 
+    item_type: itemData.itemType,
+    is_available: itemData.isActive,
+    duration_hours: itemData.durationHours,
     modifier: itemData.modifier,
     metadata: itemData.metadata
   };
@@ -620,11 +700,11 @@ export async function adminUpdateStoreItemAction(itemId: string, itemData: any) 
   const updates: any = {};
   if (itemData.name) updates.name = itemData.name;
   if (itemData.description) updates.description = itemData.description;
-  if (itemData.cost) updates.cost_xp = itemData.cost; 
+  if (itemData.cost) updates.cost_xp = itemData.cost;
   if (itemData.icon) updates.icon = itemData.icon;
-  if (itemData.itemType) updates.item_type = itemData.itemType; 
-  if (itemData.isActive !== undefined) updates.is_available = itemData.isActive; 
-  if (itemData.durationHours !== undefined) updates.duration_hours = itemData.durationHours; 
+  if (itemData.itemType) updates.item_type = itemData.itemType;
+  if (itemData.isActive !== undefined) updates.is_available = itemData.isActive;
+  if (itemData.durationHours !== undefined) updates.duration_hours = itemData.durationHours;
   if (itemData.modifier !== undefined) updates.modifier = itemData.modifier;
   if (itemData.metadata) updates.metadata = itemData.metadata;
 
@@ -653,10 +733,10 @@ export async function adminToggleStoreItemAction(itemId: string, isActive: boole
 export async function adminAddRewardAction(actionType: string, xp: number, description?: string) {
   await ensureAdmin();
   const communityId = await getCommunityId();
-  const payload: any = { 
-    community_id: communityId, 
-    action_type: actionType, 
-    xp_gained: xp 
+  const payload: any = {
+    community_id: communityId,
+    action_type: actionType,
+    xp_gained: xp
   };
   if (description) payload.description = description;
 
@@ -668,7 +748,7 @@ export async function adminUpdateRewardAction(currentActionType: string, data: a
   await ensureAdmin();
   const updates: any = {};
   if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
-  if (data.isActive !== undefined) updates.is_active = data.isActive; 
+  if (data.isActive !== undefined) updates.is_active = data.isActive;
   if (data.description !== undefined) updates.description = data.description;
   if (data.actionType && data.actionType !== currentActionType) {
     updates.action_type = data.actionType;
@@ -714,11 +794,11 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
   if (config.description !== undefined) updates.description = config.description;
   if (config.icon !== undefined) updates.icon = config.icon;
   if (config.color !== undefined) updates.color = config.color;
-  if (config.isActive !== undefined) updates.is_active = config.isActive; 
+  if (config.isActive !== undefined) updates.is_active = config.isActive;
   if (config.name && config.name !== currentName) {
     updates.name = config.name;
   }
-  
+
   const { error } = await supabaseAdmin
     .from('badges')
     .update(updates)
@@ -754,30 +834,30 @@ export async function adminCreateQuestAction(questData: any) {
   await ensureAdmin();
   const communityId = await getCommunityId();
   let badgeId = questData.badgeRewardId;
-  
+
   if (!badgeId && questData.badgeReward) {
     const { data: badge } = await supabaseAdmin.from('badges').select('id').eq('name', questData.badgeReward).eq('community_id', communityId).single();
     if (badge) badgeId = badge.id;
   }
-  
+
   const { data: newQuest, error } = await supabaseAdmin.from('quests').insert({
-    community_id: communityId, 
-    title: questData.title, 
-    description: questData.description, 
-    xp_reward: questData.xpReward, 
-    badge_reward_id: badgeId, 
-    is_active: true, 
+    community_id: communityId,
+    title: questData.title,
+    description: questData.description,
+    xp_reward: questData.xpReward,
+    badge_reward_id: badgeId,
+    is_active: true,
   }).select().single();
-  
+
   if (error || !newQuest) return false;
 
   const tasksToInsert = (questData.tasks ?? []).map((task: any) => ({
-    quest_id: newQuest.id, 
-    action_type: task.actionType, 
-    target_count: task.targetCount, 
-    description: task.description || "", 
+    quest_id: newQuest.id,
+    action_type: task.actionType,
+    target_count: task.targetCount,
+    description: task.description || "",
   }));
-  
+
   await supabaseAdmin.from('quest_tasks').insert(tasksToInsert);
   return true;
 }
@@ -785,8 +865,8 @@ export async function adminCreateQuestAction(questData: any) {
 export async function adminUpdateQuestAction(questId: string, questData: any) {
   await ensureAdmin();
   const { error: questError } = await supabaseAdmin.from('quests').update({
-    title: questData.title, 
-    description: questData.description, 
+    title: questData.title,
+    description: questData.description,
     xp_reward: questData.xpReward
   }).eq('id', questId);
 
@@ -813,8 +893,8 @@ export async function adminUpdateQuestAction(questId: string, questData: any) {
 
   revalidatePath('/admin');
   revalidatePath('/quests');
-  
-  return true; 
+
+  return true;
 }
 
 export async function adminDeleteQuestAction(questId: string) {
@@ -844,12 +924,12 @@ export async function recordActionServer(userId: string, actionType: ActionType,
   if (activeEffects && activeEffects.length > 0) xp_to_add = Math.round(xp_to_add * (activeEffects[0].modifier || 1));
 
   await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: xp_to_add });
-  
+
   const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
   if (userProfile?.community_id) {
     await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
   }
-  
+
   return { xpGained: xp_to_add };
 }
 
@@ -857,130 +937,130 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
   try {
     const session = await verifyUser();
     if (!session || !session.isAdmin || !session.communityId) return null;
-    
+
     const communityId = session.communityId;
     const now = new Date();
-const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-const dateLimit7d = new Date(new Date().setDate(now.getDate() - 7)).toISOString();
-const dateLimit14d = new Date(new Date().setDate(now.getDate() - 14)).toISOString();
-const dateLimit30d = new Date(new Date().setDate(now.getDate() - 30)).toISOString();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const dateLimit7d = new Date(new Date().setDate(now.getDate() - 7)).toISOString();
+    const dateLimit14d = new Date(new Date().setDate(now.getDate() - 14)).toISOString();
+    const dateLimit30d = new Date(new Date().setDate(now.getDate() - 30)).toISOString();
 
-const [
-  profilesResult,
-  actionsResult,
-  userBadgesResult,
-  questsResult,
-  userQuestProgressResult,
-  userPurchasesResult,
-] = await Promise.all([
-  supabaseAdmin.from('profiles').select('*').eq('community_id', communityId),
-  supabaseAdmin.from('actions_log').select('*').eq('community_id', communityId).gte('created_at', dateLimit30d),
-  supabaseAdmin.from('user_badges').select('badges!inner(name, icon, color)').eq('community_id', communityId),
-  supabaseAdmin.from('quests').select('*').eq('community_id', communityId),
-  supabaseAdmin.from('user_quest_progress').select('*'),
-  supabaseAdmin.from('user_inventory').select('store_items!inner(name, cost_xp)').eq('community_id', communityId),
-]);
+    const [
+      profilesResult,
+      actionsResult,
+      userBadgesResult,
+      questsResult,
+      userQuestProgressResult,
+      userPurchasesResult,
+    ] = await Promise.all([
+      supabaseAdmin.from('profiles').select('*').eq('community_id', communityId),
+      supabaseAdmin.from('actions_log').select('*').eq('community_id', communityId).gte('created_at', dateLimit30d),
+      supabaseAdmin.from('user_badges').select('badges!inner(name, icon, color)').eq('community_id', communityId),
+      supabaseAdmin.from('quests').select('*').eq('community_id', communityId),
+      supabaseAdmin.from('user_quest_progress').select('*'),
+      supabaseAdmin.from('user_inventory').select('store_items!inner(name, cost_xp)').eq('community_id', communityId),
+    ]);
 
-const allProfiles = profilesResult.data || [];
-const allActions = actionsResult.data || [];
-const allQuests = questsResult.data || [];
-const allUserPurchases = userPurchasesResult.data || [];
-const allUserQuestProgress = userQuestProgressResult.data || [];
+    const allProfiles = profilesResult.data || [];
+    const allActions = actionsResult.data || [];
+    const allQuests = questsResult.data || [];
+    const allUserPurchases = userPurchasesResult.data || [];
+    const allUserQuestProgress = userQuestProgressResult.data || [];
 
-const totalUsers = allProfiles.length;
-if (totalUsers === 0) return null;
+    const totalUsers = allProfiles.length;
+    if (totalUsers === 0) return null;
 
-const activeMembers7d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit7d).length;
-const activeMembers30d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit30d).length;
+    const activeMembers7d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit7d).length;
+    const activeMembers30d = allProfiles.filter((p: any) => p.last_action_date && new Date(p.last_action_date).toISOString() >= dateLimit30d).length;
 
-const actionsToday = allActions.filter((a: any) => a.created_at && a.created_at >= todayStart);
-const xpEarnedToday = actionsToday.reduce((sum: number, a: any) => sum + (a.xp_gained || 0), 0);
+    const actionsToday = allActions.filter((a: any) => a.created_at && a.created_at >= todayStart);
+    const xpEarnedToday = actionsToday.reduce((sum: number, a: any) => sum + (a.xp_gained || 0), 0);
 
-const newMembers7d = allProfiles.filter((p: any) => p.created_at && new Date(p.created_at).toISOString() >= dateLimit7d).length;
-const churnedMembers14d = allProfiles.filter((p: any) => !p.last_action_date || new Date(p.last_action_date).toISOString() < dateLimit14d).length;
+    const newMembers7d = allProfiles.filter((p: any) => p.created_at && new Date(p.created_at).toISOString() >= dateLimit7d).length;
+    const churnedMembers14d = allProfiles.filter((p: any) => !p.last_action_date || new Date(p.last_action_date).toISOString() < dateLimit14d).length;
 
-const mapUser = (p: any): Profile => ({
-  id: p.id, username: p.username, avatarUrl: p.avatar_url, xp: p.xp, streak: p.streak,
-  communityId: p.community_id, streakFreezes: p.streak_freezes, last_action_date: p.last_action_date, badges: [], role: p.role, level: 0, metadata: p.metadata
-});
+    const mapUser = (p: any): Profile => ({
+      id: p.id, username: p.username, avatarUrl: p.avatar_url, xp: p.xp, streak: p.streak,
+      communityId: p.community_id, streakFreezes: p.streak_freezes, last_action_date: p.last_action_date, badges: [], role: p.role, level: 0, metadata: p.metadata
+    });
 
-const topPerformers = {
-  byXp: [...allProfiles].sort((a: any, b: any) => (Number(b.xp) || 0) - (Number(a.xp) || 0)).slice(0, 10).map(mapUser),
-  byStreak: [...allProfiles].sort((a: any, b: any) => (Number(b.streak) || 0) - (Number(a.streak) || 0)).slice(0, 10).map(mapUser),
-};
+    const topPerformers = {
+      byXp: [...allProfiles].sort((a: any, b: any) => (Number(b.xp) || 0) - (Number(a.xp) || 0)).slice(0, 10).map(mapUser),
+      byStreak: [...allProfiles].sort((a: any, b: any) => (Number(b.streak) || 0) - (Number(a.streak) || 0)).slice(0, 10).map(mapUser),
+    };
 
-const actionCounts: Record<string, number> = {};
-for (const action of allActions) {
-  const type = (action.action_type || 'unknown');
-  actionCounts[type] = (actionCounts[type] || 0) + 1;
-}
-const activityBreakdown = Object.entries(actionCounts).map(([label, value]) => ({ label: label.replace(/_/g, ' '), value }));
+    const actionCounts: Record<string, number> = {};
+    for (const action of allActions) {
+      const type = (action.action_type || 'unknown');
+      actionCounts[type] = (actionCounts[type] || 0) + 1;
+    }
+    const activityBreakdown = Object.entries(actionCounts).map(([label, value]) => ({ label: label.replace(/_/g, ' '), value }));
 
-const totalStreaks = allProfiles.reduce((sum: number, p: any) => sum + (Number(p.streak) || 0), 0);
-const membersWithActiveStreak = allProfiles.filter((p: any) => p.streak > 0).length;
+    const totalStreaks = allProfiles.reduce((sum: number, p: any) => sum + (Number(p.streak) || 0), 0);
+    const membersWithActiveStreak = allProfiles.filter((p: any) => p.streak > 0).length;
 
-const streakHealth = {
-  avgStreakLength: membersWithActiveStreak > 0 ? Math.round(totalStreaks / membersWithActiveStreak) : 0,
-  percentWithActiveStreak: Math.round((membersWithActiveStreak / totalUsers) * 100),
-};
+    const streakHealth = {
+      avgStreakLength: membersWithActiveStreak > 0 ? Math.round(totalStreaks / membersWithActiveStreak) : 0,
+      percentWithActiveStreak: Math.round((membersWithActiveStreak / totalUsers) * 100),
+    };
 
-const xpByAction: Record<string, number> = {};
-for (const action of allActions) {
-  const type = (action.action_type || 'unknown').replace(/_/g, ' ');
-  xpByAction[type] = (xpByAction[type] || 0) + (action.xp_gained || 0);
-}
-const topXpActions = Object.entries(xpByAction).sort((a, b) => b[1] - a[1]).slice(0, 5)
-  .map(([actionType, totalXp]) => ({ actionType: actionType as ActionType, totalXp }));
+    const xpByAction: Record<string, number> = {};
+    for (const action of allActions) {
+      const type = (action.action_type || 'unknown').replace(/_/g, ' ');
+      xpByAction[type] = (xpByAction[type] || 0) + (action.xp_gained || 0);
+    }
+    const topXpActions = Object.entries(xpByAction).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([actionType, totalXp]) => ({ actionType: actionType as ActionType, totalXp }));
 
-const badgeCounts: Record<string, { name: string; icon: string; color: string; count: number }> = {};
-for (const userBadge of userBadgesResult.data || []) {
-  const badge = userBadge.badges;
-  const bData = Array.isArray(badge) ? badge[0] : badge;
-  if(bData && bData.name) {
-    if (!badgeCounts[bData.name]) badgeCounts[bData.name] = { name: bData.name, icon: bData.icon, color: bData.color, count: 0 };
-    badgeCounts[bData.name].count += 1;
+    const badgeCounts: Record<string, { name: string; icon: string; color: string; count: number }> = {};
+    for (const userBadge of userBadgesResult.data || []) {
+      const badge = userBadge.badges;
+      const bData = Array.isArray(badge) ? badge[0] : badge;
+      if (bData && bData.name) {
+        if (!badgeCounts[bData.name]) badgeCounts[bData.name] = { name: bData.name, icon: bData.icon, color: bData.color, count: 0 };
+        badgeCounts[bData.name].count += 1;
+      }
+    }
+    const topBadges = Object.values(badgeCounts).sort((a, b) => b.count - a.count).slice(0, 6);
+
+    const questAnalytics: any = allQuests.map((quest: any) => {
+      const participants = allUserQuestProgress.filter((p: any) => p.quest_id === quest.id);
+      const completers = participants.filter((p: any) => p.is_completed);
+      return {
+        questId: quest.id,
+        title: quest.title,
+        participationRate: totalUsers > 0 ? (participants.length / totalUsers) * 100 : 0,
+        completionRate: participants.length > 0 ? (completers.length / participants.length) * 100 : 0,
+      };
+    }).sort((a: any, b: any) => b.participationRate - a.participationRate);
+
+    const itemsCounter: Record<string, number> = {};
+    for (const p of allUserPurchases) {
+      const itemData = Array.isArray(p.store_items) ? p.store_items[0] : p.store_items;
+      const iName = itemData?.name;
+      if (iName) itemsCounter[iName] = (itemsCounter[iName] || 0) + 1;
+    }
+
+    const totalItems = Object.values(itemsCounter).reduce((sum, c) => sum + c, 0);
+    const xpSpent = allUserPurchases.reduce((sum: number, p: any) => {
+      const itemData = Array.isArray(p.store_items) ? p.store_items[0] : p.store_items;
+      return sum + (Number(itemData?.cost_xp) || 0);
+    }, 0);
+    const mostPopularItem = Object.entries(itemsCounter).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "None";
+
+    return {
+      engagement: {
+        activeMembers7d,
+        activeMembers30d,
+        avgDailyActions: actionsToday.length,
+        xpEarnedToday
+      },
+      growth: { newMembers7d, churnedMembers14d },
+      topPerformers, activityBreakdown, streakHealth, topXpActions, topBadges, questAnalytics,
+      storeAnalytics: { totalItems, xpSpent, mostPopularItem, totalSpent: xpSpent, items: Object.entries(itemsCounter).map(([name, count]) => ({ name, count })) },
+    };
+  } catch (error: any) {
+    console.error("Server Analytics Error:", error);
+    return null;
   }
-}
-const topBadges = Object.values(badgeCounts).sort((a,b) => b.count - a.count).slice(0, 6);
-
-const questAnalytics: any = allQuests.map((quest: any) => {
-  const participants = allUserQuestProgress.filter((p: any) => p.quest_id === quest.id);
-  const completers = participants.filter((p: any) => p.is_completed);
-  return {
-    questId: quest.id,
-    title: quest.title,
-    participationRate: totalUsers > 0 ? (participants.length / totalUsers) * 100 : 0,
-    completionRate: participants.length > 0 ? (completers.length / participants.length) * 100 : 0,
-  };
-}).sort((a: any, b: any) => b.participationRate - a.participationRate);
-
-const itemsCounter: Record<string, number> = {};
-for (const p of allUserPurchases) {
-  const itemData = Array.isArray(p.store_items) ? p.store_items[0] : p.store_items;
-  const iName = itemData?.name;
-  if (iName) itemsCounter[iName] = (itemsCounter[iName] || 0) + 1;
-}
-
-const totalItems = Object.values(itemsCounter).reduce((sum, c) => sum + c, 0);
-const xpSpent = allUserPurchases.reduce((sum: number, p: any) => {
-  const itemData = Array.isArray(p.store_items) ? p.store_items[0] : p.store_items;
-  return sum + (Number(itemData?.cost_xp) || 0);
-}, 0);
-const mostPopularItem = Object.entries(itemsCounter).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "None";
-
-return {
-  engagement: { 
-    activeMembers7d, 
-    activeMembers30d, 
-    avgDailyActions: actionsToday.length, 
-    xpEarnedToday 
-  },
-  growth: { newMembers7d, churnedMembers14d },
-  topPerformers, activityBreakdown, streakHealth, topXpActions, topBadges, questAnalytics,
-  storeAnalytics: { totalItems, xpSpent, mostPopularItem, totalSpent: xpSpent, items: Object.entries(itemsCounter).map(([name, count]) => ({ name, count })) },
-};
-} catch (error: any) {
-console.error("Server Analytics Error:", error);
-return null;
-}
 }
