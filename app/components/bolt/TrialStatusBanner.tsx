@@ -1,7 +1,7 @@
 'use client';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
-import { ClockIcon } from '@heroicons/react/24/outline';
+import { ClockIcon } from './icons'; // Local icon
 
 export default function TrialStatusBanner() {
     const { community, getTrialStatus } = useApp();
