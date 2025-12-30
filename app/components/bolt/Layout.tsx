@@ -79,9 +79,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // 🟢 UPDATED: Home link (logo click)
     const homeHref = dashboardPath;
 
-    // 🟢 FIX: Navigation items - Dashboard for all (when community loaded), Admin panel separate for admins
+    // 🟢 FIX: Navigation items - Dashboard always visible, fallback to /admin if no community
     const navItems = [
-        { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: !!community?.id }, // 🟢 Only show when community loaded
+        { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true }, // 🟢 Always show
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
         { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
         { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },

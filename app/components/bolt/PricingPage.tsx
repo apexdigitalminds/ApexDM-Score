@@ -166,13 +166,10 @@ const PricingPage: React.FC = () => {
           </span>
         </div>
 
-        {/* 🟢 FIX: Use proper dashboard link with useRouter to go back */}
-        <button
-          onClick={() => window.history.back()}
-          className="text-purple-400 hover:text-purple-300 font-semibold text-sm hover:underline transition-all cursor-pointer"
-        >
+        {/* 🟢 FIX: Use proper dashboard link from context */}
+        <Link href={dashboardPath} className="text-purple-400 hover:text-purple-300 font-semibold text-sm hover:underline transition-all">
           &larr; Return to Dashboard
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
