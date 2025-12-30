@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link'; 
-import { useRouter, usePathname } from 'next/navigation'; 
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, ChartPieIcon, SparklesIcon, LockClosedIcon } from './icons';
 import { useApp } from '@/context/AppContext';
 import Avatar from './Avatar';
@@ -27,11 +27,11 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { selectedUser, isFeatureEnabled, community, isLoading } = useApp();
+    const { selectedUser, isFeatureEnabled, community, isLoading, experienceId } = useApp(); // 🟢 FIX: Get experienceId
     const router = useRouter();
-    const pathname = usePathname(); 
+    const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    
+
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [pathname]);
@@ -72,14 +72,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
     }, [isWhiteLabelActive, community, isLoading]);
 
-    // 🟢 UPDATED: Role-Based Home Link
-    // 1. If Admin: Go to Landing Page ('/')
-    // 2. If Member: Go to Dashboard ('/dashboard')
-    // 3. Fallback: If loading or no user, go to Landing Page ('/')
-    const homeHref = (selectedUser && selectedUser.role !== 'admin') ? '/dashboard' : '/';
+    // 🟢 FIX: Build proper base path using experienceId for all navigation
+    // This ensures links work correctly within the Whop iframe context
+    const basePath = experienceId ? `/experiences/${experienceId}` : '';
 
+    // 🟢 UPDATED: Role-Based Home Link using experience path
+    const homeHref = experienceId
+        ? `/experiences/${experienceId}`
+        : (selectedUser && selectedUser.role !== 'admin') ? '/dashboard' : '/';
+
+    // 🟢 FIX: Navigation items now use proper paths that work
     const navItems = [
-        { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon, show: true },
+        { href: basePath || '/dashboard', label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
         { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
         { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
@@ -94,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        
+
                         {/* LEFT: Branding with Logic */}
                         <div className="flex items-center gap-4">
                             <Link href={homeHref} className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
@@ -105,7 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     </>
                                 ) : (
                                     <>
-                                        <LogoIcon className="h-8 w-8"/>
+                                        <LogoIcon className="h-8 w-8" />
                                         <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text hidden sm:block">ApexDM Score</span>
                                         <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text sm:hidden">ApexDM</span>
                                     </>
@@ -116,9 +120,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {/* CENTER: Desktop Navigation */}
                         <div className="hidden lg:flex items-center gap-1">
                             {navItems.filter(i => i.show).map((item) => (
-                                <Link 
-                                    key={item.href} 
-                                    href={item.href} 
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === item.href ? activeClass : inactiveClass}`}
                                 >
                                     <item.icon className="h-4 w-4" />
@@ -132,22 +136,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex items-center gap-3">
                             {selectedUser ? (
                                 <>
-                                    <Link 
-                                        href={`/profile/${selectedUser.id}`} 
+                                    <Link
+                                        href={`/profile/${selectedUser.id}`}
                                         className={`hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
-                                        <div 
+                                        <div
                                             className="relative rounded-full transition-all duration-300 p-0.5"
-                                            style={isBoosted ? { 
-                                                boxShadow: `0 0 10px 2px ${pulseColor}`, 
+                                            style={isBoosted ? {
+                                                boxShadow: `0 0 10px 2px ${pulseColor}`,
                                                 border: `2px solid ${pulseColor}`,
                                                 animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                                             } : { border: '2px solid transparent' }}
                                         >
-                                            <Avatar 
-                                                src={selectedUser.avatarUrl} 
-                                                alt={selectedUser.username || "User"} 
-                                                className="w-8 h-8 rounded-full bg-slate-700 object-cover" 
+                                            <Avatar
+                                                src={selectedUser.avatarUrl}
+                                                alt={selectedUser.username || "User"}
+                                                className="w-8 h-8 rounded-full bg-slate-700 object-cover"
                                             />
                                         </div>
                                         <span className="font-semibold text-white text-sm max-w-[100px] truncate">{selectedUser.username}</span>
@@ -171,15 +175,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {isMobileMenuOpen && selectedUser && (
                     <div className="lg:hidden border-t border-slate-700 bg-slate-800 absolute w-full left-0 z-50 shadow-2xl">
                         <div className="p-4 space-y-4">
-                            <Link 
-                                href={`/profile/${selectedUser.id}`} 
+                            <Link
+                                href={`/profile/${selectedUser.id}`}
                                 className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl"
                             >
-                                <div 
+                                <div
                                     className="relative rounded-full p-0.5"
-                                    style={isBoosted ? { 
-                                        boxShadow: `0 0 10px 2px ${pulseColor}`, 
-                                        border: `2px solid ${pulseColor}` 
+                                    style={isBoosted ? {
+                                        boxShadow: `0 0 10px 2px ${pulseColor}`,
+                                        border: `2px solid ${pulseColor}`
                                     } : { border: '2px solid transparent' }}
                                 >
                                     <Avatar src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-10 h-10 rounded-full" />
@@ -192,9 +196,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                             <div className="space-y-1">
                                 {navItems.filter(i => i.show).map((item) => (
-                                    <Link 
-                                        key={item.href} 
-                                        href={item.href} 
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
                                         className={`${navLinkClasses} ${pathname === item.href ? activeClass : 'text-slate-300 hover:bg-slate-700'}`}
                                     >
                                         <item.icon className="h-5 w-5" />
@@ -215,7 +219,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {!isLoading && !isWhiteLabelActive && (
                 <footer className="py-8 text-center border-t border-slate-800/50 mt-8">
                     <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-                        Powered by 
+                        Powered by
                         <a href="https://apexdm.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-white transition-colors font-semibold">
                             <LogoIcon className="w-4 h-4 text-purple-500" />
                             <span>ApexDM Score</span>
