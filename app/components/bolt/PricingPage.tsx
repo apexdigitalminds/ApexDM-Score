@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { CheckCircleIcon, StarIcon } from './icons';
+import { useApp } from '@/context/AppContext'; // 🟢 FIX: Import context
 
 // 🔧 CONFIGURATION: Whop Checkout Links
 const getCheckoutUrl = (planName: string) => {
@@ -110,8 +111,8 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         target="_blank"
         rel="noopener noreferrer"
         className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg ${plan.highlight
-            ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
-            : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
+          ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
+          : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
           }`}
       >
         Choose {plan.name}
@@ -131,6 +132,8 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
 
 const PricingPage: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
+  const { community } = useApp(); // 🟢 FIX: Get community for dashboard path
+  const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
 
   return (
     <div className="w-full text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
