@@ -73,15 +73,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, [isWhiteLabelActive, community, isLoading]);
 
     // 🟢 FIX: Use community.id (which IS the companyId) for dashboard navigation
-    // The community.id comes from the database and represents the Whop company
-    const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
+    // No fallback needed - we always get community ID from user profile via setApiContext
+    const dashboardPath = community?.id ? `/dashboard/${community.id}` : '#';
 
-    // 🟢 UPDATED: Home link (logo click)
+    // 🟢 UPDATED: Home link (logo click) - everyone goes to their dashboard
     const homeHref = dashboardPath;
 
-    // 🟢 FIX: Navigation items - Dashboard always visible, fallback to /admin if no community
+    // 🟢 Navigation items - Dashboard visible to all, Admin Panel only for admins
     const navItems = [
-        { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true }, // 🟢 Always show
+        { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
         { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
         { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
