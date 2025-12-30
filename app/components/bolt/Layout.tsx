@@ -76,17 +76,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // The community.id comes from the database and represents the Whop company
     const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
 
-    // 🟢 UPDATED: Role-Based Home Link
-    const homeHref = selectedUser?.role === 'admin' ? '/admin' : dashboardPath;
+    // 🟢 UPDATED: Home link (logo click)
+    const homeHref = dashboardPath;
 
-    // 🟢 FIX: Navigation items use proper dashboard path
+    // 🟢 FIX: Navigation items - Dashboard for all, Admin panel separate for admins
     const navItems = [
         { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
         { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
         { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
         { href: '/analytics', label: 'Analytics', icon: ChartPieIcon, show: selectedUser?.role === 'admin', locked: !showAnalytics },
-        { href: '/admin', label: 'Admin', icon: UserGroupIcon, show: selectedUser?.role === 'admin' },
+        { href: '/admin', label: 'Admin Panel', icon: UserGroupIcon, show: selectedUser?.role === 'admin' },
     ];
 
     return (
