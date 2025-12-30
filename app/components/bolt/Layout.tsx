@@ -27,7 +27,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { selectedUser, isFeatureEnabled, community, isLoading, experienceId } = useApp(); // 🟢 FIX: Get experienceId
+    const { selectedUser, isFeatureEnabled, community, isLoading } = useApp();
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -72,18 +72,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }
     }, [isWhiteLabelActive, community, isLoading]);
 
-    // 🟢 FIX: Build proper base path using experienceId for all navigation
-    // This ensures links work correctly within the Whop iframe context
-    const basePath = experienceId ? `/experiences/${experienceId}` : '';
+    // 🟢 FIX: Use community.id (which IS the companyId) for dashboard navigation
+    // The community.id comes from the database and represents the Whop company
+    const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
 
-    // 🟢 UPDATED: Role-Based Home Link using experience path
-    const homeHref = experienceId
-        ? `/experiences/${experienceId}`
-        : (selectedUser && selectedUser.role !== 'admin') ? '/dashboard' : '/';
+    // 🟢 UPDATED: Role-Based Home Link
+    const homeHref = selectedUser?.role === 'admin' ? '/admin' : dashboardPath;
 
-    // 🟢 FIX: Navigation items now use proper paths that work
+    // 🟢 FIX: Navigation items use proper dashboard path
     const navItems = [
-        { href: basePath || '/dashboard', label: 'Dashboard', icon: ChartBarIcon, show: true },
+        { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
         { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
         { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
