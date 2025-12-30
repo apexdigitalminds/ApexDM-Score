@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Reward, Badge, Quest, StoreItem, Profile, Action, Community, AnalyticsData, UserQuestProgress, ActiveEffect, UserInventoryItem, BadgeConfig, ActionType } from "@/types";
 import { api, setApiContext } from "@/services/api"; // 🟢 FIX: Import setApiContext
+import { getCompanyIdFromExperience } from "@/lib/whop-helpers"; // 🟢 FIX: Import Whop helper
 
 export interface AppContextValue {
     selectedUser: Profile | null;
@@ -324,24 +325,50 @@ export const AppProvider = ({
 
     useEffect(() => {
         const initAuth = async () => {
+            // 🟢 STEP 1: Resolve company ID from Whop experience
+            let resolvedCompanyId: string | null = null;
+
+            if (experienceId && experienceId !== "no_experience") {
+                resolvedCompanyId = await getCompanyIdFromExperience(experienceId);
+                if (resolvedCompanyId) {
+                    console.log(`✅ Resolved company from experience: ${resolvedCompanyId}`);
+                    setApiContext(resolvedCompanyId);
+                } else {
+                    console.error(`❌ Failed to resolve company from experience: ${experienceId}`);
+                }
+            }
+
+            // 🟢 STEP 2: Authenticate user
             let user = null;
             if (verifiedUserId && verifiedUserId !== "GUEST") {
                 user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
-                //🟢 FIX: Set API context IMMEDIATELY after getting user
-                // @ts-ignore - database field is community_id, not communityId
-                if (user?.community_id) {
-                    // @ts-ignore
+                // Fallback: if experience resolution failed, try to get company from user profile
+                if (!resolvedCompanyId && user?.community_id) {
+                    console.log(`✅ Using company ID from user profile: ${user.community_id}`);
+                    // @ts-ignore - database field is community_id
                     setApiContext(user.community_id);
                 }
             }
+
             setSelectedUser(user);
             setIsWhopConnected(!!user);
+
+            // 🟢 STEP 3: Fetch community data (context is now set)
             await fetchCommunity();
             setIsLoading(false);
-            if (user) { fetchAllUsers(); fetchRewards(); fetchBadges(); fetchQuests(); fetchStoreItems(); fetchActiveEffects(); checkDailyLogin(user); }
+
+            if (user) {
+                fetchAllUsers();
+                fetchRewards();
+                fetchBadges();
+                fetchQuests();
+                fetchStoreItems();
+                fetchActiveEffects();
+                checkDailyLogin(user);
+            }
         };
         initAuth();
-    }, [verifiedUserId, verifiedRole]);
+    }, [verifiedUserId, verifiedRole, experienceId]);
 
     useEffect(() => { if (selectedUser) fetchUserQuestProgress(); }, [selectedUser]);
 
