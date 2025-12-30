@@ -343,7 +343,9 @@ export const AppProvider = ({
             if (verifiedUserId && verifiedUserId !== "GUEST") {
                 user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
                 // Fallback: if experience resolution failed, try to get company from user profile
+                // @ts-ignore - database field is community_id
                 if (!resolvedCompanyId && user?.community_id) {
+                    // @ts-ignore - database field is community_id
                     console.log(`✅ Using company ID from user profile: ${user.community_id}`);
                     // @ts-ignore - database field is community_id
                     setApiContext(user.community_id);
