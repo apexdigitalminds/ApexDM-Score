@@ -2,36 +2,27 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircleIcon, StarIcon, ClockIcon } from './icons';
+import { CheckCircleIcon, StarIcon, ClockIcon, XCircleIcon } from './icons';
 import { useApp } from '@/context/AppContext';
 
-// 🔧 CONFIGURATION: Whop Checkout Links with CORRECT Plan IDs
-const getCheckoutUrl = (planName: string, isAnnual: boolean) => {
-  // Updated plan IDs to match app products
-  const planIds: Record<string, { monthly: string; annual: string }> = {
-    'Core': {
-      monthly: 'plan_e4FFt094Axfgf',
-      annual: 'plan_HfEDkPud0jADY'
-    },
-    'Pro': {
-      monthly: 'plan_O0478GuOZrGgB',
-      annual: 'plan_05xorDNeY0eQs'
-    },
-    'Elite': {
-      monthly: 'plan_hytzupiY3xjGm',
-      annual: 'plan_RXAfXSbUVzWgl'
-    },
-    'Trial': {
-      monthly: 'plan_1O9ya9RWXWrzr',
-      annual: 'plan_zfvJ8bKMvthir'
-    }
-  };
-
-  const plan = planIds[planName];
-  if (!plan) return "#";
-
-  const planId = isAnnual ? plan.annual : plan.monthly;
-  return `https://whop.com/checkout/${planId}`;
+// 🔧 PLAN IDs for Whop App Products
+const planIds: Record<string, { monthly: string; annual: string }> = {
+  'Core': {
+    monthly: 'plan_e4FFt094Axfgf',
+    annual: 'plan_HfEDkPud0jADY'
+  },
+  'Pro': {
+    monthly: 'plan_O0478GuOZrGgB',
+    annual: 'plan_05xorDNeY0eQs'
+  },
+  'Elite': {
+    monthly: 'plan_hytzupiY3xjGm',
+    annual: 'plan_RXAfXSbUVzWgl'
+  },
+  'Trial': {
+    monthly: 'plan_1O9ya9RWXWrzr',
+    annual: 'plan_zfvJ8bKMvthir'
+  }
 };
 
 interface Plan {
@@ -107,8 +98,63 @@ const plans: Plan[] = [
   },
 ];
 
-const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnual }) => {
-  const checkoutUrl = getCheckoutUrl(plan.name, isAnnual);
+// 🆕 Checkout Modal Component with Embedded Checkout
+const CheckoutModal: React.FC<{
+  planId: string;
+  planName: string;
+  onClose: () => void;
+}> = ({ planId, planName, onClose }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="relative bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <h2 className="text-xl font-bold text-white">Upgrade to {planName}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            <XCircleIcon className="w-6 h-6 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Checkout Iframe */}
+        <div className="relative" style={{ height: '600px' }}>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                <p className="text-slate-400">Loading checkout...</p>
+              </div>
+            </div>
+          )}
+          <iframe
+            src={`https://whop.com/checkout/${planId}?embed=true`}
+            className="w-full h-full border-0"
+            onLoad={() => setIsLoading(false)}
+            allow="payment"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PricingCard: React.FC<{
+  plan: Plan;
+  isAnnual: boolean;
+  onSelectPlan: (planId: string, planName: string) => void;
+}> = ({ plan, isAnnual, onSelectPlan }) => {
+  const planConfig = planIds[plan.name];
+  const currentPlanId = planConfig ? (isAnnual ? planConfig.annual : planConfig.monthly) : null;
+
+  const handleClick = () => {
+    if (currentPlanId) {
+      onSelectPlan(currentPlanId, plan.name);
+    }
+  };
 
   return (
     <div className={`bg-slate-800/50 backdrop-blur rounded-2xl p-8 border ${plan.isTrial
@@ -154,11 +200,10 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         </p>
       )}
 
-      <a
-        href={checkoutUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg ${plan.isTrial
+      {/* 🆕 Changed from <a> to <button> for in-app checkout */}
+      <button
+        onClick={handleClick}
+        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer ${plan.isTrial
             ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
             : plan.highlight
               ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
@@ -166,7 +211,7 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
           }`}
       >
         {plan.isTrial ? 'Start Free Trial' : `Choose ${plan.name}`}
-      </a>
+      </button>
 
       <ul className="mt-8 space-y-4 text-slate-300 flex-grow">
         {plan.features.map((feature, index) => (
@@ -184,12 +229,31 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
 
 const PricingPage: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ planId: string; planName: string } | null>(null);
   const { community } = useApp();
   const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
 
+  const handleSelectPlan = (planId: string, planName: string) => {
+    setSelectedPlan({ planId, planName });
+  };
+
+  const handleCloseCheckout = () => {
+    setSelectedPlan(null);
+    // Optionally refresh to check for tier update
+    window.location.reload();
+  };
+
   return (
-    // 🟢 FIX: Changed background to match LandingPage (bg-slate-900)
     <div className="min-h-screen bg-slate-900 text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
+
+      {/* 🆕 Checkout Modal */}
+      {selectedPlan && (
+        <CheckoutModal
+          planId={selectedPlan.planId}
+          planName={selectedPlan.planName}
+          onClose={handleCloseCheckout}
+        />
+      )}
 
       <div className="text-center max-w-3xl mx-auto mb-12">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-6 bg-gradient-to-r from-white to-slate-400 text-transparent bg-clip-text">
@@ -223,10 +287,14 @@ const PricingPage: React.FC = () => {
         </Link>
       </div>
 
-      {/* 🟢 FIX: Changed to 4 columns to accommodate Trial card */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
         {plans.map(plan => (
-          <PricingCard key={plan.name} plan={plan} isAnnual={isAnnual} />
+          <PricingCard
+            key={plan.name}
+            plan={plan}
+            isAnnual={isAnnual}
+            onSelectPlan={handleSelectPlan}
+          />
         ))}
       </div>
 

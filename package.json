@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.80.0",
     "@vercel/functions": "^3.1.4",
+    "@whop/checkout": "latest",
     "@whop/react": "0.3.0",
     "@whop/sdk": "^0.0.3",
     "autoprefixer": "^10.4.21",
