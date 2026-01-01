@@ -2,21 +2,36 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircleIcon, StarIcon } from './icons';
-import { useApp } from '@/context/AppContext'; // 🟢 FIX: Import context
+import { CheckCircleIcon, StarIcon, ClockIcon } from './icons';
+import { useApp } from '@/context/AppContext';
 
-// 🔧 CONFIGURATION: Whop Checkout Links
-const getCheckoutUrl = (planName: string) => {
-  switch (planName) {
-    case 'Core':
-      return "https://whop.com/checkout/plan_QeGknkiKjIGid";
-    case 'Pro':
-      return "https://whop.com/checkout/plan_xI2Ai7kB4fqKU";
-    case 'Elite':
-      return "https://whop.com/checkout/plan_nQblvMtherlsN";
-    default:
-      return "#";
-  }
+// 🔧 CONFIGURATION: Whop Checkout Links with CORRECT Plan IDs
+const getCheckoutUrl = (planName: string, isAnnual: boolean) => {
+  // Updated plan IDs to match app products
+  const planIds: Record<string, { monthly: string; annual: string }> = {
+    'Core': {
+      monthly: 'plan_e4FFt094Axfgf',
+      annual: 'plan_HfEDkPud0jADY'
+    },
+    'Pro': {
+      monthly: 'plan_O0478GuOZrGgB',
+      annual: 'plan_05xorDNeY0eQs'
+    },
+    'Elite': {
+      monthly: 'plan_hytzupiY3xjGm',
+      annual: 'plan_RXAfXSbUVzWgl'
+    },
+    'Trial': {
+      monthly: 'plan_1O9ya9RWXWrzr',
+      annual: 'plan_zfvJ8bKMvthir'
+    }
+  };
+
+  const plan = planIds[planName];
+  if (!plan) return "#";
+
+  const planId = isAnnual ? plan.annual : plan.monthly;
+  return `https://whop.com/checkout/${planId}`;
 };
 
 interface Plan {
@@ -27,9 +42,25 @@ interface Plan {
   description: string;
   features: string[];
   highlight?: boolean;
+  isTrial?: boolean;
 }
 
 const plans: Plan[] = [
+  {
+    name: 'Trial',
+    priceMonthly: 'FREE',
+    priceAnnually: 'FREE',
+    annualTotal: '$0',
+    description: '14-Day Elite Trial - Experience all features free.',
+    features: [
+      'All Elite Features for 14 Days',
+      'XP Store & Item Inventory',
+      'Advanced Analytics',
+      'White-label Branding',
+      'No Credit Card Required',
+    ],
+    isTrial: true,
+  },
   {
     name: 'Core',
     priceMonthly: '$59',
@@ -77,13 +108,23 @@ const plans: Plan[] = [
 ];
 
 const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnual }) => {
-  const checkoutUrl = getCheckoutUrl(plan.name);
+  const checkoutUrl = getCheckoutUrl(plan.name, isAnnual);
 
   return (
-    <div className={`bg-slate-800 rounded-2xl p-8 border ${plan.highlight ? 'border-purple-500 shadow-2xl shadow-purple-500/10' : 'border-slate-700'} flex flex-col transition-transform duration-300 hover:scale-105`}>
+    <div className={`bg-slate-800/50 backdrop-blur rounded-2xl p-8 border ${plan.isTrial
+        ? 'border-green-500 shadow-2xl shadow-green-500/10'
+        : plan.highlight
+          ? 'border-purple-500 shadow-2xl shadow-purple-500/10'
+          : 'border-slate-700'
+      } flex flex-col transition-transform duration-300 hover:scale-105`}>
 
-      {/* Header Alignment Spacer */}
-      {plan.highlight ? (
+      {/* Header Badge */}
+      {plan.isTrial ? (
+        <div className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full self-start mb-4 flex items-center gap-1 shadow-sm">
+          <ClockIcon className="w-3 h-3" />
+          14-Day Free Trial
+        </div>
+      ) : plan.highlight ? (
         <div className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full self-start mb-4 flex items-center gap-1 shadow-sm">
           <StarIcon className="w-3 h-3" />
           Most Popular
@@ -96,11 +137,18 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
       <p className="text-slate-400 mt-2 mb-6 h-12 text-sm leading-relaxed">{plan.description}</p>
 
       <div className="mb-6">
-        <span className="text-5xl font-extrabold text-white tracking-tight">{isAnnual ? plan.priceAnnually : plan.priceMonthly}</span>
-        <span className="text-slate-400 font-medium ml-1">/ month</span>
+        <span className={`text-5xl font-extrabold tracking-tight ${plan.isTrial ? 'text-green-400' : 'text-white'}`}>
+          {plan.isTrial ? 'FREE' : (isAnnual ? plan.priceAnnually : plan.priceMonthly)}
+        </span>
+        {!plan.isTrial && (
+          <span className="text-slate-400 font-medium ml-1">/ month</span>
+        )}
+        {plan.isTrial && (
+          <span className="text-slate-400 font-medium ml-1">for 14 days</span>
+        )}
       </div>
 
-      {isAnnual && (
+      {isAnnual && !plan.isTrial && (
         <p className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-1 rounded w-fit mb-6 -mt-4">
           Billed {plan.annualTotal} yearly (Save 15%)
         </p>
@@ -110,18 +158,22 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         href={checkoutUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg ${plan.highlight
-          ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
-          : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
+        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg ${plan.isTrial
+            ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
+            : plan.highlight
+              ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
+              : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
           }`}
       >
-        Choose {plan.name}
+        {plan.isTrial ? 'Start Free Trial' : `Choose ${plan.name}`}
       </a>
 
       <ul className="mt-8 space-y-4 text-slate-300 flex-grow">
         {plan.features.map((feature, index) => (
           <li key={index} className="flex items-start gap-3 text-sm">
-            <CheckCircleIcon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${feature.includes('Everything') ? 'text-purple-400' : 'text-green-500'}`} />
+            <CheckCircleIcon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${feature.includes('Everything') ? 'text-purple-400' :
+                plan.isTrial ? 'text-green-500' : 'text-green-500'
+              }`} />
             <span className={feature.includes('Everything') ? 'font-bold text-white' : ''}>{feature}</span>
           </li>
         ))}
@@ -132,12 +184,12 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
 
 const PricingPage: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
-  const { community } = useApp(); // 🟢 FIX: Get community for dashboard path
+  const { community } = useApp();
   const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
 
   return (
-    <div className="w-full text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
-      {/* 🟢 REMOVED: Custom Header. Now relies on Layout.tsx for the navbar. */}
+    // 🟢 FIX: Changed background to match LandingPage (bg-slate-900)
+    <div className="min-h-screen bg-slate-900 text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
 
       <div className="text-center max-w-3xl mx-auto mb-12">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-6 bg-gradient-to-r from-white to-slate-400 text-transparent bg-clip-text">
@@ -166,13 +218,13 @@ const PricingPage: React.FC = () => {
           </span>
         </div>
 
-        {/* 🟢 FIX: Use proper dashboard link from context */}
         <Link href={dashboardPath} className="text-purple-400 hover:text-purple-300 font-semibold text-sm hover:underline transition-all">
           &larr; Return to Dashboard
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+      {/* 🟢 FIX: Changed to 4 columns to accommodate Trial card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
         {plans.map(plan => (
           <PricingCard key={plan.name} plan={plan} isAnnual={isAnnual} />
         ))}
