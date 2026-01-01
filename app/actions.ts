@@ -39,18 +39,12 @@ export async function verifyUser(routeCompanyId?: string) {
     const whopUserId = token.userId || token.sub;
     const roles = token.roles || [];
 
-    // 🆕 INSTALL-SAFE: Extract experienceId from JWT token
-    const tokenExperienceId = token.experienceId || token.experience_id;
-
     if (!whopUserId) {
       console.error("❌ No whopUserId in token");
       return null;
     }
 
-    console.log(`🔐 Verifying user: ${whopUserId}`);
-    console.log(`   Route company_id: ${routeCompanyId || 'NOT PROVIDED'}`);
-    console.log(`   Token experienceId: ${tokenExperienceId || 'NOT IN TOKEN'}`);
-    console.log(`   Roles: [${roles.join(', ')}]`);
+    console.log(`🔐 Verifying user: ${whopUserId}${routeCompanyId ? ` for company: ${routeCompanyId}` : ''}`);
 
     // 🟢 Step 2: Check if User Exists in Database
     const { data: existingProfile, error: profileError } = await supabaseAdmin
@@ -73,6 +67,17 @@ export async function verifyUser(routeCompanyId?: string) {
       console.log(`   Community: ${communityData?.name} (${existingProfile.community_id})`);
       console.log(`   Role: ${existingProfile.role}`);
 
+      // 🔍 Optional: Verify company match (for security/debugging)
+      if (routeCompanyId && userCompanyId && userCompanyId !== routeCompanyId) {
+        console.warn(`⚠️ COMPANY MISMATCH:`);
+        console.warn(`   User's company: ${userCompanyId}`);
+        console.warn(`   Route company: ${routeCompanyId}`);
+        console.warn(`   This could indicate:`);
+        console.warn(`   1. User switching between companies (ok if intentional)`);
+        console.warn(`   2. Security issue (investigate)`);
+        // For now we allow it, but you could block cross-company access here
+      }
+
       return {
         userId: existingProfile.id,
         whopUserId,
@@ -82,73 +87,31 @@ export async function verifyUser(routeCompanyId?: string) {
       };
     }
 
-    // 🟢 Step 3: User Not in Database - INSTALL-SAFE PROVISIONING
-    console.log(`⚠️ User ${whopUserId} not found in database - attempting auto-provision`);
+    // 🟢 Step 3: User Not in Database - Attempt Provisioning
+    console.log(`⚠️ User ${whopUserId} not found in database`);
+    console.log(`   This happens when:`);
+    console.log(`   1. First time login (normal)`);
+    console.log(`   2. Webhook hasn't fired yet (wait 30 sec)`);
+    console.log(`   3. Webhook failed (check logs)`);
 
-    // 🆕 INSTALL-SAFE: Determine company_id from multiple sources
-    let companyId = routeCompanyId;
-
-    // If no routeCompanyId, try to get it from experienceId in token
-    if (!companyId && tokenExperienceId) {
-      console.log(`🔍 Fetching company_id from experienceId: ${tokenExperienceId}`);
-      try {
-        const { getCompanyIdFromExperience } = await import('@/lib/whop-helpers');
-        companyId = await getCompanyIdFromExperience(tokenExperienceId) || undefined;
-        if (companyId) {
-          console.log(`✅ Resolved company_id from experience: ${companyId}`);
-        }
-      } catch (expError) {
-        console.error("❌ Failed to get company from experience:", expError);
-      }
-    }
-
-    // 🆕 INSTALL-SAFE: If still no companyId, try to get it from Whop API using userId
-    if (!companyId) {
-      console.log(`🔍 Attempting to get company_id from Whop user context...`);
-      // Last resort: check token for any company-related fields
-      companyId = token.companyId || token.company_id || token.teamId || token.team_id;
-      if (companyId) {
-        console.log(`✅ Found company_id in token: ${companyId}`);
-      }
-    }
-
-    if (!companyId) {
-      // 🚨 INSTALL-SAFE: Return partial success instead of hard fail
-      console.warn("⚠️ No company_id available - user can browse but not be provisioned yet");
-      console.warn("   This is normal during app marketplace browsing");
-      console.warn("   User will be provisioned when they access with full context");
-
-      // Return a guest-like session instead of null
-      return {
-        userId: 'guest',
-        whopUserId,
-        isAdmin: false,
-        communityId: null,
-        role: 'guest' as any
-      };
+    if (!routeCompanyId) {
+      console.error("❌ CRITICAL: Cannot provision user without company_id");
+      console.error("   User: ${whopUserId}");
+      console.error("   Company ID: NOT PROVIDED");
+      console.error("   ");
+      console.error("   Fix: Ensure you're calling verifyUser(companyId)");
+      console.error("   In experiences route: use getCompanyIdFromExperience()");
+      return null;
     }
 
     // Provision the user NOW
-    console.log(`🚀 INSTALL-SAFE: Provisioning user ${whopUserId} for company ${companyId}`);
+    console.log(`🚀 Provisioning user ${whopUserId} for company ${routeCompanyId}`);
 
-    // 🆕 INSTALL-SAFE: First user is always admin
-    const isFirstUser = roles.some((r: string) =>
-      ['owner', 'admin', 'staff', 'moderator', 'creator'].includes(r.toLowerCase())
-    );
-    const provisionRoles = isFirstUser ? ['admin', 'owner'] : roles;
-
-    const provisioned = await ensureWhopContext(companyId, whopUserId, provisionRoles);
+    const provisioned = await ensureWhopContext(routeCompanyId, whopUserId, roles);
 
     if (!provisioned) {
       console.error("❌ Provisioning failed - check ensureWhopContext logs above");
-      // 🆕 INSTALL-SAFE: Return guest instead of null to not break install
-      return {
-        userId: 'pending',
-        whopUserId,
-        isAdmin: false,
-        communityId: null,
-        role: 'pending' as any
-      };
+      return null;
     }
 
     // 🟢 Step 4: Fetch Newly Created Profile
@@ -161,13 +124,7 @@ export async function verifyUser(routeCompanyId?: string) {
     if (newProfileError || !newProfile) {
       console.error("❌ User still not in DB after provisioning");
       console.error("   Error:", newProfileError);
-      return {
-        userId: 'error',
-        whopUserId,
-        isAdmin: false,
-        communityId: null,
-        role: 'error' as any
-      };
+      return null;
     }
 
     console.log(`✅ User provisioned successfully: ${newProfile.username} (${newProfile.id}) as ${newProfile.role}`);
@@ -183,14 +140,7 @@ export async function verifyUser(routeCompanyId?: string) {
   } catch (error: any) {
     console.error("❌ verifyUser Fatal Error:", error.message);
     console.error(error.stack);
-    // 🆕 INSTALL-SAFE: Never return null on errors - might break install
-    return {
-      userId: 'error',
-      whopUserId: 'unknown',
-      isAdmin: false,
-      communityId: null,
-      role: 'error' as any
-    };
+    return null;
   }
 }
 
