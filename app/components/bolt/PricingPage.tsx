@@ -80,7 +80,7 @@ const plans: Plan[] = [
     name: 'Pro',
     priceMonthly: '$79',
     priceAnnually: '$67',
-    annualTotal: '$804',
+    annualTotal: '$805',
     description: 'Automate and expand your engagement strategies.',
     features: [
       'Everything in Starter, plus:',
@@ -94,8 +94,8 @@ const plans: Plan[] = [
   {
     name: 'Elite',
     priceMonthly: '$149',
-    priceAnnually: '$127',
-    annualTotal: '$1524',
+    priceAnnually: '$126',
+    annualTotal: '$1515',
     description: 'The ultimate toolkit for maximum retention.',
     features: [
       'Everything in Pro, plus:',
@@ -148,7 +148,7 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         )}
       </div>
 
-      {isAnnual && !plan.isTrial && (
+      {isAnnual && !plan.isTrial && plan.name !== 'Starter' && (
         <p className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-1 rounded w-fit mb-6 -mt-4">
           Billed {plan.annualTotal} yearly (Save 15%)
         </p>
