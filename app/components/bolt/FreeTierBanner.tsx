@@ -13,16 +13,16 @@ import { ClockIcon } from './icons';
 export function FreeTierTopBanner() {
     const { community } = useApp();
 
-    // Only show for Free tier users
-    const currentTier = (community?.tier || 'Free').toLowerCase();
-    if (currentTier !== 'free') return null;
+    // Only show for Starter tier users (free tier)
+    const currentTier = (community?.tier || 'starter').toLowerCase();
+    if (currentTier !== 'starter' && currentTier !== 'free') return null;
 
     return (
         <div className="bg-slate-800 text-white py-2 px-4 text-center text-sm shadow-lg">
             <div className="container mx-auto flex items-center justify-center gap-2">
                 <ClockIcon className="w-4 h-4 text-slate-400" />
                 <span>
-                    You're on the <strong>Free Plan</strong>
+                    You're on the <strong>Starter Plan</strong>
                 </span>
                 <Link
                     href="/pricing"
@@ -38,9 +38,9 @@ export function FreeTierTopBanner() {
 export function FreeTierGradientBanner() {
     const { community } = useApp();
 
-    // Only show for Free tier users
-    const currentTier = (community?.tier || 'Free').toLowerCase();
-    if (currentTier !== 'free') return null;
+    // Only show for Starter tier users (free tier)
+    const currentTier = (community?.tier || 'starter').toLowerCase();
+    if (currentTier !== 'starter' && currentTier !== 'free') return null;
 
     return (
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 shadow-md relative z-50">

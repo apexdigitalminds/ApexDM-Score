@@ -322,18 +322,33 @@ export const AppProvider = ({
             if (trialActive) {
                 return true; // Active trial = Elite access
             }
-            // Trial expired = no access (TrialExpiredModal will handle UI)
-            return false;
+            // 🔧 FIXED: Trial expired = downgrade to Starter (not lock out)
+            // User keeps Starter features, sees upgrade prompts for paid features
+            return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard', 'streaks', 'xp', 'levels'].includes(f);
         }
 
         // Existing trial check (legacy support)
         if (community?.trialEndsAt) { if (new Date(community.trialEndsAt) > new Date()) return true; }
 
-        const tierValue = (community?.tier || "free").toLowerCase();
+        const tierValue = (community?.tier || "starter").toLowerCase();
+
+        // Dashboard always accessible
         if (f === 'dashboard') return true;
+
+        // Elite = all features
         if (tierValue === 'elite') return true;
-        if (tierValue === 'pro') { return !['store', 'retention', 'inventory', 'white_label'].includes(f); }
-        if (tierValue === 'core') { return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard'].includes(f); }
+
+        // Pro = everything except Elite-only features
+        if (tierValue === 'pro') {
+            return !['store', 'retention', 'inventory', 'white_label'].includes(f);
+        }
+
+        // 🔧 RENAMED: core → starter, and 'free' maps to starter
+        // Starter = basic gamification features
+        if (tierValue === 'starter' || tierValue === 'core' || tierValue === 'free') {
+            return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard', 'streaks', 'xp', 'levels'].includes(f);
+        }
+
         return false;
     };
 

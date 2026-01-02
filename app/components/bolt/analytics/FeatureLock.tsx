@@ -7,7 +7,7 @@ import { LockClosedIcon } from '../icons';
 interface FeatureLockProps {
     title: string;
     description: string;
-    requiredTier: 'Core' | 'Pro' | 'Elite';
+    requiredTier: 'Starter' | 'Pro' | 'Elite';
     children?: React.ReactNode;
 }
 
@@ -16,9 +16,9 @@ const FeatureLock: React.FC<FeatureLockProps> = ({ title, description, requiredT
         <div className="relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden h-full flex flex-col border border-slate-700">
             {/* 1. Plan Badge (Top Right) */}
             <div className="absolute top-4 right-4 z-30">
-                 <span className="text-[10px] bg-slate-900/80 px-2 py-1 rounded text-slate-300 font-bold border border-slate-600 uppercase tracking-wide backdrop-blur-md">
+                <span className="text-[10px] bg-slate-900/80 px-2 py-1 rounded text-slate-300 font-bold border border-slate-600 uppercase tracking-wide backdrop-blur-md">
                     Requires {requiredTier}
-                 </span>
+                </span>
             </div>
 
             {/* 2. Lock Overlay (Absolute Center) */}
@@ -30,8 +30,8 @@ const FeatureLock: React.FC<FeatureLockProps> = ({ title, description, requiredT
                 <p className="text-sm text-slate-300 max-w-xs mb-6">
                     {description}
                 </p>
-                <Link 
-                    href="/pricing" 
+                <Link
+                    href="/pricing"
                     className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-lg"
                 >
                     View Plans

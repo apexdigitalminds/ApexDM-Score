@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { CheckCircleIcon, StarIcon, ClockIcon } from './icons';
 import { useApp } from '@/context/AppContext';
 
-// 🔧 PLAN IDs for Whop App Products
+// 🔧 PLAN IDs for Whop App Products (Updated: 2026-01-02)
+// Starter is FREE, Pro $79, Elite $149
 const planIds: Record<string, { monthly: string; annual: string }> = {
-  'Core': {
-    monthly: 'plan_e4FFt094Axfgf',
-    annual: 'plan_HfEDkPud0jADY'
+  'Starter': {
+    monthly: 'plan_MNWiY4cQdl09l',  // FREE tier
+    annual: 'plan_MNWiY4cQdl09l'    // Same - free doesn't have annual variant
   },
   'Pro': {
     monthly: 'plan_O0478GuOZrGgB',
@@ -20,8 +21,8 @@ const planIds: Record<string, { monthly: string; annual: string }> = {
     annual: 'plan_RXAfXSbUVzWgl'
   },
   'Trial': {
-    monthly: 'plan_1O9ya9RWXWrzr',
-    annual: 'plan_zfvJ8bKMvthir'
+    monthly: 'plan_bLWPt2euy79O9',
+    annual: 'plan_pfJBV6w6WwyIW'
   }
 };
 
@@ -50,7 +51,7 @@ const plans: Plan[] = [
     priceMonthly: 'FREE',
     priceAnnually: 'FREE',
     annualTotal: '$0',
-    description: '14-Day Elite Trial - Experience all features free.',
+    description: '14-Day Elite Trial — Experience all features free.',
     features: [
       'All Elite Features for 14 Days',
       'XP Store & Item Inventory',
@@ -61,10 +62,10 @@ const plans: Plan[] = [
     isTrial: true,
   },
   {
-    name: 'Core',
-    priceMonthly: '$59',
-    priceAnnually: '$50',
-    annualTotal: '$600',
+    name: 'Starter',
+    priceMonthly: 'FREE',
+    priceAnnually: 'FREE',
+    annualTotal: '$0',
     description: 'Essential tools to begin gamifying your community.',
     features: [
       'Unlimited Members & History',
@@ -77,24 +78,24 @@ const plans: Plan[] = [
   },
   {
     name: 'Pro',
-    priceMonthly: '$99',
-    priceAnnually: '$84',
-    annualTotal: '$1010',
+    priceMonthly: '$79',
+    priceAnnually: '$67',
+    annualTotal: '$804',
     description: 'Automate and expand your engagement strategies.',
     features: [
-      'Everything in Core, plus:',
+      'Everything in Starter, plus:',
       'Community Analytics Dashboard',
-      'Quests System',
+      'Quests & Challenges',
       'Seasonal Leaderboards',
-      'Discord Role Sync (Coming Soon)',
+      'Engagement Trends & Insights',
     ],
     highlight: true,
   },
   {
     name: 'Elite',
-    priceMonthly: '$159',
-    priceAnnually: '$135',
-    annualTotal: '$1620',
+    priceMonthly: '$149',
+    priceAnnually: '$127',
+    annualTotal: '$1524',
     description: 'The ultimate toolkit for maximum retention.',
     features: [
       'Everything in Pro, plus:',
@@ -111,10 +112,10 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
 
   return (
     <div className={`bg-slate-800/50 backdrop-blur rounded-2xl p-8 border ${plan.isTrial
-        ? 'border-green-500 shadow-2xl shadow-green-500/10'
-        : plan.highlight
-          ? 'border-purple-500 shadow-2xl shadow-purple-500/10'
-          : 'border-slate-700'
+      ? 'border-green-500 shadow-2xl shadow-green-500/10'
+      : plan.highlight
+        ? 'border-purple-500 shadow-2xl shadow-purple-500/10'
+        : 'border-slate-700'
       } flex flex-col transition-transform duration-300 hover:scale-105`}>
 
       {/* Header Badge */}
@@ -159,10 +160,10 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         target="_blank"
         rel="noopener noreferrer"
         className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer ${plan.isTrial
-            ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
-            : plan.highlight
-              ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
-              : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
+          ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
+          : plan.highlight
+            ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
+            : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
           }`}
       >
         {plan.isTrial ? 'Start Free Trial' : `Choose ${plan.name}`}
@@ -172,7 +173,7 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         {plan.features.map((feature, index) => (
           <li key={index} className="flex items-start gap-3 text-sm">
             <CheckCircleIcon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${feature.includes('Everything') ? 'text-purple-400' :
-                plan.isTrial ? 'text-green-500' : 'text-green-500'
+              plan.isTrial ? 'text-green-500' : 'text-green-500'
               }`} />
             <span className={feature.includes('Everything') ? 'font-bold text-white' : ''}>{feature}</span>
           </li>
