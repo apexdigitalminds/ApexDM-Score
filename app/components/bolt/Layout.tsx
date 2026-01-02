@@ -9,6 +9,7 @@ import Avatar from './Avatar';
 import TrialBanner from './TrialBanner';
 import TrialStatusBanner from './TrialStatusBanner'; // 🆕 Trial countdown
 import TrialExpiredModal from './TrialExpiredModal'; // 🆕 Trial expiration lock
+import { FreeTierTopBanner, FreeTierGradientBanner } from './FreeTierBanner'; // 🆕 Free tier upgrade CTAs
 
 // ... (Keep existing MenuIcon / XMarkIcon definitions) ...
 // Local Icons for Menu
@@ -93,9 +94,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
-            <TrialStatusBanner /> {/* 🆕 Show trial countdown */}
-            <TrialExpiredModal /> {/* 🆕 Lock if trial expired */}
-            <TrialBanner /> {/* existing tier trial banner */}
+            {/* 🆕 Free tier upgrade banners - only show for Free users */}
+            <FreeTierTopBanner />
+            <FreeTierGradientBanner />
+
+            {/* Trial banners - only show for Trial users */}
+            <TrialStatusBanner /> {/* Show trial countdown */}
+            <TrialBanner /> {/* Purple gradient trial banner */}
+
+            {/* Trial expiration modal */}
+            <TrialExpiredModal />
 
             <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
