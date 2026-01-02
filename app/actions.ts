@@ -68,14 +68,25 @@ export async function verifyUser(routeCompanyId?: string) {
       console.log(`   Role: ${existingProfile.role}`);
 
       // 🔍 Optional: Verify company match (for security/debugging)
-      if (routeCompanyId && userCompanyId && userCompanyId !== routeCompanyId) {
+      // 🔧 FIX: Compare routeCompanyId against BOTH Supabase UUID and Whop ID
+      const communitySupabaseId = existingProfile.community_id;
+      const communityWhopId = communityData?.whop_store_id || communityData?.whop_company_id;
+
+      // Route could be either Supabase UUID or Whop biz_xxx format
+      const routeMatchesSupabaseId = routeCompanyId === communitySupabaseId;
+      const routeMatchesWhopId = routeCompanyId === communityWhopId;
+
+      if (routeCompanyId && !routeMatchesSupabaseId && !routeMatchesWhopId) {
         console.warn(`⚠️ COMPANY MISMATCH:`);
-        console.warn(`   User's company: ${userCompanyId}`);
+        console.warn(`   User's community (Supabase): ${communitySupabaseId}`);
+        console.warn(`   User's community (Whop): ${communityWhopId}`);
         console.warn(`   Route company: ${routeCompanyId}`);
         console.warn(`   This could indicate:`);
         console.warn(`   1. User switching between companies (ok if intentional)`);
         console.warn(`   2. Security issue (investigate)`);
         // For now we allow it, but you could block cross-company access here
+      } else if (routeCompanyId) {
+        console.log(`   Route matches: ${routeMatchesSupabaseId ? 'Supabase ID' : routeMatchesWhopId ? 'Whop ID' : 'Unknown'}`);
       }
 
       return {

@@ -56,13 +56,23 @@ export async function POST(request: NextRequest): Promise<Response> {
         webhookData.data?.company_id ||
         payload.membership?.company_id;
 
+      // 🔧 IMPROVED: Extract user ID with member.id fallback
+      // Whop sometimes sends user: null but includes member.id
       const userId =
         payload.user_id ||
         payload.user?.id ||
         webhookData.user_id ||
         payload.membership?.user_id ||
         webhookData.data?.user_id ||
-        payload.membership?.user?.id;
+        payload.membership?.user?.id ||
+        payload.member?.id ||  // 🆕 Fallback to member.id
+        webhookData.data?.member?.id;  // 🆕 Fallback to nested member.id
+
+      console.log(`🔍 User extraction sources:`);
+      console.log(`   payload.user_id: ${payload.user_id || 'null'}`);
+      console.log(`   payload.user?.id: ${payload.user?.id || 'null'}`);
+      console.log(`   payload.member?.id: ${payload.member?.id || 'null'}`);
+      console.log(`   webhookData.data?.member?.id: ${webhookData.data?.member?.id || 'null'}`);
 
       // 🎯 EXTRACT SUBSCRIPTION TIER from product title
       const productTitle =
@@ -80,28 +90,50 @@ export async function POST(request: NextRequest): Promise<Response> {
         payload.access_pass?.id ||
         webhookData.plan_id;
 
+      // 🆕 Extract membership ID for linking
+      const membershipId =
+        payload.membership?.id ||
+        payload.id ||
+        webhookData.data?.id;
+
       console.log(`🔍 ID Extraction Results:`);
       console.log(`   Company ID: ${companyId || '❌ NOT FOUND'}`);
       console.log(`   User ID: ${userId || '❌ NOT FOUND'}`);
+      console.log(`   Membership ID: ${membershipId || '❌ NOT FOUND'}`);
       console.log(`   Product/Tier: ${productTitle || '❌ NOT FOUND'}`);
       console.log(`   Plan ID: ${planId || '❌ NOT FOUND'}`);
 
+      // 🚨 IMPORTANT: Check if this is seller company vs customer company
+      if (companyId === 'biz_l6rgQaulWP7D2E') {
+        console.warn(`⚠️ SELLER COMPANY DETECTED: ${companyId}`);
+        console.warn(`   This webhook is for YOUR seller account, not customer's app installation.`);
+        console.warn(`   The purchase created a membership on Apex Digital Minds, not the customer's app.`);
+        console.warn(`   This is a Whop product configuration issue - products may not be properly linked to app.`);
+      }
+
       // Validate we have both required IDs
+      // 🔧 CHANGED: Accept member ID when user ID is missing
       if (!companyId || !userId) {
         console.error(`❌ MISSING REQUIRED IDS`);
         console.error(`   Event: ${webhookData.type}`);
         console.error(`   Company ID: ${companyId || 'MISSING'}`);
         console.error(`   User ID: ${userId || 'MISSING'}`);
+        console.error(`   Member ID available: ${payload.member?.id || 'NO'}`);
+        console.error(`   Membership ID available: ${membershipId || 'NO'}`);
 
+        // 🆕 Still return 200 to prevent webhook retries, but log the issue
         return new Response(JSON.stringify({
           success: false,
-          error: "Missing required IDs",
+          error: "Missing required IDs - likely a Whop product configuration issue",
+          message: "Purchase went to seller community instead of customer's installed app",
           received: {
             company_id: companyId || null,
-            user_id: userId || null
+            user_id: userId || null,
+            member_id: payload.member?.id || null,
+            membership_id: membershipId || null
           }
         }), {
-          status: 400,
+          status: 200, // 🔧 Changed to 200 to prevent retry spam
           headers: { "Content-Type": "application/json" }
         });
       }
