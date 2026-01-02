@@ -244,6 +244,69 @@ export async function ensureWhopContext(
     console.log(`   Trial expires: ${trialEndsAt}`);
   }
 
+  // 🚨 CRITICAL FIX: Handle seller company webhooks specially
+  // When webhook comes from seller company (Apex Digital Minds), we should NOT
+  // move the user to that community. Instead, find their EXISTING community 
+  // and update its tier.
+  const SELLER_COMPANY_ID = 'biz_l6rgQaulWP7D2E';
+
+  if (whopStoreId === SELLER_COMPANY_ID) {
+    console.log(`⚠️ SELLER COMPANY DETECTED in ensureWhopContext`);
+    console.log(`   This is a tier upgrade webhook, not a new community`);
+    console.log(`   Looking up user's existing community to update tier...`);
+
+    // Find user's existing profile and community
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, community_id, role, communities(id, name, subscription_tier)')
+      .eq('whop_user_id', whopUserId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error(`❌ Error finding user profile:`, profileError);
+      return false;
+    }
+
+    if (!userProfile) {
+      console.warn(`⚠️ No existing profile for user ${whopUserId}`);
+      console.warn(`   Cannot update tier without existing community`);
+      console.warn(`   User may need to access app first to create profile`);
+      return false;
+    }
+
+    const userCommunity = userProfile.communities as any;
+    console.log(`✅ Found user's existing community: ${userCommunity?.name} (${userProfile.community_id})`);
+    console.log(`   Current tier: ${userCommunity?.subscription_tier}`);
+
+    // Update the user's existing community tier
+    if (mappedTier && userCommunity?.subscription_tier !== mappedTier) {
+      console.log(`🔄 Updating user's community tier: ${userCommunity?.subscription_tier} → ${mappedTier}`);
+
+      const updateData: any = { subscription_tier: mappedTier };
+      if (isTrial) {
+        updateData.trial_ends_at = trialEndsAt;
+        updateData.trial_used = true;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from('communities')
+        .update(updateData)
+        .eq('id', userProfile.community_id);
+
+      if (updateError) {
+        console.error(`❌ Failed to update community tier:`, updateError);
+        return false;
+      }
+
+      console.log(`✅ Community tier updated to: ${mappedTier}`);
+    } else {
+      console.log(`ℹ️ Tier unchanged or no tier to update`);
+    }
+
+    console.log(`✅ Seller company webhook handled - user stays in their community`);
+    return true;
+  }
+
   let communityId: string | null = null;
   let isNewCommunity = false;
 
