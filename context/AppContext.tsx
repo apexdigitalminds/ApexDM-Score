@@ -322,13 +322,13 @@ export const AppProvider = ({
             if (trialActive) {
                 return true; // Active trial = Elite access
             }
-            // 🔧 FIXED: Trial expired = downgrade to Starter (not lock out)
+            // 🔧 CRITICAL FIX: Trial expired = downgrade to Starter (not lock out)
             // User keeps Starter features, sees upgrade prompts for paid features
             return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard', 'streaks', 'xp', 'levels'].includes(f);
         }
 
-        // Existing trial check (legacy support)
-        if (community?.trialEndsAt) { if (new Date(community.trialEndsAt) > new Date()) return true; }
+        // 🔧 REMOVED: Legacy trial check that ignored tier - this was causing the bug
+        // The above block now handles ALL trial logic correctly
 
         const tierValue = (community?.tier || "starter").toLowerCase();
 

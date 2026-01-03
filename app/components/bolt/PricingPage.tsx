@@ -107,8 +107,11 @@ const plans: Plan[] = [
   },
 ];
 
-const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnual }) => {
+const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string }> = ({ plan, isAnnual, currentTier }) => {
   const checkoutUrl = getCheckoutUrl(plan.name, isAnnual);
+  const isCurrentPlan = currentTier.toLowerCase() === plan.name.toLowerCase() ||
+    (currentTier.toLowerCase() === 'free' && plan.name === 'Starter') ||
+    (currentTier.toLowerCase() === 'core' && plan.name === 'Starter');
 
   return (
     <div className={`bg-slate-800/50 backdrop-blur rounded-2xl p-8 border ${plan.isTrial
@@ -128,6 +131,10 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         <div className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full self-start mb-4 flex items-center gap-1 shadow-sm">
           <StarIcon className="w-3 h-3" />
           Most Popular
+        </div>
+      ) : isCurrentPlan ? (
+        <div className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full self-start mb-4 shadow-sm">
+          ✓ Current Plan
         </div>
       ) : (
         <div className="h-6 mb-4"></div>
@@ -154,20 +161,26 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean }> = ({ plan, isAnnu
         </p>
       )}
 
-      {/* Direct checkout link - opens in new tab */}
-      <a
-        href={checkoutUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer ${plan.isTrial
-          ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
-          : plan.highlight
-            ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
-            : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
-          }`}
-      >
-        {plan.isTrial ? 'Start Free Trial' : `Choose ${plan.name}`}
-      </a>
+      {/* Starter shows 'Included Free' text, others show checkout button */}
+      {plan.name === 'Starter' ? (
+        <div className="block w-full text-center py-3 rounded-lg font-bold bg-slate-700/50 text-green-400 border border-green-500/30">
+          ✓ Included Free
+        </div>
+      ) : (
+        <a
+          href={checkoutUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer ${plan.isTrial
+            ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
+            : plan.highlight
+              ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
+              : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
+            }`}
+        >
+          {plan.isTrial ? 'Start Free Trial' : isCurrentPlan ? 'Current Plan' : `Choose ${plan.name}`}
+        </a>
+      )}
 
       <ul className="mt-8 space-y-4 text-slate-300 flex-grow">
         {plan.features.map((feature, index) => (
@@ -225,7 +238,7 @@ const PricingPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
         {plans.map(plan => (
-          <PricingCard key={plan.name} plan={plan} isAnnual={isAnnual} />
+          <PricingCard key={plan.name} plan={plan} isAnnual={isAnnual} currentTier={community?.tier || 'starter'} />
         ))}
       </div>
 
