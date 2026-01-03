@@ -64,8 +64,8 @@ const TabButton: React.FC<{
     <button
         onClick={onClick}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${active
-                ? "bg-purple-600 text-white shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
+            ? "bg-purple-600 text-white shadow-lg"
+            : "text-slate-400 hover:text-white hover:bg-slate-800"
             }`}
     >
         {icon}
@@ -469,8 +469,8 @@ export default function AdminPage() {
                                                 key={tier}
                                                 onClick={() => handleTierUpdate(tier)}
                                                 className={`flex-1 py-2 rounded text-sm font-bold transition-all ${community?.tier === tier
-                                                        ? 'bg-purple-600 text-white shadow-lg'
-                                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                                    ? 'bg-purple-600 text-white shadow-lg'
+                                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
                                                     }`}
                                             >
                                                 {tier}
@@ -495,7 +495,7 @@ export default function AdminPage() {
                             Have a feature request or found a bug? Email our support team directly.
                         </p>
                         <div className="space-y-3">
-                            <a href="mailto:support@apexdm.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                            <a href="mailto:apexdigitalminds@gmail.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
                                 Contact Support via Email
                             </a>
                         </div>
