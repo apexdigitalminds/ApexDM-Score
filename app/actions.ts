@@ -744,7 +744,17 @@ export async function adminBanUserAction(targetUserId: string, durationHours: nu
 export async function adminUpdateCommunityTierAction(tier: any) {
   await ensureAdmin();
   const communityId = await getCommunityId();
-  const { error } = await supabaseAdmin.from('communities').update({ subscription_tier: tier }).eq('id', communityId);
+
+  // Build update payload - always update tier
+  const updatePayload: { subscription_tier: string; trial_ends_at?: null } = { subscription_tier: tier };
+
+  // 🔧 FIX: Clear trial_ends_at when downgrading from trial
+  // This prevents stale trial data from affecting feature gating
+  if (tier !== 'trial') {
+    updatePayload.trial_ends_at = null;
+  }
+
+  const { error } = await supabaseAdmin.from('communities').update(updatePayload).eq('id', communityId);
   return !error;
 }
 
