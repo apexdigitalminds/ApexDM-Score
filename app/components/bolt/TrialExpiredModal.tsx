@@ -34,9 +34,8 @@ export default function TrialExpiredModal() {
     const handleContinueWithStarter = async () => {
         setIsDowngrading(true);
         try {
-            // Update tier to 'Core' which maps to Starter/Free in the system
-            // Note: The API uses 'Core' as the value for free tier
-            const success = await adminUpdateCommunityTier('Core');
+            // Update tier to 'starter' (free tier)
+            const success = await adminUpdateCommunityTier('Core' as any); // DB uses 'Core', UI shows 'Starter'
             if (success) {
                 // Navigate to dashboard after tier update
                 const dashboardPath = experienceId ? `/dashboard/${experienceId}` : '/admin';

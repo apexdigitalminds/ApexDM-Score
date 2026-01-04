@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useIframeSdk } from "@whop/react";
 import { CheckCircleIcon, StarIcon, ClockIcon } from './icons';
 import { useApp } from '@/context/AppContext';
+import { createCheckoutConfigAction } from '@/app/actions';
 
 // 🔧 PLAN IDs for Whop App Products (Updated: 2026-01-02)
 // Starter is FREE, Pro $79, Elite $149
@@ -26,12 +28,11 @@ const planIds: Record<string, { monthly: string; annual: string }> = {
   }
 };
 
-// Build checkout URL with plan ID
-const getCheckoutUrl = (planName: string, isAnnual: boolean) => {
+// Get plan ID for a given plan name and billing cycle
+const getPlanId = (planName: string, isAnnual: boolean) => {
   const plan = planIds[planName];
-  if (!plan) return "#";
-  const planId = isAnnual ? plan.annual : plan.monthly;
-  return `https://whop.com/checkout/${planId}`;
+  if (!plan) return null;
+  return isAnnual ? plan.annual : plan.monthly;
 };
 
 interface Plan {
@@ -107,8 +108,98 @@ const plans: Plan[] = [
   },
 ];
 
+// 🆕 In-App Purchase Button Component
+const PurchaseButton: React.FC<{
+  planName: string;
+  planId: string;
+  isTrial?: boolean;
+  isHighlight?: boolean;
+  isCurrentPlan?: boolean;
+}> = ({ planName, planId, isTrial, isHighlight, isCurrentPlan }) => {
+  const iframeSdk = useIframeSdk();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePurchase = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Create checkout configuration on server
+      const config = await createCheckoutConfigAction(planId);
+
+      if (!config.success) {
+        throw new Error(config.error || "Failed to create checkout");
+      }
+
+      // 2. Open in-app purchase modal via iFrameSdk
+      const res = await iframeSdk.inAppPurchase({
+        planId: config.planId!,
+        id: config.id!
+      });
+
+      if (res.status === "ok") {
+        // Purchase successful - refresh page to update tier
+        window.location.reload();
+      } else {
+        // User cancelled or error
+        console.log("Purchase cancelled or failed:", res);
+      }
+    } catch (err: any) {
+      console.error("[PurchaseButton] Error:", err);
+      setError(err.message || "Purchase failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Disabled state for current plan
+  if (isCurrentPlan) {
+    return (
+      <button
+        disabled
+        className="block w-full text-center py-3 rounded-lg font-bold bg-slate-700/50 text-slate-400 border border-slate-600 cursor-not-allowed"
+      >
+        Current Plan
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button
+        onClick={handlePurchase}
+        disabled={loading}
+        className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer disabled:cursor-wait disabled:opacity-70 ${isTrial
+          ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
+          : isHighlight
+            ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
+            : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
+          }`}
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Processing...
+          </span>
+        ) : isTrial ? (
+          'Start Free Trial'
+        ) : (
+          `Choose ${planName}`
+        )}
+      </button>
+      {error && (
+        <p className="text-red-400 text-xs mt-2 text-center">{error}</p>
+      )}
+    </>
+  );
+};
+
 const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string }> = ({ plan, isAnnual, currentTier }) => {
-  const checkoutUrl = getCheckoutUrl(plan.name, isAnnual);
+  const planId = getPlanId(plan.name, isAnnual);
   const isCurrentPlan = currentTier.toLowerCase() === plan.name.toLowerCase() ||
     (currentTier.toLowerCase() === 'free' && plan.name === 'Starter') ||
     (currentTier.toLowerCase() === 'core' && plan.name === 'Starter');
@@ -161,26 +252,20 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string
         </p>
       )}
 
-      {/* Starter shows 'Included Free' text, others show checkout button */}
+      {/* Starter shows 'Included Free' text, others use PurchaseButton */}
       {plan.name === 'Starter' ? (
         <div className="block w-full text-center py-3 rounded-lg font-bold bg-slate-700/50 text-green-400 border border-green-500/30">
           ✓ Included Free
         </div>
-      ) : (
-        <a
-          href={checkoutUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`block w-full text-center py-3 rounded-lg font-bold transition-all shadow-md hover:shadow-lg cursor-pointer ${plan.isTrial
-            ? 'bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-500/50'
-            : plan.highlight
-              ? 'bg-purple-600 hover:bg-purple-700 text-white ring-2 ring-purple-500/50'
-              : 'bg-slate-700 hover:bg-slate-600 text-white hover:ring-2 hover:ring-slate-500/50'
-            }`}
-        >
-          {plan.isTrial ? 'Start Free Trial' : isCurrentPlan ? 'Current Plan' : `Choose ${plan.name}`}
-        </a>
-      )}
+      ) : planId ? (
+        <PurchaseButton
+          planName={plan.name}
+          planId={planId}
+          isTrial={plan.isTrial}
+          isHighlight={plan.highlight}
+          isCurrentPlan={isCurrentPlan}
+        />
+      ) : null}
 
       <ul className="mt-8 space-y-4 text-slate-300 flex-grow">
         {plan.features.map((feature, index) => (

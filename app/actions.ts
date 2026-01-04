@@ -513,6 +513,59 @@ export async function validateSessionContext() {
 }
 
 // =============================================================================
+// 🟢 IN-APP PURCHASE (iFrameSdk)
+// =============================================================================
+
+/**
+ * Creates a checkout configuration for in-app purchases.
+ * This is called before opening the iFrameSdk.inAppPurchase modal.
+ * 
+ * @param planId - The Whop plan ID to purchase
+ * @returns Checkout configuration with id and planId
+ */
+export async function createCheckoutConfigAction(planId: string) {
+  try {
+    const session = await verifyUser();
+    if (!session) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Get the community's Whop store ID
+    const { data: community } = await supabaseAdmin
+      .from('communities')
+      .select('whop_store_id')
+      .eq('id', session.communityId)
+      .single();
+
+    if (!community?.whop_store_id) {
+      return { success: false, error: "No Whop store linked" };
+    }
+
+    // Create checkout configuration via Whop SDK
+    // Note: For existing plans, we just need the plan_id
+    // The checkout configuration links the plan to metadata for tracking
+    const checkoutConfig = await whopsdk.checkoutConfigurations.create({
+      company_id: community.whop_store_id,
+      plan_id: planId,
+      metadata: {
+        user_id: session.userId,
+        community_id: session.communityId,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    return {
+      success: true,
+      id: checkoutConfig.id,
+      planId: planId
+    };
+  } catch (error: any) {
+    console.error("[createCheckoutConfigAction] Error:", error);
+    return { success: false, error: error.message || "Failed to create checkout" };
+  }
+}
+
+// =============================================================================
 // 🟢 EXISTING FUNCTIONS (UNCHANGED)
 // =============================================================================
 // All your existing functions below remain exactly the same.
