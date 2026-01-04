@@ -147,9 +147,9 @@ const PurchaseButton: React.FC<{
         window.location.reload();
       } else {
         // User cancelled or SDK returned error
-        // Note: SDK returns "error" for both errors and user cancellation
-        setCancelled(true);
+        // Force refresh to clear any stuck modal overlay
         console.log("Checkout completed with status:", res.status);
+        window.location.reload();
       }
     } catch (err: any) {
       console.error("[PurchaseButton] Error:", err);
