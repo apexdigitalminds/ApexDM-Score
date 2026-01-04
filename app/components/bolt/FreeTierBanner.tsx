@@ -14,8 +14,9 @@ export function FreeTierTopBanner() {
     const { community } = useApp();
 
     // Only show for Starter tier users (free tier)
+    // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
     const currentTier = (community?.tier || 'starter').toLowerCase();
-    if (currentTier !== 'starter' && currentTier !== 'free') return null;
+    if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
 
     return (
         <div className="bg-slate-800 text-white py-2 px-4 text-center text-sm shadow-lg">
@@ -39,8 +40,9 @@ export function FreeTierGradientBanner() {
     const { community } = useApp();
 
     // Only show for Starter tier users (free tier)
+    // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
     const currentTier = (community?.tier || 'starter').toLowerCase();
-    if (currentTier !== 'starter' && currentTier !== 'free') return null;
+    if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
 
     return (
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 shadow-md relative z-50">
