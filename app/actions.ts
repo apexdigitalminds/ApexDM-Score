@@ -517,11 +517,11 @@ export async function validateSessionContext() {
 // =============================================================================
 
 /**
- * Creates a checkout configuration for in-app purchases.
- * This is called before opening the iFrameSdk.inAppPurchase modal.
+ * Validates a plan ID for in-app purchases.
+ * The iframeSdk.inAppPurchase() handles the checkout directly with planId.
  * 
  * @param planId - The Whop plan ID to purchase
- * @returns Checkout configuration with id and planId
+ * @returns Validation result with planId
  */
 export async function createCheckoutConfigAction(planId: string) {
   try {
@@ -530,38 +530,20 @@ export async function createCheckoutConfigAction(planId: string) {
       return { success: false, error: "Not authenticated" };
     }
 
-    // Get the community's Whop store ID
-    const { data: community } = await supabaseAdmin
-      .from('communities')
-      .select('whop_store_id')
-      .eq('id', session.communityId)
-      .single();
-
-    if (!community?.whop_store_id) {
-      return { success: false, error: "No Whop store linked" };
+    // Validate planId format
+    if (!planId || !planId.startsWith('plan_')) {
+      return { success: false, error: "Invalid plan ID" };
     }
 
-    // Create checkout configuration via Whop SDK
-    // Note: For existing plans, we just need the plan_id
-    // The checkout configuration links the plan to metadata for tracking
-    const checkoutConfig = await whopsdk.checkoutConfigurations.create({
-      company_id: community.whop_store_id,
-      plan_id: planId,
-      metadata: {
-        user_id: session.userId,
-        community_id: session.communityId,
-        timestamp: new Date().toISOString()
-      }
-    });
-
+    // For iframeSdk.inAppPurchase, we just need the planId
+    // The SDK handles checkout directly without needing a server-side config
     return {
       success: true,
-      id: checkoutConfig.id,
       planId: planId
     };
   } catch (error: any) {
     console.error("[createCheckoutConfigAction] Error:", error);
-    return { success: false, error: error.message || "Failed to create checkout" };
+    return { success: false, error: error.message || "Validation failed" };
   }
 }
 

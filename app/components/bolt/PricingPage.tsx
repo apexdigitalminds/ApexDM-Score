@@ -125,17 +125,17 @@ const PurchaseButton: React.FC<{
     setError(null);
 
     try {
-      // 1. Create checkout configuration on server
+      // 1. Validate the plan on server (ensures user is authenticated)
       const config = await createCheckoutConfigAction(planId);
 
       if (!config.success) {
-        throw new Error(config.error || "Failed to create checkout");
+        throw new Error(config.error || "Validation failed");
       }
 
       // 2. Open in-app purchase modal via iFrameSdk
+      // The SDK handles checkout directly with just the planId
       const res = await iframeSdk.inAppPurchase({
-        planId: config.planId!,
-        id: config.id!
+        planId: config.planId!
       });
 
       if (res.status === "ok") {
