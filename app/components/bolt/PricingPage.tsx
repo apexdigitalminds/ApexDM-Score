@@ -119,10 +119,12 @@ const PurchaseButton: React.FC<{
   const iframeSdk = useIframeSdk();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cancelled, setCancelled] = useState(false);
 
   const handlePurchase = async () => {
     setLoading(true);
     setError(null);
+    setCancelled(false);
 
     try {
       // 1. Validate the plan on server (ensures user is authenticated)
@@ -138,12 +140,18 @@ const PurchaseButton: React.FC<{
         planId: config.planId!
       });
 
+      console.log("[PurchaseButton] inAppPurchase response:", res);
+
       if (res.status === "ok") {
         // Purchase successful - refresh page to update tier
         window.location.reload();
+      } else if (res.status === "cancelled" || res.status === "error") {
+        // User cancelled or exited checkout
+        setCancelled(true);
+        console.log("Checkout cancelled/exited by user");
       } else {
-        // User cancelled or error
-        console.log("Purchase cancelled or failed:", res);
+        // Unknown status - log it
+        console.log("Unknown checkout status:", res);
       }
     } catch (err: any) {
       console.error("[PurchaseButton] Error:", err);
