@@ -145,13 +145,11 @@ const PurchaseButton: React.FC<{
       if (res.status === "ok") {
         // Purchase successful - refresh page to update tier
         window.location.reload();
-      } else if (res.status === "cancelled" || res.status === "error") {
-        // User cancelled or exited checkout
-        setCancelled(true);
-        console.log("Checkout cancelled/exited by user");
       } else {
-        // Unknown status - log it
-        console.log("Unknown checkout status:", res);
+        // User cancelled or SDK returned error
+        // Note: SDK returns "error" for both errors and user cancellation
+        setCancelled(true);
+        console.log("Checkout completed with status:", res.status);
       }
     } catch (err: any) {
       console.error("[PurchaseButton] Error:", err);
