@@ -9,7 +9,7 @@ const ToggleSwitch = ({ checked, onChange, disabled }: { checked: boolean; onCha
     <button
         onClick={() => !disabled && onChange(!checked)}
         disabled={disabled}
-        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${checked ? 'bg-purple-600' : 'bg-slate-600'
+        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${checked ? 'bg-green-500' : 'bg-slate-600'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
         <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${checked ? 'translate-x-6' : 'translate-x-0'

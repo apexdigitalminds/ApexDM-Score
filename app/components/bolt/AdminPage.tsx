@@ -501,11 +501,6 @@ export default function AdminPage() {
                             </a>
                         </div>
                     </div>
-
-                    {/* 🆕 White-Label Branding Settings */}
-                    <div className="lg:col-span-2">
-                        <WhiteLabelSettings />
-                    </div>
                 </div>
             )}
 
@@ -822,26 +817,8 @@ export default function AdminPage() {
 
                     {/* Discord section removed - not ready for launch */}
 
-                    {isFeatureEnabled('white_label') ? (
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/30">
-                            <h3 className="text-lg font-bold text-white mb-4">White-Label Branding</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3"><ToggleSwitch checked={community?.whiteLabelEnabled ?? false} onChange={(val) => handleToggleWhiteLabelClick(val)} /><span className="text-sm text-slate-300 font-medium">Remove "Powered by ApexDM"</span></div>
-                                <p className="text-xs text-slate-400">Your dashboard footer will be hidden from members.</p>
-
-                                {/* 🟢 BRANDING SYNC BUTTON */}
-                                <div className="border-t border-slate-700 pt-4 mt-4">
-                                    <button
-                                        onClick={handleSyncBranding}
-                                        className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-sm font-bold flex items-center justify-center gap-2 transition-colors"
-                                    >
-                                        <LogoIcon className="w-4 h-4" /> Sync Branding from Whop
-                                    </button>
-                                    <p className="text-[10px] text-slate-500 mt-2 text-center">Updates logo and company name from your Whop settings.</p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : <FeatureLock title="White-Label Branding" description="Unlock with Elite." requiredTier="Elite"><div className="space-y-6 pt-2"><div className="flex items-center justify-between"><div className="h-6 w-32 bg-slate-600 rounded"></div><div className="h-6 w-12 bg-purple-600/30 rounded-full"></div></div><div className="h-px w-full bg-slate-700"></div><div className="h-4 w-3/4 bg-slate-700 rounded"></div><div className="h-4 w-1/2 bg-slate-700 rounded"></div></div></FeatureLock>}
+                    {/* 🆕 Full White-Label Branding Settings */}
+                    <WhiteLabelSettings />
 
                     {isDev && (
                         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">

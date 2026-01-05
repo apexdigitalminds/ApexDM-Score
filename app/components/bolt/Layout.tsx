@@ -114,10 +114,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {/* LEFT: Branding with Logic */}
                         <div className="flex items-center gap-4">
                             <Link href={homeHref} className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
-                                {!isLoading && isWhiteLabelActive && community?.logoUrl ? (
+                                {!isLoading && isWhiteLabelActive ? (
                                     <>
-                                        <img src={community.logoUrl} alt={community.name} className="h-8 w-8 rounded-lg object-cover" />
-                                        <span className="text-white hidden sm:block">{community.name}</span>
+                                        {/* 🆕 Show community logo if set, else default icon */}
+                                        {community?.logoUrl ? (
+                                            <img src={community.logoUrl} alt={community?.name} className="h-8 w-8 rounded-lg object-cover" />
+                                        ) : (
+                                            <LogoIcon className="h-8 w-8" />
+                                        )}
+                                        {/* 🆕 Always show community name when white-label is active */}
+                                        <span className="text-white hidden sm:block">{community?.name || 'My Community'}</span>
                                     </>
                                 ) : (
                                     <>
