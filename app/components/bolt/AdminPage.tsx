@@ -23,6 +23,8 @@ import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
 import ConfirmationModal from "./ConfirmationModal";
 import WhiteLabelSettings from "./WhiteLabelSettings"; // 🆕 White-label branding
+import OnboardingModal from "./OnboardingModal"; // 🆕 First-visit wizard
+import GettingStartedCard from "./GettingStartedCard"; // 🆕 Setup guide
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
 // Inlined Icons
@@ -349,6 +351,8 @@ export default function AdminPage() {
     return (
         <div className="space-y-6 pb-20">
             <ConfirmationModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={closeModal} isDestructive={modalConfig.isDestructive} />
+            {/* 🆕 First-visit onboarding popup */}
+            <OnboardingModal onNavigateToSetup={() => setActiveTab('subscription')} />
             {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
             {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
@@ -441,64 +445,69 @@ export default function AdminPage() {
 
             {/* 🟢 NEW SUBSCRIPTION TAB */}
             {activeTab === 'subscription' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-white">Current Plan</h3>
-                            <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wide
+                <div className="space-y-6">
+                    {/* 🆕 Getting Started Guide */}
+                    <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab)} />
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-white">Current Plan</h3>
+                                <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wide
                           ${community?.tier === 'Elite' ? 'bg-purple-600 text-white' :
-                                    community?.tier === 'Pro' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-slate-300'}`}>
-                                {community?.tier || 'Free'}
-                            </span>
-                        </div>
+                                        community?.tier === 'Pro' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-slate-300'}`}>
+                                    {community?.tier || 'Free'}
+                                </span>
+                            </div>
 
-                        <div className="space-y-4 mb-8">
-                            <p className="text-slate-400 text-sm">
-                                Your community is currently on the <strong>{community?.tier}</strong> tier.
-                                {community?.trialEndsAt && ` Trial ends on ${new Date(community.trialEndsAt).toLocaleDateString()}.`}
-                            </p>
+                            <div className="space-y-4 mb-8">
+                                <p className="text-slate-400 text-sm">
+                                    Your community is currently on the <strong>{community?.tier}</strong> tier.
+                                    {community?.trialEndsAt && ` Trial ends on ${new Date(community.trialEndsAt).toLocaleDateString()}.`}
+                                </p>
 
-                            {/* 🟢 CONDITIONAL RENDER: Only show override in Dev Mode */}
-                            {isDev && (
-                                <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                                        Manual Plan Override (Dev Mode)
-                                    </label>
-                                    <div className="flex gap-2">
-                                        {['Core', 'Pro', 'Elite'].map((tier) => (
-                                            <button
-                                                key={tier}
-                                                onClick={() => handleTierUpdate(tier)}
-                                                className={`flex-1 py-2 rounded text-sm font-bold transition-all ${community?.tier === tier
-                                                    ? 'bg-purple-600 text-white shadow-lg'
-                                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
-                                                    }`}
-                                            >
-                                                {tier}
-                                            </button>
-                                        ))}
+                                {/* 🟢 CONDITIONAL RENDER: Only show override in Dev Mode */}
+                                {isDev && (
+                                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                            Manual Plan Override (Dev Mode)
+                                        </label>
+                                        <div className="flex gap-2">
+                                            {['Core', 'Pro', 'Elite'].map((tier) => (
+                                                <button
+                                                    key={tier}
+                                                    onClick={() => handleTierUpdate(tier)}
+                                                    className={`flex-1 py-2 rounded text-sm font-bold transition-all ${community?.tier === tier
+                                                        ? 'bg-purple-600 text-white shadow-lg'
+                                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {tier}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+
+                            <Link href="/pricing" className="block w-full text-center bg-white text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-200 transition-colors">
+                                View Pricing & Features
+                            </Link>
                         </div>
 
-                        <Link href="/pricing" className="block w-full text-center bg-white text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-200 transition-colors">
-                            View Pricing & Features
-                        </Link>
-                    </div>
-
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-center text-center">
-                        <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
-                        <p className="text-slate-400 text-sm mb-6">
-                            Have a feature request or found a bug? Email our support team directly.
-                        </p>
-                        <div className="space-y-3">
-                            <a href="mailto:apexdigitalminds@gmail.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
-                                Contact Support via Email
-                            </a>
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
+                            <p className="text-slate-400 text-sm mb-6">
+                                Have a feature request or found a bug? Email our support team directly.
+                            </p>
+                            <div className="space-y-3">
+                                <a href="mailto:apexdigitalminds@gmail.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                                    Contact Support via Email
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
