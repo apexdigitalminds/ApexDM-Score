@@ -730,7 +730,6 @@ export default function AdminPage() {
                                             <label className="block text-xs text-slate-400 mb-1">Item Type</label>
                                             <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
                                                 <optgroup label="Consumables">
-                                                    <option value="INSTANT">Instant Consumable (Inventory Only)</option>
                                                     <option value="STREAK_FREEZE">Streak Freeze (+1 Freeze)</option>
                                                     <option value="XP_GIFT">XP Gift (Flat XP Bonus)</option>
                                                     <option value="RANDOM_XP">Random XP (Range)</option>
