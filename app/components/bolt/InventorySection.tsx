@@ -25,20 +25,20 @@ interface InventorySectionProps {
     inventory?: UserInventoryItem[];
     activeEffects?: any[];
     history?: any[];
-    userMetadata?: any; 
+    userMetadata?: any;
     onRefresh?: () => void;
 }
 
-const InventorySection: React.FC<InventorySectionProps> = ({ 
-    inventory = [], 
-    activeEffects = [], 
-    history = [], 
+const InventorySection: React.FC<InventorySectionProps> = ({
+    inventory = [],
+    activeEffects = [],
+    history = [],
     userMetadata = null,
-    onRefresh 
+    onRefresh
 }) => {
     const { selectedUser, activateInventoryItem } = useApp();
-    const [toast, setToast] = useState<{msg: string, type: 'success'|'error'} | null>(null);
-    
+    const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
+
     // Optimistic State
     const [localMetadata, setLocalMetadata] = useState<any>(userMetadata || selectedUser?.metadata || {});
 
@@ -54,25 +54,25 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
     const [unequippingType, setUnequippingType] = useState<string | null>(null);
 
-    const showToast = (msg: string, type: 'success'|'error' = 'success') => {
+    const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3000);
     };
 
     const handleEquip = async (item: UserInventoryItem) => {
         if (!item.itemDetails || !selectedUser) return;
-        
+
         setProcessingIds(prev => new Set(prev).add(item.id));
         const prevMetadata = { ...localMetadata };
 
         const type = item.itemDetails.itemType;
         const newMeta = { ...localMetadata };
-        
+
         if (type === 'NAME_COLOR') newMeta.nameColor = item.itemDetails.metadata?.color;
         if (type === 'TITLE') newMeta.title = item.itemDetails.metadata?.text;
         if (type === 'BANNER') newMeta.bannerUrl = item.itemDetails.metadata?.imageUrl;
         if (type === 'AVATAR_PULSE') newMeta.avatarPulseColor = item.itemDetails.metadata?.color;
-        
+
         setLocalMetadata(newMeta);
 
         try {
@@ -83,9 +83,9 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             } else {
                 throw new Error(result.message);
             }
-        } catch (e: any) { 
-            showToast(e.message || "Failed to equip.", 'error'); 
-            setLocalMetadata(prevMetadata); 
+        } catch (e: any) {
+            showToast(e.message || "Failed to equip.", 'error');
+            setLocalMetadata(prevMetadata);
         } finally {
             setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
         }
@@ -93,8 +93,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({
 
     const handleUnequip = async (type: string) => {
         if (!selectedUser) return;
-        setUnequippingType(type); 
-        
+        setUnequippingType(type);
+
         const prevMetadata = { ...localMetadata };
         const newMeta = { ...localMetadata };
 
@@ -102,7 +102,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         if (type === 'TITLE') delete newMeta.title;
         if (type === 'BANNER') delete newMeta.bannerUrl;
         if (type === 'AVATAR_PULSE') delete newMeta.avatarPulseColor;
-        
+
         setLocalMetadata(newMeta);
 
         try {
@@ -113,7 +113,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             } else {
                 throw new Error(result.message);
             }
-        } catch (e: any) { 
+        } catch (e: any) {
             showToast(e.message || "Failed to unequip.", 'error');
             setLocalMetadata(prevMetadata);
         } finally {
@@ -124,23 +124,24 @@ const InventorySection: React.FC<InventorySectionProps> = ({
     const handleUseItem = async (item: UserInventoryItem) => {
         if (!item.itemDetails) return;
         setProcessingIds(prev => new Set(prev).add(item.id));
-        
+
         const result = await activateInventoryItem(item.id);
         if (result.success) {
-             showToast(result.message);
-             if (onRefresh) onRefresh();
+            showToast(result.message);
+            if (onRefresh) onRefresh();
         } else {
-             showToast(result.message, 'error');
+            showToast(result.message, 'error');
         }
         setProcessingIds(prev => { const next = new Set(prev); next.delete(item.id); return next; });
     };
 
     // Filter Items
     const visibleInventory = inventory.filter(i => !processingIds.has(i.id));
-    
-    // 🟢 Group Consumables Logic
-    const rawConsumables = visibleInventory.filter(i => ['INSTANT', 'TIMED_EFFECT'].includes(i.itemDetails?.itemType || ''));
-    
+
+    // 🟢 Group Consumables Logic - includes all consumable types
+    const CONSUMABLE_TYPES = ['INSTANT', 'TIMED_EFFECT', 'STREAK_FREEZE', 'XP_GIFT', 'RANDOM_XP'];
+    const rawConsumables = visibleInventory.filter(i => CONSUMABLE_TYPES.includes(i.itemDetails?.itemType || ''));
+
     // Group by ID to show counters
     const groupedConsumables = Object.values(rawConsumables.reduce((acc, item) => {
         const key = item.itemDetails?.id || 'unknown';
@@ -153,8 +154,9 @@ const InventorySection: React.FC<InventorySectionProps> = ({
 
     const wearables = visibleInventory.filter(i => {
         const type = i.itemDetails?.itemType || '';
-        if (['INSTANT', 'TIMED_EFFECT'].includes(type)) return false;
-        
+        // Exclude all consumable types from wearables
+        if (CONSUMABLE_TYPES.includes(type)) return false;
+
         const meta = localMetadata || {};
         const itemMeta = i.itemDetails?.metadata;
         if (!itemMeta) return true;
@@ -169,7 +171,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 relative">
-             {toast && (
+            {toast && (
                 <div className={`absolute -top-12 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl font-bold z-50 animate-fade-in-up ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
                     {toast.msg}
                 </div>
@@ -180,7 +182,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <SparklesIcon className="w-5 h-5 text-yellow-400" /> Active & Equipped
                 </h3>
-                
+
                 <div className="space-y-3 flex-grow">
                     {/* Active Buffs */}
                     {activeEffects.length > 0 && (
@@ -190,7 +192,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 <div key={effect.id} className="flex justify-between items-center bg-green-900/20 border border-green-500/30 p-3 rounded-lg mb-2">
                                     <span className="text-sm font-bold text-green-100">{effect.modifier}x XP Boost</span>
                                     <span className="text-xs text-green-300">
-                                        Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Unknown'}
+                                        Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown'}
                                     </span>
                                 </div>
                             ))}
@@ -224,14 +226,14 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         )}
                         {localMetadata?.avatarPulseColor && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
-                                <span className="text-sm text-slate-300">Avatar Pulse</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
+                                    <span className="text-sm text-slate-300">Avatar Pulse</span>
+                                </div>
+                                <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
+                                    {unequippingType === 'AVATAR_PULSE' ? '...' : 'Unequip'}
+                                </button>
                             </div>
-                            <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
-                                {unequippingType === 'AVATAR_PULSE' ? '...' : 'Unequip'}
-                            </button>
-                        </div>
                         )}
                         {localMetadata?.bannerUrl && (
                             <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
@@ -250,18 +252,18 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         )}
                     </div>
                 </div>
-                
-                 {history.length > 0 && (
+
+                {history.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-700">
-                            <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3"/> Recent Usage</h4>
-                            <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
-                                {history.map((log: any) => (
-                                    <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/30 p-1.5 rounded">
-                                        <span className="text-slate-300">{log.item_name}</span>
-                                        <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
-                                    </div>
-                                ))}
-                            </div>
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3" /> Recent Usage</h4>
+                        <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                            {history.map((log: any) => (
+                                <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/30 p-1.5 rounded">
+                                    <span className="text-slate-300">{log.item_name}</span>
+                                    <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -284,7 +286,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
                                 <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => handleUseItem(item)}
                                 className="px-3 py-1.5 rounded text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-colors shadow-lg shadow-purple-500/20"
                             >
@@ -307,7 +309,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
                                 <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => handleEquip(item)}
                                 className="px-3 py-1.5 rounded text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-lg shadow-blue-500/20"
                             >
