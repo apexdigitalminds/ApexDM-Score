@@ -384,62 +384,69 @@ export default function AdminPage() {
             </div>
 
             {activeTab === 'users' && (
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                            <h3 className="text-lg font-bold text-white mb-4">Select User</h3>
-                            <select id="user-select" value={targetUserId || ''} onChange={(e) => setTargetUserId(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
-                                {allUsers.map((u: Profile) => <option key={u.id} value={u.id}>{u.username}</option>)}
-                            </select>
-                        </div>
-                        {targetUser && (
-                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div><h3 className="text-xl font-bold text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-600 text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
-                                    {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
-                                        <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase">Manual Awards</label>
-                                        <div className="flex gap-2 mb-3 items-end">
-                                            <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
-                                            <button onClick={handleAwardXp} disabled={!targetUser} className="bg-green-600 text-white px-2 rounded hover:bg-green-700 text-sm font-bold h-[38px] w-32">+XP</button>
-                                        </div>
-                                        <div className="flex gap-2 items-end">
-                                            <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
-                                            <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
-                                        </div>
+                <div className="space-y-6">
+                    {/* Tab Description Banner */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h2 className="text-lg font-bold text-white mb-1">👥 User Management</h2>
+                        <p className="text-slate-400 text-sm">View and manage your community members, their XP totals, badges, and activity. Select a user to view their detailed action history or manually award XP and badges.</p>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                                <h3 className="text-lg font-bold text-white mb-4">Select User</h3>
+                                <select id="user-select" value={targetUserId || ''} onChange={(e) => setTargetUserId(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
+                                    {allUsers.map((u: Profile) => <option key={u.id} value={u.id}>{u.username}</option>)}
+                                </select>
+                            </div>
+                            {targetUser && (
+                                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div><h3 className="text-xl font-bold text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-600 text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
+                                        {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
-                                        <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
-                                        <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Freezes</div><input type="number" value={editFreezes} onChange={e => setEditFreezes(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
-                                    </div>
-                                    <button onClick={handleAdminStatUpdate} className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white py-2 rounded transition-colors text-sm font-semibold">Save Stats</button>
-                                    <div className="border-t border-slate-700 pt-4">
-                                        <div className="mb-4">
-                                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3" /> Item History</h4>
-                                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                                                {targetUserItemLogs.length > 0 ? targetUserItemLogs.map((log: any) => (
-                                                    <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/50 p-1.5 rounded">
-                                                        <span className="text-slate-300">{log.item_name}</span>
-                                                        <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
-                                                    </div>
-                                                )) : <p className="text-xs text-slate-600 italic">No items used.</p>}
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+                                            <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase">Manual Awards</label>
+                                            <div className="flex gap-2 mb-3 items-end">
+                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
+                                                <button onClick={handleAwardXp} disabled={!targetUser} className="bg-green-600 text-white px-2 rounded hover:bg-green-700 text-sm font-bold h-[38px] w-32">+XP</button>
+                                            </div>
+                                            <div className="flex gap-2 items-end">
+                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                                                <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
                                             </div>
                                         </div>
-                                        <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
-                                            <button onClick={() => handleAdminBan(null)} disabled={isSelf} className="bg-red-600 text-white hover:bg-red-700 py-2 rounded text-xs disabled:opacity-50">Permaban</button>
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
+                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
+                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Freezes</div><input type="number" value={editFreezes} onChange={e => setEditFreezes(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
+                                        </div>
+                                        <button onClick={handleAdminStatUpdate} className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white py-2 rounded transition-colors text-sm font-semibold">Save Stats</button>
+                                        <div className="border-t border-slate-700 pt-4">
+                                            <div className="mb-4">
+                                                <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3" /> Item History</h4>
+                                                <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                                                    {targetUserItemLogs.length > 0 ? targetUserItemLogs.map((log: any) => (
+                                                        <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/50 p-1.5 rounded">
+                                                            <span className="text-slate-300">{log.item_name}</span>
+                                                            <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    )) : <p className="text-xs text-slate-600 italic">No items used.</p>}
+                                                </div>
+                                            </div>
+                                            <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
+                                                <button onClick={() => handleAdminBan(null)} disabled={isSelf} className="bg-red-600 text-white hover:bg-red-700 py-2 rounded text-xs disabled:opacity-50">Permaban</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="lg:col-span-3">
-                        <Leaderboard users={allUsers} currentUserId={targetUserId || ''} />
+                            )}
+                        </div>
+                        <div className="lg:col-span-3">
+                            <Leaderboard users={allUsers} currentUserId={targetUserId || ''} />
+                        </div>
                     </div>
                 </div>
             )}
@@ -517,7 +524,11 @@ export default function AdminPage() {
             {/* Rest of the tabs (Engagement, Store, Settings) */}
             {activeTab === 'engagement' && (
                 <div className="space-y-6">
-                    {/* Content preserved from previous versions */}
+                    {/* Tab Description Banner */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h2 className="text-lg font-bold text-white mb-1">🏆 Engagement</h2>
+                        <p className="text-slate-400 text-sm">Configure how members earn recognition in your community. Set up XP reward actions to incentivize participation and create achievement badges for milestones.</p>
+                    </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
                             <div className="flex justify-between items-center mb-4">
@@ -617,267 +628,326 @@ export default function AdminPage() {
 
             {/* QUESTS TAB - Separated from Engagement for tier gating */}
             {activeTab === 'quests' && (
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-white">Manage Quests</h3>
-                        {isFeatureEnabled('quests') ? (
-                            <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer" /><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
-                        ) : <span className=""></span>}
+                <div className="space-y-6">
+                    {/* Tab Description Banner */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h2 className="text-lg font-bold text-white mb-1">🎯 Quests</h2>
+                        <p className="text-slate-400 text-sm">Create multi-step challenges that guide members through structured activities. Quests combine multiple XP actions into engaging journeys.</p>
                     </div>
-                    {isFeatureEnabled('quests') ? (
-                        <>
-                            <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                                    <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                    <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                </div>
-                                <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
-                                <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
-                                    {questTasks.map((t, i) => (
-                                        <div key={i} className="flex gap-1 mb-1">
-                                            <div className="flex-1 flex flex-col gap-1">
-                                                <div className="flex gap-1">
-                                                    <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
-                                                    <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
+                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-white">Manage Quests</h3>
+                            {isFeatureEnabled('quests') ? (
+                                <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer" /><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
+                            ) : <span className=""></span>}
+                        </div>
+                        {isFeatureEnabled('quests') ? (
+                            <>
+                                <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                                        <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
+                                        <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
+                                    </div>
+                                    <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
+                                    <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
+                                        {questTasks.map((t, i) => (
+                                            <div key={i} className="flex gap-1 mb-1">
+                                                <div className="flex-1 flex flex-col gap-1">
+                                                    <div className="flex gap-1">
+                                                        <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
+                                                        <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
+                                                    </div>
                                                 </div>
+                                                <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
                                             </div>
-                                            <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
+                                        ))}
+                                        <button type="button" onClick={handleAddTask} className="text-xs text-blue-400">+ Task</button>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editingQuest ? 'Update' : 'Create'}</button>
+                                        {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                    </div>
+                                </form>
+                                <div className="flex-grow overflow-y-auto space-y-2 pr-2">
+                                    {filteredQuests.map(q => (
+                                        <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
+                                            <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                            <div className="flex gap-2 items-center">
+                                                {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
+                                                {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                                            </div>
                                         </div>
                                     ))}
-                                    <button type="button" onClick={handleAddTask} className="text-xs text-blue-400">+ Task</button>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editingQuest ? 'Update' : 'Create'}</button>
-                                    {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
-                                </div>
-                            </form>
-                            <div className="flex-grow overflow-y-auto space-y-2 pr-2">
-                                {filteredQuests.map(q => (
-                                    <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                        <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
-                                        <div className="flex gap-2 items-center">
-                                            {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
-                                            {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    ) : (<div className="h-full flex flex-col justify-center"><FeatureLock title="Quests System" description="Unlock with Pro." requiredTier="Pro" /></div>)}
+                            </>
+                        ) : (<div className="h-full flex flex-col justify-center"><FeatureLock title="Quests System" description="Unlock with Pro." requiredTier="Pro" /></div>)}
+                    </div>
                 </div>
             )}
 
             {activeTab === 'store' && (
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-white">XP Store Management</h3>
-                        {isFeatureEnabled('store') ? (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400">Show Archived</span>
-                                <ToggleSwitch checked={showArchivedStore} onChange={setShowArchivedStore} />
-                            </div>
-                        ) : null}
+                <div className="space-y-6">
+                    {/* Tab Description Banner */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h2 className="text-lg font-bold text-white mb-1">🛒 XP Store</h2>
+                        <p className="text-slate-400 text-sm">Let members spend their hard-earned XP on rewards you define. Create store items like XP boosters, streak freezes, or cosmetic rewards.</p>
                     </div>
-
-                    {isFeatureEnabled('store') ? (
-                        <>
-                            <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Item Name</label>
-                                        <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Cost (XP)</label>
-                                        <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
-                                    </div>
+                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-white">XP Store Management</h3>
+                            {isFeatureEnabled('store') ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-400">Show Archived</span>
+                                    <ToggleSwitch checked={showArchivedStore} onChange={setShowArchivedStore} />
                                 </div>
+                            ) : null}
+                        </div>
 
-                                <div className="mb-4">
-                                    <label className="block text-xs text-slate-400 mb-1">Description</label>
-                                    <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" rows={2} />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Item Type</label>
-                                        <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
-                                            <option value="INSTANT">Instant Consumable</option>
-                                            <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
-                                            <option value="NAME_COLOR">Name Color (Cosmetic)</option>
-                                            <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
-                                            {/* 🟢 UPDATED: Label Change */}
-                                            <option value="TITLE">Title - Prefix/Suffix (Cosmetic)</option>
-                                            <option value="BANNER">Profile Banner (Cosmetic)</option>
-                                        </select>
+                        {isFeatureEnabled('store') ? (
+                            <>
+                                <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">Item Name</label>
+                                            <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">Cost (XP)</label>
+                                            <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-slate-400 mb-1">Icon</label>
-                                        <div className="flex gap-2 items-center">
-                                            <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
-                                                {/* 🟢 FIXED: RenderIconPreview now correctly uses metaColor */}
-                                                <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
-                                            </div>
-                                            <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full h-10">
-                                                {iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}
+
+                                    <div className="mb-4">
+                                        <label className="block text-xs text-slate-400 mb-1">Description</label>
+                                        <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" rows={2} />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">Item Type</label>
+                                            <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
+                                                <option value="INSTANT">Instant Consumable</option>
+                                                <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
+                                                <option value="NAME_COLOR">Name Color (Cosmetic)</option>
+                                                <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
+                                                {/* 🟢 UPDATED: Label Change */}
+                                                <option value="TITLE">Title - Prefix/Suffix (Cosmetic)</option>
+                                                <option value="BANNER">Profile Banner (Cosmetic)</option>
                                             </select>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-900/50 p-3 rounded border border-slate-700 mb-4">
-                                    {itemType === 'TIMED_EFFECT' && (
-                                        <div className="flex gap-2">
-                                            <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="Hours" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
-                                            <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
-                                        </div>
-                                    )}
-                                    {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') && (
                                         <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Select Color</label>
+                                            <label className="block text-xs text-slate-400 mb-1">Icon</label>
                                             <div className="flex gap-2 items-center">
-                                                <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-10 cursor-pointer border-none bg-transparent" />
-                                                <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-24" />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {itemType === 'TITLE' && (
-                                        <div className="flex gap-2">
-                                            <div className="flex-grow">
-                                                <label className="block text-xs text-slate-400 mb-1">Title Text</label>
-                                                <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. The Wizard" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1">Position</label>
-                                                <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
-                                                    <option value="prefix">Prefix (Start)</option>
-                                                    <option value="suffix">Suffix (End)</option>
+                                                <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
+                                                    {/* 🟢 FIXED: RenderIconPreview now correctly uses metaColor */}
+                                                    <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
+                                                </div>
+                                                <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full h-10">
+                                                    {iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}
                                                 </select>
                                             </div>
                                         </div>
-                                    )}
-                                    {(itemType === 'BANNER' || itemType === 'FRAME') && (
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
-                                            {metaUrl && (
-                                                <div className="mb-2">
-                                                    <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600" />
-                                                    <button type="button" onClick={() => setMetaUrl('')} className="text-xs text-red-400 underline mt-1">Remove</button>
-                                                </div>
-                                            )}
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const url = await api.uploadAvatar(file, adminUser?.id);
-                                                        if (url) setMetaUrl(url);
-                                                    }
-                                                }}
-                                                className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
-                                            />
-                                            <p className="text-[10px] text-slate-500 mt-1">Recommended Size: 1200x300px (JPG/PNG)</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-2">
-                                    <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-bold text-sm w-full">{editingItem ? 'Update Item' : 'Create Item'}</button>
-                                    {editingItem && <button type="button" onClick={resetItemForm} className="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-500 text-sm">Cancel</button>}
-                                </div>
-                            </form>
-
-                            <div className="flex-grow overflow-y-auto pr-2 space-y-2">
-                                {filteredStore.map(item => (
-                                    <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
-                                                    <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
-                                                </div>
-                                                <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
-                                                <p className="font-bold text-sm text-white">{item.name}</p>
-                                            </div>
-                                            <p className="text-xs text-slate-400">{item.cost} XP</p>
-                                        </div>
-                                        <div className="flex gap-2 items-center">
-                                            {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
-                                            {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
-                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                        <FeatureLock title="XP Store" description="Unlock with Elite." requiredTier="Elite" />
-                    )}
+
+                                    <div className="bg-slate-900/50 p-3 rounded border border-slate-700 mb-4">
+                                        {itemType === 'TIMED_EFFECT' && (
+                                            <div className="flex gap-2">
+                                                <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="Hours" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
+                                                <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
+                                            </div>
+                                        )}
+                                        {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') && (
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Select Color</label>
+                                                <div className="flex gap-2 items-center">
+                                                    <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-10 cursor-pointer border-none bg-transparent" />
+                                                    <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-24" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {itemType === 'TITLE' && (
+                                            <div className="flex gap-2">
+                                                <div className="flex-grow">
+                                                    <label className="block text-xs text-slate-400 mb-1">Title Text</label>
+                                                    <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. The Wizard" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs text-slate-400 mb-1">Position</label>
+                                                    <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
+                                                        <option value="prefix">Prefix (Start)</option>
+                                                        <option value="suffix">Suffix (End)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(itemType === 'BANNER' || itemType === 'FRAME') && (
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
+                                                {metaUrl && (
+                                                    <div className="mb-2">
+                                                        <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600" />
+                                                        <button type="button" onClick={() => setMetaUrl('')} className="text-xs text-red-400 underline mt-1">Remove</button>
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const url = await api.uploadAvatar(file, adminUser?.id);
+                                                            if (url) setMetaUrl(url);
+                                                        }
+                                                    }}
+                                                    className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                                                />
+                                                <p className="text-[10px] text-slate-500 mt-1">Recommended Size: 1200x300px (JPG/PNG)</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-bold text-sm w-full">{editingItem ? 'Update Item' : 'Create Item'}</button>
+                                        {editingItem && <button type="button" onClick={resetItemForm} className="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                    </div>
+                                </form>
+
+                                <div className="flex-grow overflow-y-auto pr-2 space-y-2">
+                                    {filteredStore.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
+                                                        <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
+                                                    </div>
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
+                                                    <p className="font-bold text-sm text-white">{item.name}</p>
+                                                </div>
+                                                <p className="text-xs text-slate-400">{item.cost} XP</p>
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
+                                                {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <FeatureLock title="XP Store" description="Unlock with Elite." requiredTier="Elite" />
+                        )}
+                    </div>
                 </div>
             )}
 
             {/* 🟢 FULL SETTINGS TAB RESTORED WITH BRANDING SYNC */}
             {activeTab === 'settings' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                        <h3 className="text-lg font-bold text-white mb-4">Webhook Integration</h3>
-                        <p className="text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
-                        <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700">
-                            <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
-                            <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
-                        </div>
+                <div className="space-y-6">
+                    {/* Tab Description Banner */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                        <h2 className="text-lg font-bold text-white mb-1">⚙️ Settings</h2>
+                        <p className="text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
                     </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                            <h3 className="text-lg font-bold text-white mb-4">Webhook Integration</h3>
+                            <p className="text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
+                            <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700 mb-4">
+                                <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
+                                <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
+                            </div>
 
-                    {/* Discord section removed - not ready for launch */}
-
-                    {/* 🆕 Full White-Label Branding Settings */}
-                    <WhiteLabelSettings />
-
-                    {isDev && (
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
-                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                            {/* Collapsible Webhook Setup Guide */}
+                            <details className="group">
+                                <summary className="cursor-pointer text-sm text-purple-400 hover:text-purple-300 flex items-center gap-2">
+                                    <span className="group-open:rotate-90 transition-transform">▶</span>
+                                    Webhook Setup Guide
+                                </summary>
+                                <div className="mt-4 space-y-4 text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
-                                        <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
-                                            <option value="starter">Starter (Free)</option>
-                                            <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
-                                        </select>
+                                        <h4 className="font-bold text-white mb-2">Step 1: Access Your Whop Developer Dashboard</h4>
+                                        <p>Navigate to <a href="https://dash.whop.com/developer" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">dash.whop.com/developer</a> and select your app.</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white mb-2">Step 2: Open Webhook Settings</h4>
+                                        <p>Click on the <strong>"Webhooks"</strong> tab in the left sidebar.</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white mb-2">Step 3: Add the Webhook URL</h4>
+                                        <p>Click <strong>"Create Webhook"</strong> and paste the URL from above into the endpoint field.</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white mb-2">Step 4: Select Events</h4>
+                                        <p>Enable these webhook events:</p>
+                                        <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-slate-400">
+                                            <li><code className="text-green-400">membership.went_valid</code> – New subscription</li>
+                                            <li><code className="text-green-400">membership.went_invalid</code> – Subscription ended</li>
+                                            <li><code className="text-green-400">payment.succeeded</code> – Renewal payment</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white mb-2">Step 5: Save & Test</h4>
+                                        <p>Click <strong>"Save"</strong>, then use the <strong>"Send Test"</strong> button to verify the connection.</p>
+                                    </div>
+                                    <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3 mt-4">
+                                        <p className="text-purple-300"><strong>💡 Tip:</strong> Once configured, XP will be awarded automatically when members subscribe or renew!</p>
                                     </div>
                                 </div>
+                            </details>
+                        </div>
 
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                            Simulate Renewal
-                                        </button>
-                                        <button onClick={async () => {
-                                            if (!targetUserId) return;
-                                            await handleRecordAction(targetUserId, 'post_message', 'manual'); await withRefresh(async () => { });
-                                            showNotification("Simulated: Post Message");
-                                        }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                            Simulate Message
-                                        </button>
-                                        <button onClick={async () => {
-                                            if (!targetUserId) return;
-                                            await handleRecordAction(targetUserId, 'complete_module', 'manual'); await withRefresh(async () => { });
-                                            showNotification("Simulated: Lesson Complete");
-                                        }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                            Simulate Lesson
-                                        </button>
-                                        <button onClick={async () => {
-                                            if (!targetUserId) return;
-                                            await handleRecordAction(targetUserId, 'invite_friend', 'manual'); await withRefresh(async () => { });
-                                            showNotification("Simulated: Invite");
-                                        }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                            Simulate Invite
-                                        </button>
+                        {/* Discord section removed - not ready for launch */}
+
+                        {/* 🆕 Full White-Label Branding Settings */}
+                        <WhiteLabelSettings />
+
+                        {isDev && (
+                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
+                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
+                                            <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
+                                                <option value="starter">Starter (Free)</option>
+                                                <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                Simulate Renewal
+                                            </button>
+                                            <button onClick={async () => {
+                                                if (!targetUserId) return;
+                                                await handleRecordAction(targetUserId, 'post_message', 'manual'); await withRefresh(async () => { });
+                                                showNotification("Simulated: Post Message");
+                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                Simulate Message
+                                            </button>
+                                            <button onClick={async () => {
+                                                if (!targetUserId) return;
+                                                await handleRecordAction(targetUserId, 'complete_module', 'manual'); await withRefresh(async () => { });
+                                                showNotification("Simulated: Lesson Complete");
+                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                Simulate Lesson
+                                            </button>
+                                            <button onClick={async () => {
+                                                if (!targetUserId) return;
+                                                await handleRecordAction(targetUserId, 'invite_friend', 'manual'); await withRefresh(async () => { });
+                                                showNotification("Simulated: Invite");
+                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                Simulate Invite
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             )}
         </div>
