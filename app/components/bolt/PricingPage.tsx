@@ -115,7 +115,8 @@ const PurchaseButton: React.FC<{
   isTrial?: boolean;
   isHighlight?: boolean;
   isCurrentPlan?: boolean;
-}> = ({ planName, planId, isTrial, isHighlight, isCurrentPlan }) => {
+  hasUsedTrial?: boolean;
+}> = ({ planName, planId, isTrial, isHighlight, isCurrentPlan, hasUsedTrial }) => {
   const iframeSdk = useIframeSdk();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +172,18 @@ const PurchaseButton: React.FC<{
     );
   }
 
+  // 🆕 Disabled state for already used trial
+  if (isTrial && hasUsedTrial) {
+    return (
+      <button
+        disabled
+        className="block w-full text-center py-3 rounded-lg font-bold bg-slate-700/50 text-amber-500/70 border border-amber-600/30 cursor-not-allowed"
+      >
+        ⚠ Already Claimed
+      </button>
+    );
+  }
+
   return (
     <>
       <button
@@ -204,7 +217,7 @@ const PurchaseButton: React.FC<{
   );
 };
 
-const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string }> = ({ plan, isAnnual, currentTier }) => {
+const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string; hasUsedTrial: boolean }> = ({ plan, isAnnual, currentTier, hasUsedTrial }) => {
   const planId = getPlanId(plan.name, isAnnual);
   const isCurrentPlan = currentTier.toLowerCase() === plan.name.toLowerCase() ||
     (currentTier.toLowerCase() === 'free' && plan.name === 'Starter') ||
@@ -270,6 +283,7 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string
           isTrial={plan.isTrial}
           isHighlight={plan.highlight}
           isCurrentPlan={isCurrentPlan}
+          hasUsedTrial={hasUsedTrial}
         />
       ) : null}
 
@@ -291,6 +305,10 @@ const PricingPage: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const { community } = useApp();
   const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
+
+  // 🆕 Check if user has already used their trial
+  // If trialEndsAt exists and tier is NOT 'trial', they've already used it
+  const hasUsedTrial = !!(community?.trialEndsAt && community?.tier?.toLowerCase() !== 'trial');
 
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans py-12 px-4 sm:px-6 lg:px-8">
@@ -329,7 +347,13 @@ const PricingPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
         {plans.map(plan => (
-          <PricingCard key={plan.name} plan={plan} isAnnual={isAnnual} currentTier={community?.tier || 'starter'} />
+          <PricingCard
+            key={plan.name}
+            plan={plan}
+            isAnnual={isAnnual}
+            currentTier={community?.tier || 'starter'}
+            hasUsedTrial={hasUsedTrial}
+          />
         ))}
       </div>
 
