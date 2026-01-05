@@ -840,39 +840,36 @@ export default function AdminPage() {
                                     </div>
                                 </form>
 
-                                {/* Collapsible Item Type Guide */}
-                                <details className="group mb-4">
+                                {/* Collapsible Item Type Guide - positioned to not affect item list */}
+                                <details className="group mb-2 relative">
                                     <summary className="cursor-pointer text-sm text-purple-400 hover:text-purple-300 flex items-center gap-2">
                                         <span className="group-open:rotate-90 transition-transform">▶</span>
                                         📖 Item Type Reference Guide
                                     </summary>
-                                    <div className="mt-3 space-y-3 text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-700 max-h-[300px] overflow-y-auto">
+                                    <div className="absolute z-20 left-0 right-0 mt-2 space-y-3 text-sm text-slate-300 bg-slate-900 p-4 rounded-lg border border-slate-600 shadow-xl max-h-[250px] overflow-y-auto">
                                         <div>
                                             <h4 className="font-bold text-purple-400 mb-1">🔥 Consumables</h4>
                                             <ul className="space-y-1 ml-4 text-xs">
-                                                <li><span className="text-white">Streak Freeze</span> - Adds +1 freeze to user's profile. No extra fields.</li>
-                                                <li><span className="text-white">XP Gift</span> - Awards flat XP amount. Set <code className="bg-slate-800 px-1 rounded">XP Amount</code>.</li>
-                                                <li><span className="text-white">Random XP</span> - Awards random XP in range. Set <code className="bg-slate-800 px-1 rounded">Min/Max XP</code>.</li>
+                                                <li><span className="text-white">Streak Freeze</span> - Adds +1 freeze. No extra fields.</li>
+                                                <li><span className="text-white">XP Gift</span> - Awards flat XP. Set <code className="bg-slate-800 px-1 rounded">XP Amount</code>.</li>
+                                                <li><span className="text-white">Random XP</span> - Random XP in range. Set <code className="bg-slate-800 px-1 rounded">Min/Max XP</code>.</li>
                                             </ul>
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-yellow-400 mb-1">⚡ Boosts</h4>
                                             <ul className="space-y-1 ml-4 text-xs">
-                                                <li><span className="text-white">Timed XP Effect</span> - XP multiplier for duration. Set <code className="bg-slate-800 px-1 rounded">Duration (Hours)</code> and <code className="bg-slate-800 px-1 rounded">Multiplier</code> (e.g., 1.5 = +50%).</li>
+                                                <li><span className="text-white">Timed XP Effect</span> - XP multiplier. Set <code className="bg-slate-800 px-1 rounded">Duration</code> + <code className="bg-slate-800 px-1 rounded">Multiplier</code>.</li>
                                             </ul>
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-pink-400 mb-1">✨ Cosmetics</h4>
                                             <ul className="space-y-1 ml-4 text-xs">
-                                                <li><span className="text-white">Name Color</span> - Custom color for username. Set <code className="bg-slate-800 px-1 rounded">Color</code> (hex).</li>
-                                                <li><span className="text-white">Avatar Pulse</span> - Glowing pulse around avatar. Set <code className="bg-slate-800 px-1 rounded">Color</code> (hex).</li>
-                                                <li><span className="text-white">Title</span> - Prefix/suffix for username. Set <code className="bg-slate-800 px-1 rounded">Title Text</code> and <code className="bg-slate-800 px-1 rounded">Position</code>.</li>
-                                                <li><span className="text-white">Profile Banner</span> - Custom profile banner. Set <code className="bg-slate-800 px-1 rounded">Image URL</code>.</li>
+                                                <li><span className="text-white">Name Color</span> / <span className="text-white">Avatar Pulse</span> - Set <code className="bg-slate-800 px-1 rounded">Color</code> (hex).</li>
+                                                <li><span className="text-white">Title</span> - Set <code className="bg-slate-800 px-1 rounded">Title Text</code> + <code className="bg-slate-800 px-1 rounded">Position</code>.</li>
+                                                <li><span className="text-white">Banner</span> - Set <code className="bg-slate-800 px-1 rounded">Image URL</code>.</li>
                                             </ul>
                                         </div>
-                                        <div className="pt-2 border-t border-slate-700">
-                                            <p className="text-xs text-slate-400">💡 <strong>Tip:</strong> Consumables are used when clicked in inventory. Cosmetics can be equipped/unequipped. Boosts activate on use.</p>
-                                        </div>
+                                        <p className="text-xs text-slate-500 pt-1 border-t border-slate-700">💡 Consumables are used from inventory. Cosmetics can be equipped/unequipped.</p>
                                     </div>
                                 </details>
 
