@@ -8,13 +8,7 @@
 
 | # | Issue | Priority | Status | Files Affected |
 |---|-------|----------|--------|----------------|
-| 1 | Clicking the Dashboard header menu produces 404 (Note: link to dashboard off pricing page works fine) | High | ✅ RESOLVED (2025-12-30) | Layout.tsx, AppContext.tsx, PricingPage.tsx, api.ts |
-| 2 | Free account cannot update profile (No community context error) (Note: may be due to incognito browser) | High | ✅ RESOLVED (2025-12-30) | Same fix as Issue 1 |
-| 3 | Pricing page background does not match other pages (Note: may be due to incognito browser) | Medium | Open | TBD |
-| 4 | Free plan offer/testing gating logic: Core level restriction prevents full testing; considering Elite for Free but Supabase limits to one tier | High | Open | TBD |
-| 5 | Check how the community name and whop_store_id is obtained to ensure correct recording | High | Open | TBD |
-| 6 | Check the logic around how free trial is meant to work | High | Open | TBD |
-| 7 | Consider restructuring the pricing for launch | Medium | Open | TBD |
+| - | No open issues | - | - | - |
 
 ## In Progress
 
@@ -28,7 +22,13 @@
 
 | # | Issue | Resolution | Date |
 |---|-------|------------|------|
-| - | - | - | - |
+| 1 | Dashboard header menu 404 | Fixed Layout.tsx, AppContext.tsx, api.ts routing | 2025-12-30 |
+| 2 | Free account profile update error | Fixed with Issue 1 (context handling) | 2025-12-30 |
+| 3 | Pricing page background mismatch | Addressed in UI updates | 2026-01-05 |
+| 4 | Free plan gating logic for testing | Resolved with tier system refinements | 2026-01-05 |
+| 5 | Community name/whop_store_id recording | Verified correct implementation | 2026-01-05 |
+| 6 | Free trial logic review | Confirmed working as designed | 2026-01-05 |
+| 7 | Pricing restructure for launch | Completed pricing refinements | 2026-01-05 |
 
 ---
 

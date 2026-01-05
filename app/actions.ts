@@ -754,8 +754,39 @@ export async function unequipCosmeticAction(type: string) {
 export async function buyStoreItemAction(itemId: string) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
+
+  // Get item details first to check type
+  const { data: item } = await supabaseAdmin.from('store_items').select('*').eq('id', itemId).single();
+  if (!item) return { success: false, message: "Item not found" };
+
+  // Execute the purchase via RPC
   const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: session.userId, p_item_id: itemId });
   if (error) return { success: false, message: error.message };
+  if (!data?.success) return data;
+
+  // Apply immediate effects based on item type
+  const itemType = item.item_type;
+  const metadata = item.metadata || {};
+
+  if (itemType === 'STREAK_FREEZE') {
+    // Add +1 streak freeze to user - use raw SQL increment via rpc or fallback to select/update
+    const { data: profile } = await supabaseAdmin.from('profiles').select('streak_freezes').eq('id', session.userId).single();
+    const currentFreezes = profile?.streak_freezes || 0;
+    await supabaseAdmin.from('profiles').update({ streak_freezes: currentFreezes + 1 }).eq('id', session.userId);
+  } else if (itemType === 'XP_GIFT') {
+    // Add flat XP amount
+    const xpAmount = metadata.xpAmount || 100;
+    await supabaseAdmin.rpc('increment_user_xp', { p_user_id: session.userId, p_xp_to_add: xpAmount });
+  } else if (itemType === 'RANDOM_XP') {
+    // Add random XP within range
+    const xpMin = metadata.xpMin || 50;
+    const xpMax = metadata.xpMax || 200;
+    const randomXp = Math.floor(Math.random() * (xpMax - xpMin + 1)) + xpMin;
+    await supabaseAdmin.rpc('increment_user_xp', { p_user_id: session.userId, p_xp_to_add: randomXp });
+    // Return the random amount for UX
+    return { success: true, message: `You received ${randomXp} XP!` };
+  }
+
   return data;
 }
 

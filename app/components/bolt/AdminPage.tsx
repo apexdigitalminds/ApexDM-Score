@@ -173,6 +173,9 @@ export default function AdminPage() {
     const [metaText, setMetaText] = useState("");
     const [metaUrl, setMetaUrl] = useState("");
     const [metaPosition, setMetaPosition] = useState<'prefix' | 'suffix'>('prefix');
+    const [xpAmount, setXpAmount] = useState<number>(100);
+    const [xpMin, setXpMin] = useState<number>(50);
+    const [xpMax, setXpMax] = useState<number>(200);
 
     const [editXp, setEditXp] = useState(0);
     const [editStreak, setEditStreak] = useState(0);
@@ -309,9 +312,9 @@ export default function AdminPage() {
     const handleDeleteQuestClick = (q: Quest) => { setModalConfig({ isOpen: true, title: "Archive Quest", message: `Archive "${q.title}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteQuest(q.id); showNotification("Quest archived."); await withRefresh(async () => { }); closeModal(); } }); };
     const handleRestoreQuestClick = async (q: Quest) => { if (handleRestoreQuest) { await handleRestoreQuest(q.id); showNotification("Quest restored."); await withRefresh(async () => { }); } };
 
-    const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#ffffff"); setMetaText(""); setMetaUrl(""); setMetaPosition("prefix"); };
-    const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition); };
-    const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') metadata.color = metaColor; if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; } if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if (editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); await withRefresh(async () => { }); };
+    const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#ffffff"); setMetaText(""); setMetaUrl(""); setMetaPosition("prefix"); setXpAmount(100); setXpMin(50); setXpMax(200); };
+    const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition); if (i.metadata?.xpAmount) setXpAmount(i.metadata.xpAmount); if (i.metadata?.xpMin) setXpMin(i.metadata.xpMin); if (i.metadata?.xpMax) setXpMax(i.metadata.xpMax); };
+    const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') metadata.color = metaColor; if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; } if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; if (itemType === 'XP_GIFT') metadata.xpAmount = xpAmount; if (itemType === 'RANDOM_XP') { metadata.xpMin = xpMin; metadata.xpMax = xpMax; } const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if (editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); await withRefresh(async () => { }); };
     const handleDeleteItemClick = (i: StoreItem) => { setModalConfig({ isOpen: true, title: "Delete Item?", message: `Delete "${i.name}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); await withRefresh(async () => { }); closeModal(); } }); };
     const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); await withRefresh(async () => { }); };
 
@@ -726,13 +729,21 @@ export default function AdminPage() {
                                         <div>
                                             <label className="block text-xs text-slate-400 mb-1">Item Type</label>
                                             <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
-                                                <option value="INSTANT">Instant Consumable</option>
-                                                <option value="TIMED_EFFECT">Timed Effect (Boost)</option>
-                                                <option value="NAME_COLOR">Name Color (Cosmetic)</option>
-                                                <option value="AVATAR_PULSE">Avatar Pulse (Cosmetic)</option>
-                                                {/* 🟢 UPDATED: Label Change */}
-                                                <option value="TITLE">Title - Prefix/Suffix (Cosmetic)</option>
-                                                <option value="BANNER">Profile Banner (Cosmetic)</option>
+                                                <optgroup label="Consumables">
+                                                    <option value="INSTANT">Instant Consumable (Inventory Only)</option>
+                                                    <option value="STREAK_FREEZE">Streak Freeze (+1 Freeze)</option>
+                                                    <option value="XP_GIFT">XP Gift (Flat XP Bonus)</option>
+                                                    <option value="RANDOM_XP">Random XP (Range)</option>
+                                                </optgroup>
+                                                <optgroup label="Boosts">
+                                                    <option value="TIMED_EFFECT">Timed XP Effect (Boost)</option>
+                                                </optgroup>
+                                                <optgroup label="Cosmetics">
+                                                    <option value="NAME_COLOR">Name Color</option>
+                                                    <option value="AVATAR_PULSE">Avatar Pulse</option>
+                                                    <option value="TITLE">Title - Prefix/Suffix</option>
+                                                    <option value="BANNER">Profile Banner</option>
+                                                </optgroup>
                                             </select>
                                         </div>
                                         <div>
@@ -754,6 +765,24 @@ export default function AdminPage() {
                                             <div className="flex gap-2">
                                                 <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="Hours" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
                                                 <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
+                                            </div>
+                                        )}
+                                        {itemType === 'XP_GIFT' && (
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">XP Amount to Award</label>
+                                                <input type="number" value={xpAmount} onChange={e => setXpAmount(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. 100" />
+                                            </div>
+                                        )}
+                                        {itemType === 'RANDOM_XP' && (
+                                            <div className="flex gap-2">
+                                                <div className="flex-1">
+                                                    <label className="block text-xs text-slate-400 mb-1">Min XP</label>
+                                                    <input type="number" value={xpMin} onChange={e => setXpMin(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-xs text-slate-400 mb-1">Max XP</label>
+                                                    <input type="number" value={xpMax} onChange={e => setXpMax(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                                </div>
                                             </div>
                                         )}
                                         {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') && (

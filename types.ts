@@ -44,6 +44,9 @@ export interface Action {
 export type ItemType =
   | 'INSTANT'
   | 'TIMED_EFFECT'
+  | 'STREAK_FREEZE'
+  | 'XP_GIFT'
+  | 'RANDOM_XP'
   | 'NAME_COLOR'
   | 'TITLE'
   | 'BANNER'
@@ -55,6 +58,9 @@ export interface ItemMetadata {
   text?: string;
   titlePosition?: 'prefix' | 'suffix';
   imageUrl?: string;
+  xpAmount?: number;  // For XP_GIFT
+  xpMin?: number;     // For RANDOM_XP
+  xpMax?: number;     // For RANDOM_XP
   [key: string]: any;
 }
 
