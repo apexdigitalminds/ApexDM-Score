@@ -234,15 +234,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {children}
             </main>
 
-            {!isLoading && !isWhiteLabelActive && (
+            {/* 🆕 Footer - shows custom text when white-label is on, or ApexDM branding when off */}
+            {!isLoading && (
                 <footer className="py-8 text-center border-t border-slate-800/50 mt-8">
-                    <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-                        Powered by
-                        <a href="https://apexdm.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-white transition-colors font-semibold">
-                            <LogoIcon className="w-4 h-4 text-purple-500" />
-                            <span>ApexDM Score</span>
-                        </a>
-                    </p>
+                    {isWhiteLabelActive ? (
+                        // 🆕 White-label mode: show custom footer text if provided
+                        community?.customFooterText ? (
+                            <p className="text-slate-500 text-sm">{community.customFooterText}</p>
+                        ) : null // No footer text = no footer shown
+                    ) : (
+                        // Default ApexDM branding (no URL since no website)
+                        <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
+                            Powered by
+                            <span className="flex items-center gap-1.5 font-semibold text-slate-400">
+                                <LogoIcon className="w-4 h-4 text-purple-500" />
+                                <span>ApexDM Score</span>
+                            </span>
+                        </p>
+                    )}
                 </footer>
             )}
         </div>

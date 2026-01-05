@@ -127,22 +127,27 @@ export default function WhiteLabelSettings() {
                     <p className="text-slate-500 text-xs mt-1">Used in sidebar header and as default favicon</p>
                 </div>
 
-                {/* Theme Color */}
-                <div>
-                    <label className="block text-white text-sm font-medium mb-2">Theme Color</label>
+                {/* Theme Color - UNDER CONSTRUCTION */}
+                <div className="opacity-50 pointer-events-none">
+                    <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
+                        Theme Color
+                        <span className="bg-yellow-600/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-semibold">
+                            🚧 Under Construction
+                        </span>
+                    </label>
                     <div className="flex items-center gap-3">
                         <input
                             type="color"
                             value={themeColor}
-                            onChange={(e) => setThemeColor(e.target.value)}
-                            className="w-12 h-10 rounded border-0 cursor-pointer bg-transparent"
+                            disabled
+                            className="w-12 h-10 rounded border-0 cursor-not-allowed bg-transparent"
                         />
                         <input
                             type="text"
                             value={themeColor}
-                            onChange={(e) => setThemeColor(e.target.value)}
+                            disabled
                             placeholder="#7c3aed"
-                            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none font-mono"
+                            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 outline-none font-mono cursor-not-allowed"
                         />
                         {/* Preview */}
                         <div
@@ -152,7 +157,7 @@ export default function WhiteLabelSettings() {
                             Preview
                         </div>
                     </div>
-                    <p className="text-slate-500 text-xs mt-1">Applied to header and accent elements</p>
+                    <p className="text-slate-500 text-xs mt-1">Coming soon - customize accent colors across the UI</p>
                 </div>
 
                 {/* Favicon URL */}
@@ -179,15 +184,6 @@ export default function WhiteLabelSettings() {
                         className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">If empty, footer text will be hidden</p>
-                </div>
-
-                {/* Hide Member Count */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-white font-medium">Hide Member Count</p>
-                        <p className="text-slate-400 text-sm">Don't show member count in sidebar</p>
-                    </div>
-                    <ToggleSwitch checked={hideMemberCount} onChange={setHideMemberCount} />
                 </div>
             </div>
 
