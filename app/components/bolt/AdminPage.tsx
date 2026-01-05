@@ -451,7 +451,7 @@ export default function AdminPage() {
                     <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab as 'engagement' | 'quests' | 'store' | 'settings')} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20">
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20 flex flex-col">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-white">Current Plan</h3>
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wide
@@ -461,7 +461,7 @@ export default function AdminPage() {
                                 </span>
                             </div>
 
-                            <div className="space-y-4 mb-8">
+                            <div className="space-y-4 flex-1">
                                 <p className="text-slate-400 text-sm">
                                     Your community is currently on the <strong>{community?.tier}</strong> tier.
                                     {community?.trialEndsAt && ` Trial ends on ${new Date(community.trialEndsAt).toLocaleDateString()}.`}
@@ -491,24 +491,24 @@ export default function AdminPage() {
                                 )}
                             </div>
 
-                            <Link href="/pricing" className="block w-full text-center bg-white text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-200 transition-colors">
+                            <Link href="/pricing" className="block w-full text-center bg-white text-slate-900 font-bold py-3 rounded-lg hover:bg-slate-200 transition-colors mt-6">
                                 View Pricing & Features
                             </Link>
                         </div>
 
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-center text-center">
-                            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col">
+                            <div className="flex-1 flex flex-col justify-center text-center">
+                                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
+                                <p className="text-slate-400 text-sm">
+                                    Have a feature request or found a bug? Email our support team directly.
+                                </p>
                             </div>
-                            <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
-                            <p className="text-slate-400 text-sm mb-6">
-                                Have a feature request or found a bug? Email our support team directly.
-                            </p>
-                            <div className="space-y-3">
-                                <a href="mailto:apexdigitalminds@gmail.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
-                                    Contact Support via Email
-                                </a>
-                            </div>
+                            <a href="mailto:apexdigitalminds@gmail.com" className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg text-center mt-6">
+                                Contact Support via Email
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -556,61 +556,60 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                    </div>
-
-                    {/* BADGES */}
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-white">Manage Badges</h3>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-400">Show Archived</span>
-                                <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
-                            </div>
-                        </div>
-                        <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4 border border-slate-600">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* 🟢 FIXED: Removed disabled={!!editBadgeName} to allow editing */}
-                                <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
-                                <div className="col-span-2"><label className="text-xs text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                <div className="col-span-1">
-                                    <div className="flex justify-between items-center mb-1"><label className="text-xs text-slate-400 block">Icon Type</label><button type="button" onClick={() => { const newType = badgeIconType === 'PRESET' ? 'EMOJI' : 'PRESET'; setBadgeIconType(newType); setNewBadgeIcon(newType === 'PRESET' ? iconMapKeys[0] : '🏆'); }} className="text-[10px] uppercase font-bold bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">{badgeIconType} ⟳</button></div>
-                                    <div className="flex gap-2 items-center">
-                                        <div className="w-9 h-9 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none overflow-hidden">{badgeIconType === 'PRESET' ? ((() => { const PreviewIcon = iconMap[newBadgeIcon] || iconMap['Snowflake']; return <PreviewIcon className="w-5 h-5" style={{ color: newBadgeColor }} />; })()) : (<span className="text-xl leading-none select-none">{newBadgeIcon}</span>)}</div>
-                                        {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
-                                    </div>
-                                </div>
-                                <div className="col-span-2 flex gap-4 items-end">
-                                    <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
-                                    <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-72">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
+                        {/* BADGES */}
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-white">Manage Badges</h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-slate-400">Show Archived</span>
+                                    <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
                                 </div>
                             </div>
-                        </form>
-                        <div className="flex-grow overflow-y-auto pr-2 space-y-2 max-h-[400px]">
-                            {filteredBadges.map(([name, config]) => {
-                                const b = config as any;
-                                const isPreset = iconMapKeys.includes(b.icon);
-                                const BadgeIcon = isPreset ? (iconMap[b.icon] || iconMap['Snowflake']) : null;
-                                const isActive = b.isActive !== undefined ? b.isActive : true;
-
-                                return (
-                                    <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">
-                                                {isPreset && BadgeIcon ? <BadgeIcon className="w-6 h-6" style={{ color: b.color }} /> : <span className="text-xl select-none">{b.icon}</span>}
-                                            </div>
-                                            <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
-                                        </div>
+                            <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4 border border-slate-600">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* 🟢 FIXED: Removed disabled={!!editBadgeName} to allow editing */}
+                                    <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
+                                    <div className="col-span-2"><label className="text-xs text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                    <div className="col-span-1">
+                                        <div className="flex justify-between items-center mb-1"><label className="text-xs text-slate-400 block">Icon Type</label><button type="button" onClick={() => { const newType = badgeIconType === 'PRESET' ? 'EMOJI' : 'PRESET'; setBadgeIconType(newType); setNewBadgeIcon(newType === 'PRESET' ? iconMapKeys[0] : '🏆'); }} className="text-[10px] uppercase font-bold bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">{badgeIconType} ⟳</button></div>
                                         <div className="flex gap-2 items-center">
-                                            {!b.isArchived && (
-                                                <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
-                                            )}
-                                            {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                            <div className="w-9 h-9 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none overflow-hidden">{badgeIconType === 'PRESET' ? ((() => { const PreviewIcon = iconMap[newBadgeIcon] || iconMap['Snowflake']; return <PreviewIcon className="w-5 h-5" style={{ color: newBadgeColor }} />; })()) : (<span className="text-xl leading-none select-none">{newBadgeIcon}</span>)}</div>
+                                            {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
                                         </div>
                                     </div>
-                                )
-                            })}
+                                    <div className="col-span-2 flex gap-4 items-end">
+                                        <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
+                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-72">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
+                                    </div>
+                                </div>
+                            </form>
+                            <div className="flex-grow overflow-y-auto pr-2 space-y-2 max-h-[400px]">
+                                {filteredBadges.map(([name, config]) => {
+                                    const b = config as any;
+                                    const isPreset = iconMapKeys.includes(b.icon);
+                                    const BadgeIcon = isPreset ? (iconMap[b.icon] || iconMap['Snowflake']) : null;
+                                    const isActive = b.isActive !== undefined ? b.isActive : true;
+
+                                    return (
+                                        <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">
+                                                    {isPreset && BadgeIcon ? <BadgeIcon className="w-6 h-6" style={{ color: b.color }} /> : <span className="text-xl select-none">{b.icon}</span>}
+                                                </div>
+                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                {!b.isArchived && (
+                                                    <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
+                                                )}
+                                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
