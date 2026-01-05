@@ -448,7 +448,7 @@ export default function AdminPage() {
             {activeTab === 'subscription' && (
                 <div className="space-y-6">
                     {/* 🆕 Getting Started Guide */}
-                    <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab as 'engagement' | 'quests' | 'store' | 'settings')} />
+                    <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab as 'users' | 'engagement' | 'quests' | 'store' | 'settings')} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20 flex flex-col">

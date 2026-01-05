@@ -19,16 +19,24 @@ interface SetupStep {
     id: string;
     title: string;
     description: string;
-    tab: 'engagement' | 'quests' | 'store' | 'settings';
+    tab: 'users' | 'engagement' | 'quests' | 'store' | 'settings';
     requiredTier: 'starter' | 'pro' | 'elite';
     icon: string;
 }
 
 const SETUP_STEPS: SetupStep[] = [
     {
+        id: 'manage-users',
+        title: 'Manage Users',
+        description: 'View your community members. Search, award XP, and manage badges.',
+        tab: 'users',
+        requiredTier: 'starter',
+        icon: '👥'
+    },
+    {
         id: 'xp-actions',
         title: 'Set up XP Reward Actions',
-        description: 'Define how members earn XP points. Link XP rewards to activities like watching content, completing purchases, or engaging with your community. Members see their XP grow as they participate.',
+        description: 'Set the activity and XP rewards then watch members see their XP grow.',
         tab: 'engagement',
         requiredTier: 'starter',
         icon: '⚡'
@@ -36,23 +44,15 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'badges',
         title: 'Create Badges',
-        description: 'Design custom achievement badges to recognize milestones. Award them automatically or manually to celebrate member accomplishments. Badges appear on member profiles and leaderboards.',
+        description: 'Design achievement icons for milestones. Award automatically or manually.',
         tab: 'engagement',
         requiredTier: 'starter',
         icon: '🏆'
     },
     {
-        id: 'leaderboard',
-        title: 'Customize Leaderboard',
-        description: 'Your leaderboard displays top members ranked by XP. Use it to foster friendly competition and highlight your most engaged community members.',
-        tab: 'engagement',
-        requiredTier: 'starter',
-        icon: '📊'
-    },
-    {
         id: 'quests',
         title: 'Create Quests',
-        description: 'Build multi-step challenges that guide members through activities. Quests combine multiple actions into engaging journeys with XP and badge rewards upon completion.',
+        description: 'Build multi-step challenges with XP rewards. Guide member behavior.',
         tab: 'quests',
         requiredTier: 'pro',
         icon: '🎯'
@@ -60,7 +60,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'store',
         title: 'Set up Store Items',
-        description: 'Create an XP-powered store where members can spend their earned points. Offer XP boosters, streak freezes, cosmetic upgrades, and custom rewards.',
+        description: 'Create an XP store with boosters, freezes, and cosmetic rewards.',
         tab: 'store',
         requiredTier: 'elite',
         icon: '🛒'
@@ -68,7 +68,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'white-label',
         title: 'Configure White-Label Branding',
-        description: 'Make ApexDM Score your own. Upload your logo, customize colors, and remove ApexDM branding to create a seamless experience that matches your community.',
+        description: 'Make this app your own. Customize colors, logo, and branding to match your community.',
         tab: 'settings',
         requiredTier: 'elite',
         icon: '🎨'
@@ -76,7 +76,7 @@ const SETUP_STEPS: SetupStep[] = [
 ];
 
 interface GettingStartedCardProps {
-    onNavigateToTab: (tab: 'engagement' | 'quests' | 'store' | 'settings') => void;
+    onNavigateToTab: (tab: 'users' | 'engagement' | 'quests' | 'store' | 'settings') => void;
 }
 
 export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCardProps) {
@@ -131,7 +131,7 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
                                         <h4 className="text-white font-semibold text-sm mb-1 group-hover:text-purple-400 transition-colors">
                                             {step.title}
                                         </h4>
-                                        <p className="text-slate-400 text-xs line-clamp-2">
+                                        <p className="text-slate-400 text-xs">
                                             {step.description}
                                         </p>
                                     </div>
