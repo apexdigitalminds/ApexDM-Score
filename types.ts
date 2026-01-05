@@ -210,6 +210,11 @@ export interface Community {
   trialUsed?: boolean; // 🆕 Track if user has used their trial
   createdAt?: string;
   whiteLabelEnabled?: boolean;
+  // 🆕 White-Label Branding Fields (Phase 1 + 3)
+  themeColor?: string;        // Hex color for primary accent (e.g., "#7c3aed")
+  faviconUrl?: string;        // Custom favicon URL (separate from logo)
+  customFooterText?: string;  // Replace "Powered by ApexDM" 
+  hideMemberCount?: boolean;  // Hide member count in sidebar
 }
 
 export interface AnalyticsData {

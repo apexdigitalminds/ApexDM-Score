@@ -548,6 +548,62 @@ export async function createCheckoutConfigAction(planId: string) {
 }
 
 // =============================================================================
+// 🟢 WHITE-LABEL BRANDING
+// =============================================================================
+
+/**
+ * Updates community branding settings (Elite tier only).
+ * Allows customization of logo, theme color, favicon, footer text, and member count visibility.
+ */
+export async function updateCommunityBrandingAction(data: {
+  whiteLabelEnabled?: boolean;
+  logoUrl?: string;
+  themeColor?: string;
+  faviconUrl?: string;
+  customFooterText?: string;
+  hideMemberCount?: boolean;
+}) {
+  try {
+    const session = await verifyUser();
+    if (!session) {
+      return { success: false, error: "Not authenticated" };
+    }
+    if (!session.isAdmin) {
+      return { success: false, error: "Admin access required" };
+    }
+    if (!session.communityId) {
+      return { success: false, error: "No community context" };
+    }
+
+    // Build update object with only defined fields
+    const updateData: Record<string, any> = {};
+    if (data.whiteLabelEnabled !== undefined) updateData.white_label_enabled = data.whiteLabelEnabled;
+    if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl || null;
+    if (data.themeColor !== undefined) updateData.theme_color = data.themeColor || null;
+    if (data.faviconUrl !== undefined) updateData.favicon_url = data.faviconUrl || null;
+    if (data.customFooterText !== undefined) updateData.custom_footer_text = data.customFooterText || null;
+    if (data.hideMemberCount !== undefined) updateData.hide_member_count = data.hideMemberCount;
+
+    const { error } = await supabaseAdmin
+      .from('communities')
+      .update(updateData)
+      .eq('id', session.communityId);
+
+    if (error) {
+      console.error("[updateCommunityBrandingAction] Error:", error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error: any) {
+    console.error("[updateCommunityBrandingAction] Error:", error);
+    return { success: false, error: error.message || "Failed to update branding" };
+  }
+}
+
+// =============================================================================
 // 🟢 EXISTING FUNCTIONS (UNCHANGED)
 // =============================================================================
 // All your existing functions below remain exactly the same.

@@ -22,6 +22,7 @@ import Leaderboard from "./Leaderboard";
 import FeatureLock from "./analytics/FeatureLock";
 import ActionLogModal from "./ActionLogModal";
 import ConfirmationModal from "./ConfirmationModal";
+import WhiteLabelSettings from "./WhiteLabelSettings"; // 🆕 White-label branding
 import { iconMap, iconMapKeys, LockClosedIcon, TrophyIcon, UserGroupIcon, ShoppingCartIcon, SparklesIcon, LogoIcon, ClockIcon } from "./icons";
 
 // Inlined Icons
@@ -499,6 +500,11 @@ export default function AdminPage() {
                                 Contact Support via Email
                             </a>
                         </div>
+                    </div>
+
+                    {/* 🆕 White-Label Branding Settings */}
+                    <div className="lg:col-span-2">
+                        <WhiteLabelSettings />
                     </div>
                 </div>
             )}

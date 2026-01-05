@@ -62,7 +62,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             }
 
             if (isWhiteLabelActive && community) {
-                if (community.logoUrl) link.href = community.logoUrl;
+                // 🆕 Use faviconUrl if set, else logoUrl
+                const faviconSrc = community.faviconUrl || community.logoUrl;
+                if (faviconSrc) link.href = faviconSrc;
                 if (community.name) document.title = community.name;
             } else {
                 link.href = '/favicon.png';

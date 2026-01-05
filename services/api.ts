@@ -32,7 +32,8 @@ import {
     getAnalyticsDataServer,
     syncUserAction,
     awardBadgeAction,
-    syncCommunityBrandingAction
+    syncCommunityBrandingAction,
+    updateCommunityBrandingAction  // 🆕 White-label branding
 } from '@/app/actions';
 
 import type {
@@ -276,7 +277,20 @@ export const api = {
             const id = await getCommunityId();
             const { data } = await supabase.from('communities').select('*').eq('id', id).single();
             if (!data) return null;
-            return { id: data.id, name: data.name, description: data.description, logoUrl: data.logo_url, tier: data.subscription_tier ?? "Free", trialEndsAt: data.trial_ends_at, whiteLabelEnabled: data.white_label_enabled ?? false };
+            return {
+                id: data.id,
+                name: data.name,
+                description: data.description,
+                logoUrl: data.logo_url,
+                tier: data.subscription_tier ?? "Free",
+                trialEndsAt: data.trial_ends_at,
+                whiteLabelEnabled: data.white_label_enabled ?? false,
+                // 🆕 White-Label Branding Fields (Phase 1 + 3)
+                themeColor: data.theme_color ?? null,
+                faviconUrl: data.favicon_url ?? null,
+                customFooterText: data.custom_footer_text ?? null,
+                hideMemberCount: data.hide_member_count ?? false,
+            };
         } catch (e) { return null; }
     },
 
