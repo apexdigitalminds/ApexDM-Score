@@ -90,7 +90,7 @@ export default function AdminPage() {
     } = useApp();
 
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'users' | 'engagement' | 'store' | 'settings' | 'subscription'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'engagement' | 'quests' | 'store' | 'settings' | 'subscription'>('users');
 
     const [localRewards, setLocalRewards] = useState(rewardsConfig);
     const [localBadges, setLocalBadges] = useState(badgesConfig);
@@ -376,7 +376,8 @@ export default function AdminPage() {
 
             <div className="flex flex-wrap gap-2 border-b border-slate-700 pb-1">
                 <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5" />} />
-                <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5" />} locked={!isFeatureEnabled('quests')} />
+                <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5" />} />
+                <TabButton active={activeTab === 'quests'} onClick={() => setActiveTab('quests')} label="Quests" icon={<ClockIcon className="w-5 h-5" />} locked={!isFeatureEnabled('quests')} />
                 <TabButton active={activeTab === 'store'} onClick={() => setActiveTab('store')} label="XP Store" icon={<ShoppingCartIcon className="w-5 h-5" />} locked={!isFeatureEnabled('store')} />
                 <TabButton active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')} label="Subscription" icon={<CreditCardIcon className="w-5 h-5" />} />
                 <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} label="Settings" icon={<SparklesIcon className="w-5 h-5" />} />
@@ -447,7 +448,7 @@ export default function AdminPage() {
             {activeTab === 'subscription' && (
                 <div className="space-y-6">
                     {/* 🆕 Getting Started Guide */}
-                    <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab)} />
+                    <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab as 'engagement' | 'quests' | 'store' | 'settings')} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20">
@@ -555,55 +556,6 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-white">Manage Quests</h3>
-                                {isFeatureEnabled('quests') ? (
-                                    <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer" /><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
-                                ) : <span className=""></span>}
-                            </div>
-                            {isFeatureEnabled('quests') ? (
-                                <>
-                                    <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                                            <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                            <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                        </div>
-                                        <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
-                                        <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
-                                            {questTasks.map((t, i) => (
-                                                <div key={i} className="flex gap-1 mb-1">
-                                                    <div className="flex-1 flex flex-col gap-1">
-                                                        <div className="flex gap-1">
-                                                            <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
-                                                            <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
-                                                        </div>
-                                                        {/* 🟢 REMOVED: Task Description Input as requested */}
-                                                    </div>
-                                                    <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
-                                                </div>
-                                            ))}
-                                            <button type="button" onClick={handleAddTask} className="text-xs text-blue-400">+ Task</button>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editingQuest ? 'Update' : 'Create'}</button>
-                                            {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
-                                        </div>
-                                    </form>
-                                    <div className="flex-grow overflow-y-auto space-y-2 pr-2">
-                                        {filteredQuests.map(q => (
-                                            <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                                <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
-                                                <div className="flex gap-2 items-center">
-                                                    {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
-                                                    {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            ) : (<div className="h-full flex flex-col justify-center"><FeatureLock title="Quests System" description="Unlock with Pro." requiredTier="Pro" /></div>)}
-                        </div>
                     </div>
 
                     {/* BADGES */}
@@ -661,6 +613,58 @@ export default function AdminPage() {
                             })}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* QUESTS TAB - Separated from Engagement for tier gating */}
+            {activeTab === 'quests' && (
+                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-white">Manage Quests</h3>
+                        {isFeatureEnabled('quests') ? (
+                            <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer" /><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
+                        ) : <span className=""></span>}
+                    </div>
+                    {isFeatureEnabled('quests') ? (
+                        <>
+                            <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                                    <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
+                                    <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
+                                </div>
+                                <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
+                                <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
+                                    {questTasks.map((t, i) => (
+                                        <div key={i} className="flex gap-1 mb-1">
+                                            <div className="flex-1 flex flex-col gap-1">
+                                                <div className="flex gap-1">
+                                                    <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
+                                                    <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
+                                                </div>
+                                            </div>
+                                            <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={handleAddTask} className="text-xs text-blue-400">+ Task</button>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editingQuest ? 'Update' : 'Create'}</button>
+                                    {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                </div>
+                            </form>
+                            <div className="flex-grow overflow-y-auto space-y-2 pr-2">
+                                {filteredQuests.map(q => (
+                                    <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
+                                        <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                        <div className="flex gap-2 items-center">
+                                            {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
+                                            {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    ) : (<div className="h-full flex flex-col justify-center"><FeatureLock title="Quests System" description="Unlock with Pro." requiredTier="Pro" /></div>)}
                 </div>
             )}
 

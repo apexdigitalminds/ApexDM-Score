@@ -19,7 +19,7 @@ interface SetupStep {
     id: string;
     title: string;
     description: string;
-    tab: 'engagement' | 'store' | 'settings';
+    tab: 'engagement' | 'quests' | 'store' | 'settings';
     requiredTier: 'starter' | 'pro' | 'elite';
     icon: string;
 }
@@ -28,7 +28,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'xp-actions',
         title: 'Set up XP Reward Actions',
-        description: 'Configure how members earn XP for their activities',
+        description: 'Define how members earn XP points. Link XP rewards to activities like watching content, completing purchases, or engaging with your community. Members see their XP grow as they participate.',
         tab: 'engagement',
         requiredTier: 'starter',
         icon: '⚡'
@@ -36,7 +36,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'badges',
         title: 'Create Badges',
-        description: 'Design badges to reward member achievements',
+        description: 'Design custom achievement badges to recognize milestones. Award them automatically or manually to celebrate member accomplishments. Badges appear on member profiles and leaderboards.',
         tab: 'engagement',
         requiredTier: 'starter',
         icon: '🏆'
@@ -44,7 +44,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'leaderboard',
         title: 'Customize Leaderboard',
-        description: 'Set up ranking and display preferences',
+        description: 'Your leaderboard displays top members ranked by XP. Use it to foster friendly competition and highlight your most engaged community members.',
         tab: 'engagement',
         requiredTier: 'starter',
         icon: '📊'
@@ -52,15 +52,15 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'quests',
         title: 'Create Quests',
-        description: 'Build engaging challenges for members to complete',
-        tab: 'engagement',
+        description: 'Build multi-step challenges that guide members through activities. Quests combine multiple actions into engaging journeys with XP and badge rewards upon completion.',
+        tab: 'quests',
         requiredTier: 'pro',
         icon: '🎯'
     },
     {
         id: 'store',
         title: 'Set up Store Items',
-        description: 'Add XP boosters, cosmetics, and rewards to your store',
+        description: 'Create an XP-powered store where members can spend their earned points. Offer XP boosters, streak freezes, cosmetic upgrades, and custom rewards.',
         tab: 'store',
         requiredTier: 'elite',
         icon: '🛒'
@@ -68,7 +68,7 @@ const SETUP_STEPS: SetupStep[] = [
     {
         id: 'white-label',
         title: 'Configure White-Label Branding',
-        description: 'Customize your community\'s look with your own branding',
+        description: 'Make ApexDM Score your own. Upload your logo, customize colors, and remove ApexDM branding to create a seamless experience that matches your community.',
         tab: 'settings',
         requiredTier: 'elite',
         icon: '🎨'
@@ -76,7 +76,7 @@ const SETUP_STEPS: SetupStep[] = [
 ];
 
 interface GettingStartedCardProps {
-    onNavigateToTab: (tab: 'engagement' | 'store' | 'settings') => void;
+    onNavigateToTab: (tab: 'engagement' | 'quests' | 'store' | 'settings') => void;
 }
 
 export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCardProps) {
