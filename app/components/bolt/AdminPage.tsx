@@ -984,7 +984,7 @@ export default function AdminPage() {
                                             </button>
                                             <button onClick={async () => {
                                                 if (!targetUserId) return;
-                                                await handleRecordAction(targetUserId, 'post_message', 'manual'); await withRefresh(async () => { });
+                                                await handleRecordAction(targetUserId, 'post_chat_message', 'manual'); await withRefresh(async () => { });
                                                 showNotification("Simulated: Post Message");
                                             }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
                                                 Simulate Message
