@@ -1219,6 +1219,83 @@ export async function recordActionServer(userId: string, actionType: ActionType,
   // Log the action
   await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
 
+  // 🆕 Update quest progress for any active quests that require this action
+  try {
+    // Get all active quests for this community with their tasks
+    const { data: quests } = await supabaseAdmin
+      .from('quests')
+      .select('id, tasks')
+      .eq('community_id', userProfile.community_id)
+      .eq('is_active', true)
+      .eq('is_archived', false);
+
+    if (quests && quests.length > 0) {
+      for (const quest of quests) {
+        // Check if this quest has a task matching our action type
+        const tasks = quest.tasks as any[];
+        const matchingTask = tasks?.find((t: any) => t.actionType === actionType);
+
+        if (matchingTask) {
+          // Get or create user's progress for this quest
+          const { data: existingProgress } = await supabaseAdmin
+            .from('user_quest_progress')
+            .select('id, progress, is_completed')
+            .eq('user_id', userId)
+            .eq('quest_id', quest.id)
+            .single();
+
+          if (existingProgress && existingProgress.is_completed) {
+            // Quest already completed, skip
+            continue;
+          }
+
+          const currentProgress = existingProgress?.progress || {};
+          const taskKey = matchingTask.id || actionType;
+          const newCount = (currentProgress[taskKey] || 0) + 1;
+          const updatedProgress = { ...currentProgress, [taskKey]: newCount };
+
+          // Check if all tasks are now complete
+          let allComplete = true;
+          for (const task of tasks) {
+            const tk = task.id || task.actionType;
+            if ((updatedProgress[tk] || 0) < task.targetCount) {
+              allComplete = false;
+              break;
+            }
+          }
+
+          if (existingProgress) {
+            // Update existing progress
+            await supabaseAdmin
+              .from('user_quest_progress')
+              .update({
+                progress: updatedProgress,
+                is_completed: allComplete,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingProgress.id);
+          } else {
+            // Create new progress entry
+            await supabaseAdmin
+              .from('user_quest_progress')
+              .insert({
+                user_id: userId,
+                quest_id: quest.id,
+                progress: updatedProgress,
+                is_completed: allComplete,
+                is_claimed: false
+              });
+          }
+
+          console.log(`📋 Quest progress updated: ${quest.id} - ${actionType} (${newCount}/${matchingTask.targetCount})`);
+        }
+      }
+    }
+  } catch (questError) {
+    console.error('Error updating quest progress:', questError);
+    // Don't fail the action recording if quest progress fails
+  }
+
   return { xpGained: xp_to_add };
 }
 
