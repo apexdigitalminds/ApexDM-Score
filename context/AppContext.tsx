@@ -202,6 +202,21 @@ export const AppProvider = ({
             console.log("📅 First login of the day! Awarding XP...");
             const result = await api.recordAction(user.id, 'daily_login', 'manual');
             if (result) {
+                // Check for streak milestones after daily login
+                const newStreak = (user.streak || 0) + 1;
+
+                // 7-Day Streak Milestone
+                if (newStreak === 7) {
+                    console.log("🔥 7-Day Streak Milestone!");
+                    await api.recordAction(user.id, 'streak_7_day', 'manual');
+                }
+
+                // 30-Day Streak Milestone  
+                if (newStreak === 30) {
+                    console.log("🔥 30-Day Streak Milestone!");
+                    await api.recordAction(user.id, 'streak_30_day', 'manual');
+                }
+
                 await checkAutomatedBadges(user.id); // Check badges after login
                 await refreshSelectedUser();
             }

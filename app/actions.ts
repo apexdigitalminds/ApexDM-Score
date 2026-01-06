@@ -402,11 +402,16 @@ export async function ensureWhopContext(
     console.log(`🌱 Seeding default reward actions for community: ${communityId}`);
 
     const defaultRewardActions = [
-      { action_type: 'daily_login', xp_gained: 10, is_active: true, is_archived: false },
-      { action_type: 'lesson_completed', xp_gained: 50, is_active: true, is_archived: false },
-      { action_type: 'subscription_renewed', xp_gained: 200, is_active: true, is_archived: false },
-      { action_type: 'post_forum_comment', xp_gained: 5, is_active: true, is_archived: false },
-      { action_type: 'post_chat_message', xp_gained: 5, is_active: true, is_archived: false },
+      { action_type: 'daily_login', display_name: 'Daily Login', xp_gained: 10, is_active: true, is_archived: false },
+      { action_type: 'lesson_completed', display_name: 'Complete a Lesson', xp_gained: 50, is_active: true, is_archived: false },
+      { action_type: 'subscription_renewed', display_name: 'Subscription Renewal', xp_gained: 200, is_active: true, is_archived: false },
+      { action_type: 'post_forum_comment', display_name: 'Forum Post', xp_gained: 5, is_active: true, is_archived: false },
+      { action_type: 'post_chat_message', display_name: 'Chat Message', xp_gained: 5, is_active: true, is_archived: false },
+      { action_type: 'course_started', display_name: 'Start a Course', xp_gained: 25, is_active: true, is_archived: false },
+      { action_type: 'course_completed', display_name: 'Complete a Course', xp_gained: 100, is_active: true, is_archived: false },
+      { action_type: 'streak_7_day', display_name: '7-Day Streak', xp_gained: 50, is_active: true, is_archived: false },
+      { action_type: 'streak_30_day', display_name: '30-Day Streak', xp_gained: 150, is_active: true, is_archived: false },
+      { action_type: 'badge_earned', display_name: 'Badge Earned', xp_gained: 25, is_active: true, is_archived: false },
     ];
 
     const { error: seedError } = await supabaseAdmin
@@ -712,6 +717,13 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
 
   const { error: insertError } = await supabaseAdmin.from('user_badges').insert(payload);
   if (insertError) return { success: false, message: `DB Error: ${insertError.message}` };
+
+  // 🎯 Award XP for earning a badge
+  try {
+    await recordActionServer(userId, 'badge_earned', 'badge');
+  } catch (e) {
+    console.warn("Failed to award badge_earned XP:", e);
+  }
 
   revalidatePath('/dashboard');
   return { success: true, message: `Successfully awarded: ${badgeName}` };

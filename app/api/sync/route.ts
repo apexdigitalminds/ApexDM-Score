@@ -15,22 +15,45 @@ export async function POST(req: NextRequest) {
         const syncResults: string[] = [];
 
         // =========================================================================
-        // 2. Sync Course Lesson Completions
+        // 2. Sync Course Progress (course_started, course_completed)
         // =========================================================================
         try {
-            const interactions = await whopsdk.courseLessonInteractions.list({
-                user_id: userId,
-                completed: true
-            });
+            // Get list of courses user is enrolled in
+            const courses = await whopsdk.courses.list({});
 
-            if (interactions && Array.isArray(interactions)) {
-                // Course completion is primarily handled by webhook
-                // This is for retroactive sync
-                syncResults.push(`Checked ${interactions.length || 0} course interactions`);
+            for (const course of (courses || [])) {
+                try {
+                    // Get student progress for this course
+                    const student = await whopsdk.courseStudents.retrieve(course.id, userId);
+
+                    if (student) {
+                        // Award course_started if first interaction exists (user started)
+                        if (student.first_interaction_at) {
+                            const startResult = await recordActionServer(userId, 'course_started' as ActionType, 'sync');
+                            if (startResult) {
+                                syncedCount++;
+                                totalXp += startResult.xpGained;
+                                syncResults.push(`Course started: ${course.title || course.id}`);
+                            }
+                        }
+
+                        // Award course_completed if 100% completion
+                        if (student.completion_rate === 100) {
+                            const completeResult = await recordActionServer(userId, 'course_completed' as ActionType, 'sync');
+                            if (completeResult) {
+                                syncedCount++;
+                                totalXp += completeResult.xpGained;
+                                syncResults.push(`Course completed: ${course.title || course.id}`);
+                            }
+                        }
+                    }
+                } catch (studentErr: any) {
+                    // User may not be enrolled in this course - skip silently
+                }
             }
         } catch (sdkError: any) {
             console.warn("Course sync skipped:", sdkError.message);
-            syncResults.push("Course sync: Not available");
+            syncResults.push("Course sync: Requires courses:read permission");
         }
 
         // =========================================================================

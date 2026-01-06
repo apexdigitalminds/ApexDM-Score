@@ -12,8 +12,14 @@ export type ActionType =
   | 'post_forum_comment'
   | 'attend_call'
   | 'renew_subscription'
-  | 'subscription_renewed'  // 🆕 For webhook: invoice_paid
-  | 'lesson_completed'      // 🆕 For webhook: course_lesson_interaction_completed
+  | 'subscription_renewed'  // Webhook: invoice_paid
+  | 'lesson_completed'      // Webhook: course_lesson_interaction_completed
+  | 'course_started'        // Sync: first course interaction
+  | 'course_completed'      // Sync: 100% course completion
+  | 'streak_7_day'          // App: reached 7-day streak
+  | 'streak_30_day'         // App: reached 30-day streak
+  | 'badge_earned'          // App: any badge awarded
+  | 'profile_updated'       // App: profile bio/avatar changed
   | 'referral'
   | 'feedback'
   | 'log_trade'
