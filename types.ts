@@ -9,9 +9,11 @@ export type ActionType =
   | 'daily_login'
   | 'complete_module'
   | 'watch_content'
-  | 'post_comment'
+  | 'post_forum_comment'
   | 'attend_call'
   | 'renew_subscription'
+  | 'subscription_renewed'  // 🆕 For webhook: invoice_paid
+  | 'lesson_completed'      // 🆕 For webhook: course_lesson_interaction_completed
   | 'referral'
   | 'feedback'
   | 'log_trade'
@@ -21,7 +23,7 @@ export type ActionType =
   | 'quest_complete'
   | 'daily_checkin'
   | 'invite_friend'
-  | 'post_message'
+  | 'post_chat_message'
   | 'react_to_post'
   | 'other';
 

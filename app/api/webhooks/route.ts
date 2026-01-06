@@ -1,7 +1,8 @@
 import { waitUntil } from "@vercel/functions";
 import type { NextRequest } from "next/server";
 import { whopsdk } from "@/lib/whop-sdk";
-import { ensureWhopContext } from "@/app/actions";
+import { ensureWhopContext, recordActionServer } from "@/app/actions";
+import type { ActionType } from "@/types";
 
 export async function POST(request: NextRequest): Promise<Response> {
   const requestBodyText = await request.text();
@@ -41,6 +42,17 @@ export async function POST(request: NextRequest): Promise<Response> {
       "membership_activated",
       "payment_succeeded",
       "payment.succeeded"
+    ];
+
+    // 🎯 Events that should award XP automatically
+    const xpAwardEvents: Record<string, ActionType> = {
+      "invoice_paid": "subscription_renewed",
+      "course_lesson_interaction_completed": "lesson_completed"
+    };
+
+    // 📊 Events for analytics (no XP, just tracking)
+    const analyticsEvents = [
+      "membership_deactivated"
     ];
 
     if (provisioningEvents.includes(webhookData.type)) {
@@ -186,8 +198,80 @@ export async function POST(request: NextRequest): Promise<Response> {
         headers: { "Content-Type": "application/json" }
       });
 
+      // 🎯 Handle XP-awarding events (invoice_paid, course_lesson_interaction_completed)
+    } else if (xpAwardEvents[webhookData.type]) {
+      const payload = webhookData.data || webhookData;
+      const userId = payload.user_id || payload.user?.id || payload.member?.id || webhookData.user_id;
+      const actionType = xpAwardEvents[webhookData.type];
+
+      console.log(`🎯 ========================================`);
+      console.log(`🎯 XP AWARD EVENT: ${webhookData.type}`);
+      console.log(`   User: ${userId || 'UNKNOWN'}`);
+      console.log(`   Action: ${actionType}`);
+      console.log(`🎯 ========================================`);
+
+      if (userId) {
+        waitUntil(
+          recordActionServer(userId, actionType, 'webhook')
+            .then((result) => {
+              if (result) {
+                console.log(`✅ XP awarded: ${result.xpGained} XP for ${actionType}`);
+              } else {
+                console.warn(`⚠️ No reward config for action: ${actionType}`);
+              }
+            })
+            .catch(err => {
+              console.error(`❌ XP award error:`, err);
+            })
+        );
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: `XP award triggered for ${actionType}`,
+          user_id: userId,
+          action_type: actionType
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      } else {
+        console.warn(`⚠️ No user ID for XP event: ${webhookData.type}`);
+        return new Response(JSON.stringify({
+          success: false,
+          message: "No user ID found for XP award"
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // 📊 Handle analytics events (membership_deactivated for churn tracking)
+    } else if (analyticsEvents.includes(webhookData.type)) {
+      const payload = webhookData.data || webhookData;
+      const userId = payload.user_id || payload.user?.id || payload.member?.id;
+      const companyId = payload.company_id || payload.company?.id;
+
+      console.log(`📊 ========================================`);
+      console.log(`📊 ANALYTICS EVENT: ${webhookData.type}`);
+      console.log(`   User: ${userId || 'UNKNOWN'}`);
+      console.log(`   Company: ${companyId || 'UNKNOWN'}`);
+      console.log(`📊 ========================================`);
+
+      // TODO: Log to analytics table for churn tracking
+      // For now, just acknowledge receipt - can expand analytics later
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Analytics event logged: ${webhookData.type}`,
+        user_id: userId,
+        event_type: webhookData.type
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+
     } else {
-      console.log(`ℹ️ Event "${webhookData.type}" ignored (not a provisioning event)`);
+      console.log(`ℹ️ Event "${webhookData.type}" ignored (not a handled event)`);
 
       return new Response(JSON.stringify({
         success: true,

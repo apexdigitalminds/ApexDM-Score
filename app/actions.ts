@@ -395,6 +395,30 @@ export async function ensureWhopContext(
     communityId = newComm.id;
     console.log(`✅ Community created: "${newComm.name}" (${communityId})`);
     console.log(`   Tier: ${newComm.subscription_tier}`);
+
+    // =========================================================================
+    // 🌱 STEP 1.5: Seed Default Reward Actions
+    // =========================================================================
+    console.log(`🌱 Seeding default reward actions for community: ${communityId}`);
+
+    const defaultRewardActions = [
+      { action_type: 'daily_login', xp_gained: 10, is_active: true, is_archived: false },
+      { action_type: 'lesson_completed', xp_gained: 50, is_active: true, is_archived: false },
+      { action_type: 'subscription_renewed', xp_gained: 200, is_active: true, is_archived: false },
+      { action_type: 'post_forum_comment', xp_gained: 5, is_active: true, is_archived: false },
+      { action_type: 'post_chat_message', xp_gained: 5, is_active: true, is_archived: false },
+    ];
+
+    const { error: seedError } = await supabaseAdmin
+      .from('reward_actions')
+      .insert(defaultRewardActions.map(a => ({ ...a, community_id: communityId })));
+
+    if (seedError) {
+      console.warn(`⚠️ Failed to seed reward actions:`, seedError);
+      // Don't fail the whole provisioning for this
+    } else {
+      console.log(`✅ Seeded ${defaultRewardActions.length} default reward actions`);
+    }
   }
 
   // =============================================================================
