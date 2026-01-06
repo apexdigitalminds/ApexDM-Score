@@ -43,8 +43,8 @@ export interface AppContextValue {
 
     // Rewards
     handleAddReward: (reward: Partial<Reward>) => Promise<void>;
-    // 🟢 UPDATED: Added actionType and description to type definition
-    handleUpdateReward: (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, description?: string }) => Promise<void>;
+    // 🟢 UPDATED: Added actionType and displayName to type definition
+    handleUpdateReward: (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, displayName?: string }) => Promise<void>;
     handleDeleteReward: (actionType: string) => Promise<void>;
     handleRestoreReward: (actionType: string) => Promise<void>;
 
