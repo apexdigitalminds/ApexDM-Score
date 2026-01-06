@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import type { Action, ActionType, UserInventoryItem, ActiveEffect, Profile } from '@/types'; 
+import type { Action, ActionType, UserInventoryItem, ActiveEffect, Profile } from '@/types';
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
 import Leaderboard from './Leaderboard';
-import { SnowflakeIcon, ArrowPathIcon } from './icons'; 
+import { SnowflakeIcon, ArrowPathIcon } from './icons';
 import ActionButton from './ActionButton';
-import InventorySection from './InventorySection'; 
+import InventorySection from './InventorySection';
 
 // --- Sub-Components ---
 
@@ -36,12 +36,12 @@ const StreakFreezeIndicator: React.FC<{ count: number }> = ({ count }) => (
 
 const DashboardPage: React.FC = () => {
     const router = useRouter();
-    const { 
-        isLoading, 
-        selectedUser, 
-        allUsers, 
-        getUserActions, 
-        handleRecordAction, 
+    const {
+        isLoading,
+        selectedUser,
+        allUsers,
+        getUserActions,
+        handleRecordAction,
         rewardsConfig,
         getUserInventory,
         getActiveEffects,
@@ -53,15 +53,15 @@ const DashboardPage: React.FC = () => {
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [userActions, setUserActions] = useState<Action[]>([]);
-    
+
     // Data States
     const [inventory, setInventory] = useState<UserInventoryItem[]>([]);
     const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
-    const [currentMetadata, setCurrentMetadata] = useState<any>(null); 
-    
+    const [currentMetadata, setCurrentMetadata] = useState<any>(null);
+
     const [xpGained, setXpGained] = useState<number | null>(null);
     const [notification, setNotification] = useState('');
-    
+
     // Helpers
     const showNotification = (message: string) => {
         setNotification(message);
@@ -118,7 +118,7 @@ const DashboardPage: React.FC = () => {
         try {
             const res = await fetch('/api/sync', { method: 'POST' });
             const data = await res.json();
-            
+
             if (data.success) {
                 showNotification(data.message || "Sync successful!");
                 await triggerRefresh();
@@ -141,7 +141,7 @@ const DashboardPage: React.FC = () => {
             setXpGained(result.xpGained);
             showNotification(`+${result.xpGained} XP for ${actionType.replace(/_/g, ' ')}!`);
             setTimeout(() => setXpGained(null), 2000);
-            triggerRefresh(); 
+            triggerRefresh();
         }
     };
 
@@ -156,7 +156,7 @@ const DashboardPage: React.FC = () => {
     if (isLoading || !selectedUser) {
         return <div className="text-center p-8 text-slate-400">Loading user data...</div>;
     }
-    
+
     const currentUser = selectedUser!;
     const isDev = process.env.NODE_ENV === 'development';
 
@@ -168,15 +168,18 @@ const DashboardPage: React.FC = () => {
                     <h1 className="text-3xl font-bold text-white">Dashboard</h1>
                     <p className="text-slate-400">Your hub for stats and inventory.</p>
                 </div>
-                
-                <button 
-                    onClick={handleSync} 
-                    disabled={isSyncing}
-                    className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 shadow-md border border-slate-600"
-                >
-                    <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing...' : 'Sync Progress'}
-                </button>
+
+                <div className="flex flex-col items-end gap-1">
+                    <button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 shadow-md border border-slate-600"
+                    >
+                        <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing ? 'Syncing...' : 'Sync Progress'}
+                    </button>
+                    <p className="text-xs text-slate-500">Collect XP from forum posts, chat & courses</p>
+                </div>
             </div>
 
             {xpGained && <XpNotification amount={xpGained} />}
@@ -210,7 +213,7 @@ const DashboardPage: React.FC = () => {
                 </div>
             </div>
 
-            <InventorySection 
+            <InventorySection
                 inventory={inventory}
                 activeEffects={activeEffects}
                 userMetadata={currentMetadata}
@@ -234,7 +237,7 @@ const DashboardPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {Object.keys(rewardsConfig).map(actionType => (
-                            <ActionButton 
+                            <ActionButton
                                 key={actionType}
                                 actionType={actionType as ActionType}
                                 label={actionType.replace(/_/g, ' ')}
@@ -244,19 +247,19 @@ const DashboardPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                     <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
-                     <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
-                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm custom-scrollbar">
+                    <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
+                    <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm custom-scrollbar">
                         {Object.entries(rewardsConfig).map(([action, config]) => (
                             <div key={action} className="flex justify-between items-center p-2 bg-slate-700/50 rounded-md hover:bg-slate-700 transition-colors">
                                 <span className="text-slate-300 capitalize">{action.replace(/_/g, ' ')}</span>
-                                <span className="font-bold text-blue-400">+{ (config as any).xpGained ?? (config as any).xp } XP</span>
+                                <span className="font-bold text-blue-400">+{(config as any).xpGained ?? (config as any).xp} XP</span>
                             </div>
                         ))}
-                     </div>
+                    </div>
                 </div>
 
                 <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">

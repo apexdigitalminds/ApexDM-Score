@@ -18,10 +18,11 @@ export async function POST(req: NextRequest) {
         // 2. Sync Course Progress (course_started, course_completed)
         // =========================================================================
         try {
-            // Get list of courses user is enrolled in
-            const courses = await whopsdk.courses.list({});
+            // Get list of courses - SDK returns cursor page, get data array
+            const coursesResponse = await whopsdk.courses.list({});
+            const coursesList = coursesResponse?.data || [];
 
-            for (const course of (courses || [])) {
+            for (const course of coursesList) {
                 try {
                     // Get student progress for this course
                     const student = await whopsdk.courseStudents.retrieve(course.id, userId);
