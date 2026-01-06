@@ -15,17 +15,15 @@ export async function POST(req: NextRequest) {
         const syncResults: string[] = [];
 
         // =========================================================================
-        // 2. Sync Course Progress (course_started, course_completed)
+        // 2. Sync Course Progress (course_started)
         // =========================================================================
         try {
-            // Use courseLessonInteractions to check for course activity
             const interactions = await whopsdk.courseLessonInteractions.list({
                 user_id: userId
             });
             const interactionsList = interactions?.data || [];
 
             if (interactionsList.length > 0) {
-                // User has course interactions = they've started at least one course
                 const startResult = await recordActionServer(userId, 'course_started' as ActionType, 'sync');
                 if (startResult) {
                     syncedCount++;
@@ -33,7 +31,6 @@ export async function POST(req: NextRequest) {
                     syncResults.push(`Course activity detected - XP awarded`);
                 }
 
-                // Check for completed lessons
                 const completedLessons = interactionsList.filter((i: any) => i.completed);
                 if (completedLessons.length > 0) {
                     syncResults.push(`${completedLessons.length} lessons completed`);
@@ -47,61 +44,12 @@ export async function POST(req: NextRequest) {
         }
 
         // =========================================================================
-        // 3. Sync Forum Posts (Award XP for posts)
+        // 3. Forum & Chat (Future: via webhooks/SSE)
         // =========================================================================
-        try {
-            const forumPosts = await whopsdk.forumPosts.list({
-                user_id: userId
-            });
-
-            if (forumPosts && Array.isArray(forumPosts)) {
-                const postCount = forumPosts.length;
-                if (postCount > 0) {
-                    // Award XP for forum participation (once per sync)
-                    const result = await recordActionServer(userId, 'post_forum_comment' as ActionType, 'sync');
-                    if (result) {
-                        syncedCount++;
-                        totalXp += result.xpGained;
-                    }
-                    syncResults.push(`Found ${postCount} forum posts - XP awarded`);
-                } else {
-                    syncResults.push("No forum posts found");
-                }
-            }
-        } catch (sdkError: any) {
-            console.warn("Forum sync skipped:", sdkError.message);
-            syncResults.push("Forum sync: Requires forum:read permission");
-        }
+        syncResults.push("Forum/Chat: Available via future webhook integration");
 
         // =========================================================================
-        // 4. Sync Chat Messages (Award XP for chat activity)
-        // =========================================================================
-        try {
-            const messages = await whopsdk.messages.list({
-                user_id: userId
-            });
-
-            if (messages && Array.isArray(messages)) {
-                const msgCount = messages.length;
-                if (msgCount > 0) {
-                    // Award XP for chat participation (once per sync)
-                    const result = await recordActionServer(userId, 'post_chat_message' as ActionType, 'sync');
-                    if (result) {
-                        syncedCount++;
-                        totalXp += result.xpGained;
-                    }
-                    syncResults.push(`Found ${msgCount} chat messages - XP awarded`);
-                } else {
-                    syncResults.push("No chat messages found");
-                }
-            }
-        } catch (sdkError: any) {
-            console.warn("Chat sync skipped:", sdkError.message);
-            syncResults.push("Chat sync: Requires chat:read permission");
-        }
-
-        // =========================================================================
-        // 5. Return Results
+        // 4. Return Results
         // =========================================================================
         const message = syncedCount > 0
             ? `Synced! +${totalXp} XP (${syncedCount} actions)`
