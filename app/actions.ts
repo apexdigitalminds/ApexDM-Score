@@ -986,15 +986,15 @@ export async function adminToggleStoreItemAction(itemId: string, isActive: boole
   return !error;
 }
 
-export async function adminAddRewardAction(actionType: string, xp: number, description?: string) {
+export async function adminAddRewardAction(actionType: string, xp: number, displayName?: string) {
   await ensureAdmin();
   const communityId = await getCommunityId();
   const payload: any = {
     community_id: communityId,
     action_type: actionType,
-    xp_gained: xp
+    xp_gained: xp,
+    display_name: displayName || actionType // Default to actionType if not provided
   };
-  if (description) payload.description = description;
 
   const { error } = await supabaseAdmin.from('reward_actions').insert(payload);
   return !error;
@@ -1005,7 +1005,7 @@ export async function adminUpdateRewardAction(currentActionType: string, data: a
   const updates: any = {};
   if (data.xpGained !== undefined) updates.xp_gained = data.xpGained;
   if (data.isActive !== undefined) updates.is_active = data.isActive;
-  if (data.description !== undefined) updates.description = data.description;
+  if (data.displayName !== undefined) updates.display_name = data.displayName;
   if (data.actionType && data.actionType !== currentActionType) {
     updates.action_type = data.actionType;
   }
@@ -1180,6 +1180,23 @@ export async function recordActionServer(userId: string, actionType: ActionType,
   if (activeEffects && activeEffects.length > 0) xp_to_add = Math.round(xp_to_add * (activeEffects[0].modifier || 1));
 
   await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: xp_to_add });
+
+  // 🆕 Update last_action_date and increment streak for daily_login
+  if (actionType === 'daily_login') {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const { data: profile } = await supabaseAdmin.from('profiles').select('streak, last_action_date').eq('id', userId).single();
+
+    const lastDate = profile?.last_action_date ? profile.last_action_date.split('T')[0] : null;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+    // Increment streak only if last action was yesterday, otherwise reset to 1
+    const newStreak = lastDate === yesterday ? (profile?.streak || 0) + 1 : 1;
+
+    await supabaseAdmin.from('profiles').update({
+      last_action_date: new Date().toISOString(),
+      streak: newStreak
+    }).eq('id', userId);
+  }
 
   const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
   if (userProfile?.community_id) {

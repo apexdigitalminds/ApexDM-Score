@@ -260,9 +260,9 @@ export const api = {
     // CONFIGS
     getRewardsConfig: async (): Promise<RewardsConfig> => {
         const communityId = await getCommunityId();
-        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active').eq('community_id', communityId);
+        const { data, error } = await supabase.from('reward_actions').select('action_type, xp_gained, is_archived, is_active, display_name').eq('community_id', communityId);
         if (error) return {};
-        return data.reduce((acc, r) => ({ ...acc, [r.action_type]: { xpGained: r.xp_gained, isArchived: r.is_archived, isActive: r.is_active } }), {} as any);
+        return data.reduce((acc, r) => ({ ...acc, [r.action_type]: { xpGained: r.xp_gained, isArchived: r.is_archived, isActive: r.is_active, displayName: r.display_name } }), {} as any);
     },
 
     getBadgesConfig: async (): Promise<BadgesConfig> => {
@@ -396,7 +396,7 @@ export const api = {
     },
 
     // Mapped Admin Actions
-    createReward: async (a: string, x: number) => { return await adminAddRewardAction(a, x); },
+    createReward: async (a: string, x: number, displayName?: string) => { return await adminAddRewardAction(a, x, displayName); },
     updateReward: async (a: string, d: any) => { return await adminUpdateRewardAction(a, d); },
     deleteReward: async (a: string, b: boolean) => { return await adminDeleteRewardAction(a, b); },
     restoreReward: async (a: string) => { return await adminRestoreRewardAction(a); },

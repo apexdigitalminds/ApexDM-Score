@@ -146,6 +146,7 @@ export default function AdminPage() {
     const [editRewardAction, setEditRewardAction] = useState<string | null>(null);
     const [newActionName, setNewActionName] = useState("");
     const [newActionXp, setNewActionXp] = useState(10);
+    const [newDisplayName, setNewDisplayName] = useState("");
 
     const [editBadgeName, setEditBadgeName] = useState<string | null>(null);
     const [newBadgeName, setNewBadgeName] = useState("");
@@ -251,24 +252,24 @@ export default function AdminPage() {
         await withRefresh(async () => { });
     };
 
-    const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); };
+    const cancelEditReward = () => { setEditRewardAction(null); setNewActionName(""); setNewActionXp(10); setNewDisplayName(""); };
 
     // 🟢 FIXED: Rewards - Allow Name Editing & Pass New Name to Update Function
     const handleRewardSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (editRewardAction) {
-            // Include actionType to support renaming
-            await handleUpdateReward(editRewardAction, { xpGained: newActionXp, actionType: newActionName });
+            // Include actionType and displayName to support renaming and labeling
+            await handleUpdateReward(editRewardAction, { xpGained: newActionXp, actionType: newActionName, displayName: newDisplayName || newActionName });
             showNotification("Reward updated.");
         } else {
-            await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp });
+            await handleAddReward({ actionType: newActionName as any, xpGained: newActionXp, displayName: newDisplayName || newActionName });
             showNotification("Reward added.");
         }
         cancelEditReward();
         await withRefresh(async () => { });
     };
 
-    const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); };
+    const handleEditRewardClick = (actionType: string, reward: Reward) => { setEditRewardAction(actionType); setNewActionName(actionType); setNewActionXp(reward?.xpGained ?? 0); setNewDisplayName(reward?.displayName || ''); };
     const handleDeleteRewardClick = (actionType: string) => { setModalConfig({ isOpen: true, title: "Archive Reward?", message: `Archive "${actionType}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteReward(actionType); showNotification("Reward processed."); await withRefresh(async () => { }); closeModal(); } }); };
     const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); await withRefresh(async () => { }); };
 
@@ -544,7 +545,8 @@ export default function AdminPage() {
                             <form onSubmit={handleRewardSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
                                 <div className="flex gap-2 mb-2">
                                     {/* 🟢 FIXED: Removed disabled={!!editRewardAction} to allow editing */}
-                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action ID" required className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
+                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action Type (e.g. daily_login)" required className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
+                                    <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Display Name (e.g. Daily Login)" className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
                                     <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm" />
                                 </div>
                                 <div className="flex gap-2">
@@ -557,7 +559,7 @@ export default function AdminPage() {
                                     const r = value as Reward;
                                     return (
                                         <div key={key} className={`flex justify-between items-center p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                            <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-white'}`}>{key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                            <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-white'}`}>{r.displayName || key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-slate-500">{key}</span><span className="text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
                                             <div className="flex gap-2 items-center">
                                                 {!r.isArchived && (
                                                     <ToggleSwitch checked={r.isActive} onChange={(val) => handleToggleRewardActive(key, val)} />

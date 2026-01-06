@@ -200,6 +200,7 @@ export interface Reward {
   isActive: boolean;
   isArchived: boolean;
   actionType?: string;
+  displayName?: string; // User-friendly label shown in UI
 }
 
 export interface BadgeConfig {

@@ -225,13 +225,13 @@ export const AppProvider = ({
 
     const handleAddReward = async (reward: Partial<Reward>) => {
         if (!reward.actionType || reward.xpGained == null) return;
-        // Pass description if available
-        await api.createReward(reward.actionType, reward.xpGained);
+        // Pass displayName if available
+        await api.createReward(reward.actionType, reward.xpGained, reward.displayName);
         await fetchRewards();
     };
 
-    // 🟢 UPDATED: Function implementation now passes full data object to API
-    const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, description?: string }) => {
+    // 🟢 UPDATED: Function implementation now passes full data object to API (including displayName)
+    const handleUpdateReward = async (actionType: string, data: { xpGained?: number, isActive?: boolean, actionType?: string, displayName?: string }) => {
         await api.updateReward(actionType, data);
         await fetchRewards();
     };
