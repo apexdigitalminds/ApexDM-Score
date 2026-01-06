@@ -198,10 +198,20 @@ export const AppProvider = ({
     const checkDailyLogin = async (user: Profile) => {
         const today = new Date().toDateString();
         const lastDate = user.last_action_date ? new Date(user.last_action_date).toDateString() : null;
+
+        console.log(`📅 checkDailyLogin called:`);
+        console.log(`   User ID: ${user.id}`);
+        console.log(`   last_action_date: ${user.last_action_date} (parsed: ${lastDate})`);
+        console.log(`   today: ${today}`);
+        console.log(`   Should trigger: ${lastDate !== today}`);
+
         if (lastDate !== today) {
             console.log("📅 First login of the day! Awarding XP...");
             const result = await api.recordAction(user.id, 'daily_login', 'manual');
+            console.log(`   recordAction result:`, result);
+
             if (result) {
+                console.log(`   ✅ Daily login XP awarded: ${result.xpGained}`);
                 // Check for streak milestones after daily login
                 const newStreak = (user.streak || 0) + 1;
 
@@ -219,7 +229,11 @@ export const AppProvider = ({
 
                 await checkAutomatedBadges(user.id); // Check badges after login
                 await refreshSelectedUser();
+            } else {
+                console.error("   ❌ recordAction returned null - does 'daily_login' reward action exist in this community?");
             }
+        } else {
+            console.log("   ⏭️ Already logged in today, skipping XP");
         }
     };
 

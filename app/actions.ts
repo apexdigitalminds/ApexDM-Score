@@ -1172,8 +1172,26 @@ export async function adminToggleQuestAction(questId: string, isActive: boolean)
 }
 
 export async function recordActionServer(userId: string, actionType: ActionType, source: string) {
-  const { data: rewardData } = await supabaseAdmin.from('reward_actions').select('xp_gained').eq('action_type', actionType).single();
-  if (!rewardData) return null;
+  // 🆕 First get the user's community_id to filter reward_actions correctly
+  const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
+  if (!userProfile?.community_id) {
+    console.error(`recordActionServer: User ${userId} has no community_id`);
+    return null;
+  }
+
+  // 🔧 FIX: Add community_id filter to avoid conflicts with multiple communities
+  const { data: rewardData, error: rewardError } = await supabaseAdmin
+    .from('reward_actions')
+    .select('xp_gained')
+    .eq('action_type', actionType)
+    .eq('community_id', userProfile.community_id)
+    .single();
+
+  if (rewardError || !rewardData) {
+    console.error(`recordActionServer: No reward action found for ${actionType} in community ${userProfile.community_id}`, rewardError);
+    return null;
+  }
+
   let xp_to_add = rewardData.xp_gained;
 
   const { data: activeEffects } = await supabaseAdmin.from('user_active_effects').select('modifier').eq('user_id', userId).eq('effect_type', 'XP_BOOST').gt('expires_at', new Date().toISOString());
@@ -1198,10 +1216,8 @@ export async function recordActionServer(userId: string, actionType: ActionType,
     }).eq('id', userId);
   }
 
-  const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
-  if (userProfile?.community_id) {
-    await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
-  }
+  // Log the action
+  await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
 
   return { xpGained: xp_to_add };
 }
