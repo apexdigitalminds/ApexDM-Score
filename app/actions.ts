@@ -1221,74 +1221,80 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
   // 🆕 Update quest progress for any active quests that require this action
   try {
-    // Get all active quests for this community with their tasks
-    const { data: quests } = await supabaseAdmin
-      .from('quests')
-      .select('id, tasks')
-      .eq('community_id', userProfile.community_id)
-      .eq('is_active', true)
-      .eq('is_archived', false);
+    // Find quest_tasks that match this action type
+    const { data: matchingTasks } = await supabaseAdmin
+      .from('quest_tasks')
+      .select('id, quest_id, action_type, target_count, quests!inner(id, community_id, is_active, is_archived)')
+      .eq('action_type', actionType)
+      .eq('quests.community_id', userProfile.community_id)
+      .eq('quests.is_active', true)
+      .eq('quests.is_archived', false);
 
-    if (quests && quests.length > 0) {
-      for (const quest of quests) {
-        // Check if this quest has a task matching our action type
-        const tasks = quest.tasks as any[];
-        const matchingTask = tasks?.find((t: any) => t.actionType === actionType);
+    if (matchingTasks && matchingTasks.length > 0) {
+      for (const task of matchingTasks) {
+        const questId = task.quest_id;
 
-        if (matchingTask) {
-          // Get or create user's progress for this quest
-          const { data: existingProgress } = await supabaseAdmin
-            .from('user_quest_progress')
-            .select('id, progress, is_completed')
-            .eq('user_id', userId)
-            .eq('quest_id', quest.id)
-            .single();
+        // Get or create user's progress for this quest
+        const { data: existingProgress } = await supabaseAdmin
+          .from('user_quest_progress')
+          .select('id, progress, is_completed')
+          .eq('user_id', userId)
+          .eq('quest_id', questId)
+          .maybeSingle();
 
-          if (existingProgress && existingProgress.is_completed) {
-            // Quest already completed, skip
-            continue;
-          }
+        if (existingProgress?.is_completed) {
+          // Quest already completed, skip
+          continue;
+        }
 
-          const currentProgress = existingProgress?.progress || {};
-          const taskKey = matchingTask.id || actionType;
-          const newCount = (currentProgress[taskKey] || 0) + 1;
-          const updatedProgress = { ...currentProgress, [taskKey]: newCount };
+        // Get all tasks for this quest to check completion
+        const { data: allQuestTasks } = await supabaseAdmin
+          .from('quest_tasks')
+          .select('id, action_type, target_count')
+          .eq('quest_id', questId);
 
-          // Check if all tasks are now complete
-          let allComplete = true;
-          for (const task of tasks) {
-            const tk = task.id || task.actionType;
-            if ((updatedProgress[tk] || 0) < task.targetCount) {
+        const currentProgress = existingProgress?.progress || {};
+        // Use action_type as the key for progress tracking
+        const taskKey = task.action_type;
+        const newCount = (currentProgress[taskKey] || 0) + 1;
+        const updatedProgress = { ...currentProgress, [taskKey]: newCount };
+
+        // Check if all tasks are now complete
+        let allComplete = true;
+        if (allQuestTasks) {
+          for (const qt of allQuestTasks) {
+            const tk = qt.action_type;
+            if ((updatedProgress[tk] || 0) < qt.target_count) {
               allComplete = false;
               break;
             }
           }
-
-          if (existingProgress) {
-            // Update existing progress
-            await supabaseAdmin
-              .from('user_quest_progress')
-              .update({
-                progress: updatedProgress,
-                is_completed: allComplete,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', existingProgress.id);
-          } else {
-            // Create new progress entry
-            await supabaseAdmin
-              .from('user_quest_progress')
-              .insert({
-                user_id: userId,
-                quest_id: quest.id,
-                progress: updatedProgress,
-                is_completed: allComplete,
-                is_claimed: false
-              });
-          }
-
-          console.log(`📋 Quest progress updated: ${quest.id} - ${actionType} (${newCount}/${matchingTask.targetCount})`);
         }
+
+        if (existingProgress) {
+          // Update existing progress
+          await supabaseAdmin
+            .from('user_quest_progress')
+            .update({
+              progress: updatedProgress,
+              is_completed: allComplete,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingProgress.id);
+        } else {
+          // Create new progress entry
+          await supabaseAdmin
+            .from('user_quest_progress')
+            .insert({
+              user_id: userId,
+              quest_id: questId,
+              progress: updatedProgress,
+              is_completed: allComplete,
+              is_claimed: false
+            });
+        }
+
+        console.log(`📋 Quest progress updated: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
       }
     }
   } catch (questError) {
