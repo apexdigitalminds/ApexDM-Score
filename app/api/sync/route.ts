@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
             for (const interaction of interactions?.data || []) {
                 if (!interaction.completed) continue;
 
-                const interactionDate = new Date(interaction.completed_at || interaction.created_at);
+                const interactionDate = new Date(interaction.created_at);
                 if (interactionDate < profileCreatedAt) continue;
                 if (interactionDate < sinceSyncDate) continue;
 
