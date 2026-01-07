@@ -768,6 +768,7 @@ export default function AdminPage() {
                                                     <option value="AVATAR_PULSE">Avatar Pulse</option>
                                                     <option value="TITLE">Title - Prefix/Suffix</option>
                                                     <option value="BANNER">Profile Banner</option>
+                                                    <option value="FRAME">Profile Frame</option>
                                                 </optgroup>
                                             </select>
                                         </div>
