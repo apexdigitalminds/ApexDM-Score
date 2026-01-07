@@ -690,9 +690,10 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
   const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', userId).single();
   if (!userProfile) return { success: false, message: "User not found" };
 
+  // Get badge with xp_reward
   const { data: badge, error: badgeError } = await supabaseAdmin
     .from('badges')
-    .select('id')
+    .select('id, xp_reward')
     .eq('name', badgeName)
     .eq('community_id', userProfile.community_id)
     .single();
@@ -718,11 +719,25 @@ export async function awardBadgeAction(userId: string, badgeName: string) {
   const { error: insertError } = await supabaseAdmin.from('user_badges').insert(payload);
   if (insertError) return { success: false, message: `DB Error: ${insertError.message}` };
 
-  // 🎯 Award XP for earning a badge
-  try {
-    await recordActionServer(userId, 'badge_earned', 'badge');
-  } catch (e) {
-    console.warn("Failed to award badge_earned XP:", e);
+  // 🎯 Award badge-specific XP (from badge.xp_reward)
+  const xpToAward = badge.xp_reward ?? 0;
+  if (xpToAward > 0) {
+    try {
+      await supabaseAdmin.rpc('increment_user_xp', { p_user_id: userId, p_xp_to_add: xpToAward });
+
+      // Log to actions_log for analytics tracking
+      await supabaseAdmin.from('actions_log').insert({
+        user_id: userId,
+        community_id: userProfile.community_id,
+        action_type: 'badge_earned',
+        xp_gained: xpToAward,
+        source: 'badge'
+      });
+
+      console.log(`🏆 Badge awarded: ${badgeName} (+${xpToAward} XP)`);
+    } catch (e) {
+      console.warn("Failed to award badge XP:", e);
+    }
   }
 
   revalidatePath('/dashboard');
@@ -864,11 +879,21 @@ export async function claimQuestRewardAction(progressId: number) {
   if (error || !updatedProgress) return { success: false, message: 'Error claiming reward.' };
 
   const { quest_id: questId } = updatedProgress;
-  const { data: questData } = await supabaseAdmin.from('quests').select('xp_reward, badge_reward_id').eq('id', questId).single();
+  const { data: questData } = await supabaseAdmin.from('quests').select('xp_reward, badge_reward_id, community_id').eq('id', questId).single();
 
   if (!questData) return { success: false, message: "Quest data missing." };
 
   await supabaseAdmin.rpc('increment_user_xp', { p_user_id: session.userId, p_xp_to_add: questData.xp_reward });
+
+  // 🎯 Log quest_completed to actions_log for analytics
+  await supabaseAdmin.from('actions_log').insert({
+    user_id: session.userId,
+    community_id: questData.community_id,
+    action_type: 'quest_completed',
+    xp_gained: questData.xp_reward,
+    source: 'quest'
+  });
+  console.log(`🎯 Quest completed: +${questData.xp_reward} XP`);
 
   if (questData.badge_reward_id) {
     const { data: userProfile } = await supabaseAdmin.from('profiles').select('community_id').eq('id', session.userId).single();
@@ -876,12 +901,29 @@ export async function claimQuestRewardAction(progressId: number) {
     const { count } = await supabaseAdmin.from('user_badges').select('id', { count: 'exact' }).eq('user_id', session.userId).eq('badge_id', questData.badge_reward_id);
 
     if (count === 0 && userProfile) {
+      // Get badge xp_reward for analytics
+      const { data: badge } = await supabaseAdmin.from('badges').select('xp_reward').eq('id', questData.badge_reward_id).single();
+      const badgeXp = badge?.xp_reward ?? 0;
+
       await supabaseAdmin.from('user_badges').insert({
         user_id: session.userId,
         badge_id: questData.badge_reward_id,
         community_id: userProfile.community_id,
         earned_at: new Date().toISOString()
       });
+
+      // Award badge XP and log to actions_log
+      if (badgeXp > 0) {
+        await supabaseAdmin.rpc('increment_user_xp', { p_user_id: session.userId, p_xp_to_add: badgeXp });
+        await supabaseAdmin.from('actions_log').insert({
+          user_id: session.userId,
+          community_id: userProfile.community_id,
+          action_type: 'badge_earned',
+          xp_gained: badgeXp,
+          source: 'quest'
+        });
+        console.log(`🏆 Quest badge earned: +${badgeXp} XP`);
+      }
     }
   }
   return { success: true, message: `+${questData.xp_reward} XP!` };
@@ -1051,6 +1093,7 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
   if (config.icon !== undefined) updates.icon = config.icon;
   if (config.color !== undefined) updates.color = config.color;
   if (config.isActive !== undefined) updates.is_active = config.isActive;
+  if (config.xpReward !== undefined) updates.xp_reward = config.xpReward;
   if (config.name && config.name !== currentName) {
     updates.name = config.name;
   }

@@ -153,6 +153,7 @@ export default function AdminPage() {
     const [newBadgeDesc, setNewBadgeDesc] = useState("");
     const [newBadgeIcon, setNewBadgeIcon] = useState(iconMapKeys[0]);
     const [newBadgeColor, setNewBadgeColor] = useState("#ffffff");
+    const [newBadgeXp, setNewBadgeXp] = useState(0);
     const [badgeIconType, setBadgeIconType] = useState<'PRESET' | 'EMOJI'>('PRESET');
 
     const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -280,7 +281,7 @@ export default function AdminPage() {
         e.preventDefault();
         const iconToSave = badgeIconType === 'EMOJI' ? newBadgeIcon : newBadgeIcon;
         // name is already included in badgeData
-        const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor, name: newBadgeName };
+        const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor, name: newBadgeName, xpReward: newBadgeXp };
 
         if (editBadgeName) {
             await handleUpdateBadge(editBadgeName, badgeData);
@@ -296,7 +297,7 @@ export default function AdminPage() {
     };
 
     const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => {
-        setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color);
+        setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); setNewBadgeXp((config as any).xpReward ?? 0);
         if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); }
         else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon || "🏆"); }
     };
@@ -597,7 +598,8 @@ export default function AdminPage() {
                                     </div>
                                     <div className="col-span-2 flex gap-4 items-end">
                                         <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
-                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-72">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
+                                        <div><label className="text-xs text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>
+                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-64">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
                                     </div>
                                 </div>
                             </form>
@@ -614,7 +616,7 @@ export default function AdminPage() {
                                                 <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">
                                                     {isPreset && BadgeIcon ? <BadgeIcon className="w-6 h-6" style={{ color: b.color }} /> : <span className="text-xl select-none">{b.icon}</span>}
                                                 </div>
-                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
+                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{b.xpReward > 0 && <span className="text-yellow-400 font-bold">{b.xpReward} XP</span>}{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
                                             </div>
                                             <div className="flex gap-2 items-center">
                                                 {!b.isArchived && (

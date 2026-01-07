@@ -119,6 +119,7 @@ export interface Badge {
   communityId: string;
   isActive: boolean;
   isArchived?: boolean;
+  xpReward?: number; // XP awarded when this badge is earned
 }
 
 export interface WhopUser {

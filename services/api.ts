@@ -90,7 +90,8 @@ const badgeFromSupabase = (data: any): Badge => ({
     color: data.color,
     communityId: data.community_id ?? "",
     isActive: data.is_active ?? !data.is_archived,
-    isArchived: data.is_archived
+    isArchived: data.is_archived,
+    xpReward: data.xp_reward ?? 0
 });
 
 const questFromSupabase = (data: any): Quest => ({
