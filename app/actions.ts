@@ -424,7 +424,70 @@ export async function ensureWhopContext(
     } else {
       console.log(`✅ Seeded ${defaultRewardActions.length} default reward actions`);
     }
+
+    // =========================================================================
+    // 🏆 STEP 1.6: Seed Default Badges
+    // =========================================================================
+    console.log(`🏆 Seeding default badges for community: ${communityId}`);
+
+    const defaultBadges = [
+      // XP Milestone Badges (auto-trigger)
+      { name: 'XP Novice', description: 'Earn your first 100 XP', icon: 'Star', color: '#CD7F32', xp_reward: 10, trigger_type: 'xp_threshold', trigger_value: 100, is_active: true, is_archived: false },
+      { name: 'XP Adept', description: 'Accumulate 1,000 XP', icon: 'Star', color: '#C0C0C0', xp_reward: 25, trigger_type: 'xp_threshold', trigger_value: 1000, is_active: true, is_archived: false },
+      { name: 'XP Veteran', description: 'Reach 5,000 XP milestone', icon: 'Star', color: '#FFD700', xp_reward: 50, trigger_type: 'xp_threshold', trigger_value: 5000, is_active: true, is_archived: false },
+      { name: 'XP Master', description: 'Achieve 10,000 XP mastery', icon: 'Crown', color: '#B9F2FF', xp_reward: 100, trigger_type: 'xp_threshold', trigger_value: 10000, is_active: true, is_archived: false },
+      // Streak Badges (auto-trigger)
+      { name: '3 Day Streak', description: 'Maintain a 3-day login streak', icon: 'Flame', color: '#CD7F32', xp_reward: 15, trigger_type: 'streak_days', trigger_value: 3, is_active: true, is_archived: false },
+      { name: '7 Day Streak', description: 'Keep the fire burning for 7 days', icon: 'Flame', color: '#C0C0C0', xp_reward: 30, trigger_type: 'streak_days', trigger_value: 7, is_active: true, is_archived: false },
+      { name: '30 Day Streak', description: 'One month of dedication', icon: 'Flame', color: '#FFD700', xp_reward: 75, trigger_type: 'streak_days', trigger_value: 30, is_active: true, is_archived: false },
+      { name: 'Century Club', description: 'Legendary 100-day streak', icon: 'Trophy', color: '#B9F2FF', xp_reward: 200, trigger_type: 'streak_days', trigger_value: 100, is_active: true, is_archived: false },
+    ];
+
+    const { error: badgeSeedError } = await supabaseAdmin
+      .from('badges')
+      .insert(defaultBadges.map(b => ({ ...b, community_id: communityId })));
+
+    if (badgeSeedError) {
+      console.warn(`⚠️ Failed to seed badges:`, badgeSeedError);
+    } else {
+      console.log(`✅ Seeded ${defaultBadges.length} default badges`);
+    }
+
+    // =========================================================================
+    // 🛒 STEP 1.7: Seed Default Store Items
+    // =========================================================================
+    console.log(`🛒 Seeding default store items for community: ${communityId}`);
+
+    const defaultStoreItems: any[] = [
+      // Powerups
+      { name: 'XP Boost', description: '1.5x XP for 24 hours', icon: '⚡', item_type: 'TIMED_EFFECT', cost_xp: 150, duration_hours: 24, modifier: 1.5, is_available: true, is_archived: false, metadata: {} },
+      { name: 'Streak Shield', description: 'Protect your streak for 48 hours', icon: '🛡️', item_type: 'STREAK_FREEZE', cost_xp: 300, duration_hours: 48, is_available: true, is_archived: false, metadata: {} },
+      // Cosmetics
+      { name: 'Golden Frame', description: 'A prestigious golden profile frame', icon: '🖼️', item_type: 'FRAME', cost_xp: 500, is_available: true, is_archived: false, metadata: { color: '#FFD700' } },
+      { name: 'Diamond Badge', description: 'Sparkling diamond avatar effect', icon: '💎', item_type: 'AVATAR_PULSE', cost_xp: 1000, is_available: true, is_archived: false, metadata: { color: '#B9F2FF' } },
+      { name: 'VIP Title', description: 'Display "VIP" title on your profile', icon: '👑', item_type: 'TITLE', cost_xp: 750, is_available: true, is_archived: false, metadata: { text: 'VIP', color: '#FFD700' } },
+    ];
+
+    // Add Elite trial bonus items if applicable
+    if (isTrial && mappedTier === 'elite_trial') {
+      defaultStoreItems.push(
+        { name: 'Double XP Weekend', description: '2x XP for 72 hours - Elite exclusive', icon: '🔥', item_type: 'TIMED_EFFECT', cost_xp: 400, duration_hours: 72, modifier: 2.0, is_available: true, is_archived: false, metadata: {} },
+        { name: 'Exclusive Emote Pack', description: 'Special emotes for premium members', icon: '🎨', item_type: 'BANNER', cost_xp: 600, is_available: true, is_archived: false, metadata: { exclusive: true } },
+        { name: 'Platinum Profile', description: 'Animated platinum profile effect', icon: '✨', item_type: 'FRAME', cost_xp: 1500, is_available: true, is_archived: false, metadata: { color: '#E5E4E2', animated: true } },
+      );
+    }
+
+    const { error: storeSeedError } = await supabaseAdmin
+      .from('store_items')
+      .insert(defaultStoreItems.map(s => ({ ...s, community_id: communityId })));
+
+    if (storeSeedError) {
+      console.warn(`⚠️ Failed to seed store items:`, storeSeedError);
+    } else {
+      console.log(`✅ Seeded ${defaultStoreItems.length} default store items`);
+    }
   }
+
 
   // =============================================================================
   // 🟢 STEP 2: Link User to Community

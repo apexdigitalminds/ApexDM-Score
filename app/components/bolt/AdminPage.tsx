@@ -539,7 +539,7 @@ export default function AdminPage() {
                         <p className="text-slate-400 text-sm">Configure how members earn recognition in your community. Set up XP reward actions to incentivize participation and create achievement badges for milestones.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
                                 <div className="flex items-center gap-2">
