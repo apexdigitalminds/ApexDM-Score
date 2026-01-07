@@ -578,7 +578,7 @@ export default function AdminPage() {
                         </div>
 
                         {/* BADGES */}
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-bold text-white">Manage Badges</h3>
                                 <div className="flex items-center gap-2">
@@ -586,12 +586,25 @@ export default function AdminPage() {
                                     <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
                                 </div>
                             </div>
-                            <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-6 space-y-4 border border-slate-600">
+                            <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-4 space-y-3 border border-slate-600">
+                                {/* Row 1: Name + Description */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* 🟢 FIXED: Removed disabled={!!editBadgeName} to allow editing */}
                                     <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
                                     <div className="col-span-2"><label className="text-xs text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
                                 </div>
+                                {/* Row 2: Color/XP (under Name) + Auto-Trigger/Value/Action (under Description) */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                    <div className="col-span-1 flex gap-3 items-end">
+                                        <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
+                                        <div><label className="text-xs text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>
+                                    </div>
+                                    <div className="col-span-2 flex gap-3 items-end flex-wrap">
+                                        <div><label className="text-xs text-slate-400 mb-1 block">Auto-Trigger</label><select value={newBadgeTriggerType} onChange={e => setNewBadgeTriggerType(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36"><option value="none">None (Manual)</option><option value="xp_threshold">XP Threshold</option><option value="streak_days">Streak Days</option><option value="action_count">Action Count</option></select></div>
+                                        {newBadgeTriggerType !== 'none' && (<div><label className="text-xs text-slate-400 mb-1 block">{newBadgeTriggerType === 'xp_threshold' ? 'XP Amount' : newBadgeTriggerType === 'streak_days' ? 'Days' : 'Count'}</label><input type="number" value={newBadgeTriggerValue} onChange={e => setNewBadgeTriggerValue(parseInt(e.target.value) || 0)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>)}
+                                        {newBadgeTriggerType === 'action_count' && (<div><label className="text-xs text-slate-400 mb-1 block">Action Type</label><select value={newBadgeTriggerAction} onChange={e => setNewBadgeTriggerAction(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36">{Object.keys(rewardsConfig).map(a => <option key={a} value={a}>{(rewardsConfig as any)[a]?.displayName || a}</option>)}</select></div>)}
+                                    </div>
+                                </div>
+                                {/* Row 3: Icon + Submit */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                                     <div className="col-span-1">
                                         <div className="flex justify-between items-center mb-1"><label className="text-xs text-slate-400 block">Icon Type</label><button type="button" onClick={() => { const newType = badgeIconType === 'PRESET' ? 'EMOJI' : 'PRESET'; setBadgeIconType(newType); setNewBadgeIcon(newType === 'PRESET' ? iconMapKeys[0] : '🏆'); }} className="text-[10px] uppercase font-bold bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">{badgeIconType} ⟳</button></div>
@@ -600,13 +613,9 @@ export default function AdminPage() {
                                             {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
                                         </div>
                                     </div>
-                                    <div className="col-span-2 flex gap-4 items-end flex-wrap">
-                                        <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
-                                        <div><label className="text-xs text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>
-                                        <div><label className="text-xs text-slate-400 mb-1 block">Auto-Trigger</label><select value={newBadgeTriggerType} onChange={e => setNewBadgeTriggerType(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36"><option value="none">None (Manual)</option><option value="xp_threshold">XP Threshold</option><option value="streak_days">Streak Days</option><option value="action_count">Action Count</option></select></div>
-                                        {newBadgeTriggerType !== 'none' && (<div><label className="text-xs text-slate-400 mb-1 block">{newBadgeTriggerType === 'xp_threshold' ? 'XP Amount' : newBadgeTriggerType === 'streak_days' ? 'Days' : 'Count'}</label><input type="number" value={newBadgeTriggerValue} onChange={e => setNewBadgeTriggerValue(parseInt(e.target.value) || 0)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>)}
-                                        {newBadgeTriggerType === 'action_count' && (<div><label className="text-xs text-slate-400 mb-1 block">Action Type</label><select value={newBadgeTriggerAction} onChange={e => setNewBadgeTriggerAction(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36">{Object.keys(rewardsConfig).map(a => <option key={a} value={a}>{(rewardsConfig as any)[a]?.displayName || a}</option>)}</select></div>)}
-                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-48">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
+                                    <div className="col-span-2 flex gap-2 items-end">
+                                        <button type="submit" className="bg-blue-600 text-white px-6 h-9 rounded hover:bg-blue-700 font-bold text-sm">{editBadgeName ? 'Update Badge' : 'Add Badge'}</button>
+                                        {editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-4 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}
                                     </div>
                                 </div>
                             </form>
