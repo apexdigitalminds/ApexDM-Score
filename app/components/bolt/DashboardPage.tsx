@@ -52,6 +52,7 @@ const DashboardPage: React.FC = () => {
     } = useApp();
 
     const [isSyncing, setIsSyncing] = useState(false);
+    const [syncCooldownMins, setSyncCooldownMins] = useState<number | null>(null);
     const [userActions, setUserActions] = useState<Action[]>([]);
 
     // Data States
@@ -115,19 +116,31 @@ const DashboardPage: React.FC = () => {
     // Sync Handler
     const handleSync = async () => {
         setIsSyncing(true);
+        setSyncCooldownMins(null);
         try {
             const res = await fetch('/api/sync', { method: 'POST' });
             const data = await res.json();
 
-            if (data.success) {
-                showNotification(data.message || "Sync successful!");
+            if (data.cooldown) {
+                // On cooldown - show remaining time
+                setSyncCooldownMins(data.minutesRemaining);
+                showNotification(`⏳ ${data.message}`);
+            } else if (data.success) {
+                // Success - show detailed results
+                const details = data.details?.join(', ') || '';
+                if (data.xpAwarded > 0) {
+                    showNotification(`✅ +${data.xpAwarded} XP from ${details}`);
+                } else {
+                    showNotification(data.message || 'Sync complete. No new activity.');
+                }
+                setSyncCooldownMins(null); // Reset cooldown on successful sync
                 await triggerRefresh();
             } else {
-                showNotification(data.message || "Sync completed with no changes.");
+                showNotification(data.message || 'Sync completed with no changes.');
             }
         } catch (e) {
-            console.error("Sync error:", e);
-            showNotification("Sync failed. Check connection.");
+            console.error('Sync error:', e);
+            showNotification('Sync failed. Check connection.');
         } finally {
             setIsSyncing(false);
         }
@@ -172,13 +185,25 @@ const DashboardPage: React.FC = () => {
                 <div className="flex flex-col items-end gap-1">
                     <button
                         onClick={handleSync}
-                        disabled={isSyncing}
-                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 shadow-md border border-slate-600"
+                        disabled={isSyncing || !!syncCooldownMins}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-md border ${syncCooldownMins
+                                ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
+                                : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
+                            }`}
+                        title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Sync your Whop activity'}
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        {isSyncing ? 'Syncing...' : 'Sync Progress'}
+                        {isSyncing
+                            ? 'Syncing...'
+                            : syncCooldownMins
+                                ? `Available in ${syncCooldownMins}m`
+                                : 'Sync Progress'}
                     </button>
-                    <p className="text-xs text-slate-500">Collect XP from forum posts, chat & courses</p>
+                    <p className="text-xs text-slate-500">
+                        {syncCooldownMins
+                            ? '⏳ Syncs available once per hour'
+                            : '💡 Collects XP from chat, forum & courses'}
+                    </p>
                 </div>
             </div>
 
