@@ -253,6 +253,11 @@ export const LockClosedIcon: React.FC<IconProps> = ({ className, style }) => (
   <MdiIcon path={mdiLockPath} className={className} style={style} />
 );
 
+const mdiInformationPath = "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z";
+export const InformationCircleIcon: React.FC<IconProps> = ({ className, style }) => (
+  <MdiIcon path={mdiInformationPath} className={className} style={style} />
+);
+
 export const DiscordIcon: React.FC<IconProps> = ({ className, style }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
     <path d="M20.3,3.5C18.8,3 17.2,3 15.8,3.2C15.2,3.3 14.7,3.9 14.8,4.4C15.4,6.9 15.8,9.4 15.8,11.9C15.8,12.1 15.8,12.3 15.8,12.5C15.3,12.4 14.8,12.2 14.3,12C12.8,11.5 11.4,10.9 10.2,10.2C9.8,9.9 9.3,10 9.1,10.4C8.2,12.3 7.8,14.3 7.8,16.4C7.8,18 8.4,19.5 9.4,20.7C9.7,21 10.2,21 10.5,20.7C12.2,19.5 13.6,18.1 14.9,16.4C15.2,16.1 15.1,15.6 14.7,15.4C14.3,15.2 13.8,15 13.4,14.8C13.5,14.8 13.6,14.7 13.7,14.7C14.8,15.2 15.8,15.8 16.7,16.5C17,16.8 17.5,16.7 17.8,16.3C19.2,14.4 20.2,12.2 20.3,9.8C20.3,9.7 20.3,9.6 20.3,9.5C20.6,8.1 20.7,6.8 20.7,5.4C20.7,4.6 20.5,3.9 20.3,3.5M10,13.2C10.7,13.2 11.3,12.6 11.3,11.9C11.3,11.2 10.7,10.6 10,10.6C9.3,10.6 8.7,11.2 8.7,11.9C8.7,12.6 9.3,13.2 10,13.2M14,13.2C14.7,13.2 15.3,12.6 15.3,11.9C15.3,11.2 14.7,10.6 14,10.6C13.3,10.6 12.7,11.2 12.7,11.9C12.7,12.6 13.3,13.2 14,13.2Z" />

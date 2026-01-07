@@ -11,12 +11,16 @@ import { ClockIcon } from './icons';
  * 2. Purple gradient: "Unlock Elite Features | Get XP Store, Quests, Analytics, and more"
  */
 export function FreeTierTopBanner() {
-    const { community } = useApp();
+    const { community, selectedUser } = useApp();
 
-    // Only show for Starter tier users (free tier)
+    // Only show for admin users on Starter tier (free tier)
+    // Members can't upgrade the community, so don't show them upgrade prompts
+    if (selectedUser?.role !== 'admin') return null;
+
     // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
     const currentTier = (community?.tier || 'starter').toLowerCase();
     if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
+
 
     return (
         <div className="bg-slate-800 text-white py-2 px-4 text-center text-sm shadow-lg">
@@ -37,12 +41,16 @@ export function FreeTierTopBanner() {
 }
 
 export function FreeTierGradientBanner() {
-    const { community } = useApp();
+    const { community, selectedUser } = useApp();
 
-    // Only show for Starter tier users (free tier)
+    // Only show for admin users on Starter tier (free tier)
+    // Members can't upgrade the community, so don't show them upgrade prompts
+    if (selectedUser?.role !== 'admin') return null;
+
     // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
     const currentTier = (community?.tier || 'starter').toLowerCase();
     if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
+
 
     return (
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 shadow-md relative z-50">
