@@ -144,48 +144,52 @@ export const AppProvider = ({
         }
     };
 
-    // 🟢 AUTOMATED BADGE CHECKER
+    // 🟢 DATABASE-DRIVEN AUTOMATED BADGE CHECKER
+    // Reads trigger configurations from badges table instead of hardcoded values
     const checkAutomatedBadges = async (userId: string) => {
         const user = await api.getUserById(userId);
         if (!user) return;
 
-        const xpBadges = [
-            { xp: 100, name: 'XP Novice' },
-            { xp: 1000, name: 'XP Adept' },
-            { xp: 5000, name: 'XP Veteran' },
-            { xp: 10000, name: 'XP Master' }
-        ];
+        // Fetch all badges with triggers configured for this community
+        const allBadges = await api.getBadges();
+        const triggerBadges = allBadges.filter(
+            (b: any) => b.triggerType && b.triggerType !== 'none' && b.isActive
+        );
 
-        const streakBadges = [
-            { streak: 3, name: '3 Day Streak' },
-            { streak: 7, name: '7 Day Streak' },
-            { streak: 30, name: '30 Day Streak' },
-            { streak: 100, name: 'Century Club (100 Day Streak)' }
-        ];
+        if (triggerBadges.length === 0) {
+            console.log('📛 No trigger-configured badges found');
+            return;
+        }
 
         let badgeAwarded = false;
 
-        // Check XP Badges
-        for (const badge of xpBadges) {
-            if (user.xp >= badge.xp) {
-                const hasBadge = user.badges?.some(b => b.name === badge.name);
-                if (!hasBadge) {
-                    console.log(`🏆 Auto-Awarding Badge: ${badge.name}`);
-                    await api.awardBadge(userId, badge.name);
-                    badgeAwarded = true;
-                }
-            }
-        }
+        for (const badge of triggerBadges) {
+            // Skip if user already has this badge
+            const hasBadge = user.badges?.some(b => b.name === badge.name);
+            if (hasBadge) continue;
 
-        // Check Streak Badges
-        for (const badge of streakBadges) {
-            if (user.streak >= badge.streak) {
-                const hasBadge = user.badges?.some(b => b.name === badge.name);
-                if (!hasBadge) {
-                    console.log(`🔥 Auto-Awarding Streak Badge: ${badge.name}`);
-                    await api.awardBadge(userId, badge.name);
-                    badgeAwarded = true;
-                }
+            let shouldAward = false;
+
+            switch (badge.triggerType) {
+                case 'xp_threshold':
+                    shouldAward = user.xp >= (badge.triggerValue ?? 0);
+                    break;
+                case 'streak_days':
+                    shouldAward = user.streak >= (badge.triggerValue ?? 0);
+                    break;
+                case 'action_count':
+                    // Get count of specific action type
+                    if (badge.triggerAction) {
+                        const actionCount = await api.getActionCount(userId, badge.triggerAction);
+                        shouldAward = actionCount >= (badge.triggerValue ?? 0);
+                    }
+                    break;
+            }
+
+            if (shouldAward) {
+                console.log(`🏆 Auto-Awarding Badge: ${badge.name} (trigger: ${badge.triggerType} >= ${badge.triggerValue})`);
+                await api.awardBadge(userId, badge.name);
+                badgeAwarded = true;
             }
         }
 

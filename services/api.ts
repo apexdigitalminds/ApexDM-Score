@@ -91,7 +91,10 @@ const badgeFromSupabase = (data: any): Badge => ({
     communityId: data.community_id ?? "",
     isActive: data.is_active ?? !data.is_archived,
     isArchived: data.is_archived,
-    xpReward: data.xp_reward ?? 0
+    xpReward: data.xp_reward ?? 0,
+    triggerType: data.trigger_type ?? 'none',
+    triggerValue: data.trigger_value,
+    triggerAction: data.trigger_action
 });
 
 const questFromSupabase = (data: any): Quest => ({
@@ -401,6 +404,24 @@ export const api = {
     updateReward: async (a: string, d: any) => { return await adminUpdateRewardAction(a, d); },
     deleteReward: async (a: string, b: boolean) => { return await adminDeleteRewardAction(a, b); },
     restoreReward: async (a: string) => { return await adminRestoreRewardAction(a); },
+
+    // 🆕 Get all badges for the community (used by auto-award system)
+    getBadges: async (): Promise<Badge[]> => {
+        const { data, error } = await supabase.from('badges').select('*');
+        if (error || !data) return [];
+        return data.map(badgeFromSupabase);
+    },
+
+    // 🆕 Get count of specific action type for a user (used by action_count triggers)
+    getActionCount: async (userId: string, actionType: string): Promise<number> => {
+        const { count, error } = await supabase
+            .from('actions_log')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('action_type', actionType);
+        if (error) return 0;
+        return count ?? 0;
+    },
 
     createBadge: async (n: string, c: any) => { return await adminAddBadgeAction(n, c); },
     updateBadge: async (n: string, c: any) => { return await adminUpdateBadgeAction(n, c); },

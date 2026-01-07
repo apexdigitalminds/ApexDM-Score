@@ -1081,7 +1081,18 @@ export async function adminRestoreRewardAction(actionType: string) {
 export async function adminAddBadgeAction(name: string, config: any) {
   await ensureAdmin();
   const communityId = await getCommunityId();
-  const { error } = await supabaseAdmin.from('badges').insert({ community_id: communityId, name, ...config });
+  const insertData: any = {
+    community_id: communityId,
+    name,
+    description: config.description,
+    icon: config.icon,
+    color: config.color,
+    xp_reward: config.xpReward ?? 0,
+    trigger_type: config.triggerType ?? 'none',
+    trigger_value: config.triggerValue ?? null,
+    trigger_action: config.triggerAction ?? null
+  };
+  const { error } = await supabaseAdmin.from('badges').insert(insertData);
   return !error;
 }
 
@@ -1094,6 +1105,9 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
   if (config.color !== undefined) updates.color = config.color;
   if (config.isActive !== undefined) updates.is_active = config.isActive;
   if (config.xpReward !== undefined) updates.xp_reward = config.xpReward;
+  if (config.triggerType !== undefined) updates.trigger_type = config.triggerType;
+  if (config.triggerValue !== undefined) updates.trigger_value = config.triggerValue;
+  if (config.triggerAction !== undefined) updates.trigger_action = config.triggerAction || null;
   if (config.name && config.name !== currentName) {
     updates.name = config.name;
   }

@@ -154,6 +154,9 @@ export default function AdminPage() {
     const [newBadgeIcon, setNewBadgeIcon] = useState(iconMapKeys[0]);
     const [newBadgeColor, setNewBadgeColor] = useState("#ffffff");
     const [newBadgeXp, setNewBadgeXp] = useState(0);
+    const [newBadgeTriggerType, setNewBadgeTriggerType] = useState<'none' | 'xp_threshold' | 'streak_days' | 'action_count'>('none');
+    const [newBadgeTriggerValue, setNewBadgeTriggerValue] = useState(0);
+    const [newBadgeTriggerAction, setNewBadgeTriggerAction] = useState("");
     const [badgeIconType, setBadgeIconType] = useState<'PRESET' | 'EMOJI'>('PRESET');
 
     const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -274,14 +277,14 @@ export default function AdminPage() {
     const handleDeleteRewardClick = (actionType: string) => { setModalConfig({ isOpen: true, title: "Archive Reward?", message: `Archive "${actionType}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteReward(actionType); showNotification("Reward processed."); await withRefresh(async () => { }); closeModal(); } }); };
     const handleRestoreRewardClick = async (actionType: string) => { await handleRestoreReward(actionType); showNotification("Restored."); await withRefresh(async () => { }); };
 
-    const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); };
+    const cancelEditBadge = () => { setEditBadgeName(null); setNewBadgeName(""); setNewBadgeDesc(""); setBadgeIconType('PRESET'); setNewBadgeIcon(iconMapKeys[0]); setNewBadgeXp(0); setNewBadgeTriggerType('none'); setNewBadgeTriggerValue(0); setNewBadgeTriggerAction(""); };
 
     // 🟢 FIXED: Duplicate 'name' property resolved
     const handleAddOrEditBadge = async (e: React.FormEvent) => {
         e.preventDefault();
         const iconToSave = badgeIconType === 'EMOJI' ? newBadgeIcon : newBadgeIcon;
         // name is already included in badgeData
-        const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor, name: newBadgeName, xpReward: newBadgeXp };
+        const badgeData = { description: newBadgeDesc, icon: iconToSave, color: newBadgeColor, name: newBadgeName, xpReward: newBadgeXp, triggerType: newBadgeTriggerType, triggerValue: newBadgeTriggerValue, triggerAction: newBadgeTriggerAction || undefined };
 
         if (editBadgeName) {
             await handleUpdateBadge(editBadgeName, badgeData);
@@ -298,6 +301,7 @@ export default function AdminPage() {
 
     const handleEditBadgeClick = (badgeName: string, config: BadgeConfig) => {
         setEditBadgeName(badgeName); setNewBadgeName(badgeName); setNewBadgeDesc(config.description); setNewBadgeColor(config.color); setNewBadgeXp((config as any).xpReward ?? 0);
+        setNewBadgeTriggerType((config as any).triggerType ?? 'none'); setNewBadgeTriggerValue((config as any).triggerValue ?? 0); setNewBadgeTriggerAction((config as any).triggerAction ?? '');
         if (iconMapKeys.includes(config.icon)) { setBadgeIconType('PRESET'); setNewBadgeIcon(config.icon); }
         else { setBadgeIconType('EMOJI'); setNewBadgeIcon(config.icon || "🏆"); }
     };
@@ -596,10 +600,13 @@ export default function AdminPage() {
                                             {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
                                         </div>
                                     </div>
-                                    <div className="col-span-2 flex gap-4 items-end">
+                                    <div className="col-span-2 flex gap-4 items-end flex-wrap">
                                         <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
                                         <div><label className="text-xs text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>
-                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-64">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
+                                        <div><label className="text-xs text-slate-400 mb-1 block">Auto-Trigger</label><select value={newBadgeTriggerType} onChange={e => setNewBadgeTriggerType(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36"><option value="none">None (Manual)</option><option value="xp_threshold">XP Threshold</option><option value="streak_days">Streak Days</option><option value="action_count">Action Count</option></select></div>
+                                        {newBadgeTriggerType !== 'none' && (<div><label className="text-xs text-slate-400 mb-1 block">{newBadgeTriggerType === 'xp_threshold' ? 'XP Amount' : newBadgeTriggerType === 'streak_days' ? 'Days' : 'Count'}</label><input type="number" value={newBadgeTriggerValue} onChange={e => setNewBadgeTriggerValue(parseInt(e.target.value) || 0)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>)}
+                                        {newBadgeTriggerType === 'action_count' && (<div><label className="text-xs text-slate-400 mb-1 block">Action Type</label><select value={newBadgeTriggerAction} onChange={e => setNewBadgeTriggerAction(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36">{Object.keys(rewardsConfig).map(a => <option key={a} value={a}>{(rewardsConfig as any)[a]?.displayName || a}</option>)}</select></div>)}
+                                        <div className="flex gap-2 flex-none"><button type="submit" className="bg-blue-600 text-white px-4 h-9 rounded hover:bg-blue-700 font-bold text-sm w-48">{editBadgeName ? 'Update' : 'Add Badge'}</button>{editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-3 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}</div>
                                     </div>
                                 </div>
                             </form>
@@ -651,9 +658,15 @@ export default function AdminPage() {
                         {isFeatureEnabled('quests') ? (
                             <>
                                 <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
                                         <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
                                         <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
+                                        <select value={questBadgeReward || ''} onChange={e => setQuestBadgeReward(e.target.value || null)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm">
+                                            <option value="">No Badge Reward</option>
+                                            {Object.entries(badgesConfig).filter(([_, b]) => !(b as any).isArchived).map(([name]) => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
                                     <div className="space-y-1 max-h-20 overflow-y-auto mb-2">

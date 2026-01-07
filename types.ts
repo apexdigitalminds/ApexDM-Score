@@ -120,6 +120,10 @@ export interface Badge {
   isActive: boolean;
   isArchived?: boolean;
   xpReward?: number; // XP awarded when this badge is earned
+  // Auto-trigger configuration
+  triggerType?: 'none' | 'xp_threshold' | 'streak_days' | 'action_count';
+  triggerValue?: number; // XP amount, streak days, or action count
+  triggerAction?: string; // For action_count: which action type
 }
 
 export interface WhopUser {
