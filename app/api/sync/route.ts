@@ -53,14 +53,15 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Get company ID for API calls
+        // Get company ID and experience ID for API calls
         const { data: community } = await supabaseAdmin
             .from('communities')
-            .select('whop_store_id')
+            .select('whop_store_id, experience_id')
             .eq('id', profile.community_id)
             .single();
 
         const companyId = community?.whop_store_id || profile.community_id;
+        const experienceId = community?.experience_id || companyId;
         const profileCreatedAt = new Date(profile.created_at);
         const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : profileCreatedAt;
 
@@ -79,9 +80,10 @@ export async function POST(req: NextRequest) {
 
             for (const channel of channelList) {
                 try {
-                    const messages = await whopsdk.chatChannelMessages.list({
+                    // Use whopsdk.messages.list per Whop SDK docs
+                    const messages = await whopsdk.messages.list({
                         channel_id: channel.id,
-                        per_page: MAX_ITEMS_PER_CHANNEL
+                        first: MAX_ITEMS_PER_CHANNEL
                     });
 
                     for (const msg of messages?.data || []) {
@@ -140,7 +142,8 @@ export async function POST(req: NextRequest) {
         // 4. Sync Forum Posts
         // =====================================================================
         try {
-            const posts = await whopsdk.forumPosts.list({ company_id: companyId });
+            // Use experience_id per Whop SDK docs (not company_id)
+            const posts = await whopsdk.forumPosts.list({ experience_id: experienceId });
             let forumPostsRewarded = 0;
 
             for (const post of posts?.data || []) {
