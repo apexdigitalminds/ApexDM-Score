@@ -1,21 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/services/supabase'; // FIX: Corrected import path
+import { supabase } from '@/services/supabase';
 import { AccountIcon } from './icons';
 
 interface AvatarProps {
-  src: string | null | undefined; // Can be a full URL (e.g., from Dicebear) or a path (from Supabase Storage)
+  src: string | null | undefined;
   alt: string;
   className?: string;
+  frameColor?: string; // Color for the frame border
 }
 
-const Avatar: React.FC<AvatarProps> = ({ src, alt, className }) => {
+const Avatar: React.FC<AvatarProps> = ({ src, alt, className, frameColor }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // This effect handles fetching the correct, usable URL for the image.
     const getUrl = async () => {
       setIsLoading(true);
       setImageUrl(null);
@@ -25,16 +25,13 @@ const Avatar: React.FC<AvatarProps> = ({ src, alt, className }) => {
         return;
       }
 
-      // If 'src' is a full URL (like from Dicebear), use it directly.
       if (src.startsWith('http')) {
         setImageUrl(src);
         setIsLoading(false);
       } else {
-        // Otherwise, assume 'src' is a file path and create a temporary signed URL.
-        // This is the correct and secure way to display images from a private bucket.
         const { data, error } = await supabase.storage
           .from('avatars')
-          .createSignedUrl(src, 3600); // URL is valid for 1 hour
+          .createSignedUrl(src, 3600);
 
         if (error) {
           console.error('Error creating signed URL for avatar:', error.message);
@@ -47,25 +44,34 @@ const Avatar: React.FC<AvatarProps> = ({ src, alt, className }) => {
     };
 
     getUrl();
-  }, [src]); // Re-run whenever the src path/url changes
+  }, [src]);
 
-  // Render a loading/placeholder state while fetching the signed URL
+  // Frame wrapper styles
+  const frameStyle = frameColor ? {
+    boxShadow: `0 0 0 4px ${frameColor}, 0 0 20px ${frameColor}40`,
+    border: `3px solid ${frameColor}`,
+  } : {};
+
+  // Render a loading/placeholder state
   if (isLoading || !imageUrl) {
     return (
-      <div className={`${className} bg-slate-700 flex items-center justify-center`}>
+      <div
+        className={`${className} bg-slate-700 flex items-center justify-center`}
+        style={frameStyle}
+      >
         <AccountIcon className="w-full h-full text-slate-500 p-1" />
       </div>
     );
   }
 
-  // Render the image with the fetched URL
+  // Render the image with optional frame
   return (
     <img
       src={imageUrl}
       alt={alt}
       className={className}
-      // If the signed URL itself fails (e.g., expires, permissions issue), fall back to the icon.
-      onError={() => setImageUrl(null)} 
+      style={frameStyle}
+      onError={() => setImageUrl(null)}
     />
   );
 };

@@ -904,7 +904,7 @@ export async function equipCosmeticAction(item: StoreItem) {
     currentMeta.titlePosition = item.metadata?.titlePosition || 'prefix';
   }
   if (item.itemType === 'BANNER') currentMeta.bannerUrl = item.metadata?.imageUrl;
-  if (item.itemType === 'FRAME') currentMeta.frameUrl = item.metadata?.imageUrl;
+  if (item.itemType === 'FRAME') currentMeta.frameColor = item.metadata?.color;
   if (item.itemType === 'AVATAR_PULSE') currentMeta.avatarPulseColor = item.metadata?.color;
 
   const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);
@@ -922,7 +922,7 @@ export async function unequipCosmeticAction(type: string) {
   if (type === 'NAME_COLOR') delete currentMeta.nameColor;
   if (type === 'TITLE') { delete currentMeta.title; delete currentMeta.titlePosition; }
   if (type === 'BANNER') delete currentMeta.bannerUrl;
-  if (type === 'FRAME') delete currentMeta.frameUrl;
+  if (type === 'FRAME') delete currentMeta.frameColor;
   if (type === 'AVATAR_PULSE') delete currentMeta.avatarPulseColor;
 
   const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);

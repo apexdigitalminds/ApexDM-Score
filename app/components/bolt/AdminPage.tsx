@@ -320,7 +320,7 @@ export default function AdminPage() {
 
     const resetItemForm = () => { setEditingItem(null); setItemName(""); setItemDescription(""); setItemCost(500); setItemIcon("Snowflake"); setItemType("INSTANT"); setItemDuration(undefined); setItemModifier(undefined); setMetaColor("#ffffff"); setMetaText(""); setMetaUrl(""); setMetaPosition("prefix"); setXpAmount(100); setXpMin(50); setXpMax(200); };
     const handleEditItemClick = (i: StoreItem) => { setEditingItem(i); setItemName(i.name); setItemDescription(i.description ?? ""); setItemCost(i.cost); setItemIcon(i.icon); setItemType(i.itemType); setItemDuration(i.durationHours); setItemModifier(i.modifier); if (i.metadata?.color) setMetaColor(i.metadata.color); if (i.metadata?.text) setMetaText(i.metadata.text); if (i.metadata?.imageUrl) setMetaUrl(i.metadata.imageUrl); if (i.metadata?.titlePosition) setMetaPosition(i.metadata.titlePosition); if (i.metadata?.xpAmount) setXpAmount(i.metadata.xpAmount); if (i.metadata?.xpMin) setXpMin(i.metadata.xpMin); if (i.metadata?.xpMax) setXpMax(i.metadata.xpMax); };
-    const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') metadata.color = metaColor; if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; } if (itemType === 'BANNER' || itemType === 'FRAME') metadata.imageUrl = metaUrl; if (itemType === 'XP_GIFT') metadata.xpAmount = xpAmount; if (itemType === 'RANDOM_XP') { metadata.xpMin = xpMin; metadata.xpMax = xpMax; } const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if (editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); await withRefresh(async () => { }); };
+    const handleItemSubmit = async (e: React.FormEvent) => { e.preventDefault(); const metadata: any = {}; if (itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE' || itemType === 'FRAME') metadata.color = metaColor; if (itemType === 'TITLE') { metadata.text = metaText; metadata.titlePosition = metaPosition; } if (itemType === 'BANNER') metadata.imageUrl = metaUrl; if (itemType === 'XP_GIFT') metadata.xpAmount = xpAmount; if (itemType === 'RANDOM_XP') { metadata.xpMin = xpMin; metadata.xpMax = xpMax; } const i = { name: itemName, description: itemDescription, cost: itemCost, icon: itemIcon, isActive: true, itemType, durationHours: itemType === 'TIMED_EFFECT' ? itemDuration : undefined, modifier: itemType === 'TIMED_EFFECT' ? itemModifier : undefined, metadata }; if (editingItem) await handleUpdateStoreItem(editingItem.id, i); else await handleCreateStoreItem(i); showNotification("Item saved."); resetItemForm(); await withRefresh(async () => { }); };
     const handleDeleteItemClick = (i: StoreItem) => { setModalConfig({ isOpen: true, title: "Delete Item?", message: `Delete "${i.name}"?`, isDestructive: true, onConfirm: async () => { await handleDeleteStoreItem(i.id); showNotification("Item deleted."); await withRefresh(async () => { }); closeModal(); } }); };
     const handleRestoreItemClick = async (i: StoreItem) => { await handleRestoreStoreItem(i.id); showNotification("Restored."); await withRefresh(async () => { }); };
 
@@ -810,9 +810,9 @@ export default function AdminPage() {
                                                 </div>
                                             </div>
                                         )}
-                                        {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE') && (
+                                        {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE' || itemType === 'FRAME') && (
                                             <div>
-                                                <label className="block text-xs text-slate-400 mb-1">Select Color</label>
+                                                <label className="block text-xs text-slate-400 mb-1">{itemType === 'FRAME' ? 'Frame Color' : 'Select Color'}</label>
                                                 <div className="flex gap-2 items-center">
                                                     <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-10 cursor-pointer border-none bg-transparent" />
                                                     <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-24" />
@@ -834,7 +834,7 @@ export default function AdminPage() {
                                                 </div>
                                             </div>
                                         )}
-                                        {(itemType === 'BANNER' || itemType === 'FRAME') && (
+                                        {itemType === 'BANNER' && (
                                             <div>
                                                 <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
                                                 {metaUrl && (
@@ -925,118 +925,121 @@ export default function AdminPage() {
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* 🟢 FULL SETTINGS TAB RESTORED WITH BRANDING SYNC */}
-            {activeTab === 'settings' && (
-                <div className="space-y-6">
-                    {/* Tab Description Banner */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                        <h2 className="text-lg font-bold text-white mb-1">⚙️ Settings</h2>
-                        <p className="text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                            <h3 className="text-lg font-bold text-white mb-4">Webhook Integration</h3>
-                            <p className="text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
-                            <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700 mb-4">
-                                <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
-                                <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
-                            </div>
-
-                            {/* Collapsible Webhook Setup Guide */}
-                            <details className="group">
-                                <summary className="cursor-pointer text-sm text-purple-400 hover:text-purple-300 flex items-center gap-2">
-                                    <span className="group-open:rotate-90 transition-transform">▶</span>
-                                    Webhook Setup Guide
-                                </summary>
-                                <div className="mt-4 space-y-4 text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                                    <div>
-                                        <h4 className="font-bold text-white mb-2">Step 1: Access Your Whop Developer Dashboard</h4>
-                                        <p>Navigate to <a href="https://dash.whop.com/developer" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">dash.whop.com/developer</a> and select your app.</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-2">Step 2: Open Webhook Settings</h4>
-                                        <p>Click on the <strong>"Webhooks"</strong> tab in the left sidebar.</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-2">Step 3: Add the Webhook URL</h4>
-                                        <p>Click <strong>"Create Webhook"</strong> and paste the URL from above into the endpoint field.</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-2">Step 4: Select Events</h4>
-                                        <p>Enable these webhook events:</p>
-                                        <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-slate-400">
-                                            <li><code className="text-green-400">membership.went_valid</code> – New subscription</li>
-                                            <li><code className="text-green-400">membership.went_invalid</code> – Subscription ended</li>
-                                            <li><code className="text-green-400">payment.succeeded</code> – Renewal payment</li>
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-white mb-2">Step 5: Save & Test</h4>
-                                        <p>Click <strong>"Save"</strong>, then use the <strong>"Send Test"</strong> button to verify the connection.</p>
-                                    </div>
-                                    <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3 mt-4">
-                                        <p className="text-purple-300"><strong>💡 Tip:</strong> Once configured, XP will be awarded automatically when members subscribe or renew!</p>
-                                    </div>
-                                </div>
-                            </details>
+            {
+                activeTab === 'settings' && (
+                    <div className="space-y-6">
+                        {/* Tab Description Banner */}
+                        <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
+                            <h2 className="text-lg font-bold text-white mb-1">⚙️ Settings</h2>
+                            <p className="text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
                         </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
+                                <h3 className="text-lg font-bold text-white mb-4">Webhook Integration</h3>
+                                <p className="text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
+                                <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700 mb-4">
+                                    <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
+                                    <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
+                                </div>
 
-                        {/* Discord section removed - not ready for launch */}
-
-                        {/* 🆕 Full White-Label Branding Settings */}
-                        <WhiteLabelSettings />
-
-                        {isDev && (
-                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                {/* Collapsible Webhook Setup Guide */}
+                                <details className="group">
+                                    <summary className="cursor-pointer text-sm text-purple-400 hover:text-purple-300 flex items-center gap-2">
+                                        <span className="group-open:rotate-90 transition-transform">▶</span>
+                                        Webhook Setup Guide
+                                    </summary>
+                                    <div className="mt-4 space-y-4 text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
-                                            <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
-                                                <option value="starter">Starter (Free)</option>
-                                                <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
-                                            </select>
+                                            <h4 className="font-bold text-white mb-2">Step 1: Access Your Whop Developer Dashboard</h4>
+                                            <p>Navigate to <a href="https://dash.whop.com/developer" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">dash.whop.com/developer</a> and select your app.</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white mb-2">Step 2: Open Webhook Settings</h4>
+                                            <p>Click on the <strong>"Webhooks"</strong> tab in the left sidebar.</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white mb-2">Step 3: Add the Webhook URL</h4>
+                                            <p>Click <strong>"Create Webhook"</strong> and paste the URL from above into the endpoint field.</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white mb-2">Step 4: Select Events</h4>
+                                            <p>Enable these webhook events:</p>
+                                            <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-slate-400">
+                                                <li><code className="text-green-400">membership.went_valid</code> – New subscription</li>
+                                                <li><code className="text-green-400">membership.went_invalid</code> – Subscription ended</li>
+                                                <li><code className="text-green-400">payment.succeeded</code> – Renewal payment</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white mb-2">Step 5: Save & Test</h4>
+                                            <p>Click <strong>"Save"</strong>, then use the <strong>"Send Test"</strong> button to verify the connection.</p>
+                                        </div>
+                                        <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3 mt-4">
+                                            <p className="text-purple-300"><strong>💡 Tip:</strong> Once configured, XP will be awarded automatically when members subscribe or renew!</p>
                                         </div>
                                     </div>
+                                </details>
+                            </div>
 
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                                Simulate Renewal
-                                            </button>
-                                            <button onClick={async () => {
-                                                if (!targetUserId) return;
-                                                await handleRecordAction(targetUserId, 'post_chat_message', 'manual'); await withRefresh(async () => { });
-                                                showNotification("Simulated: Post Message");
-                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                                Simulate Message
-                                            </button>
-                                            <button onClick={async () => {
-                                                if (!targetUserId) return;
-                                                await handleRecordAction(targetUserId, 'complete_module', 'manual'); await withRefresh(async () => { });
-                                                showNotification("Simulated: Lesson Complete");
-                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                                Simulate Lesson
-                                            </button>
-                                            <button onClick={async () => {
-                                                if (!targetUserId) return;
-                                                await handleRecordAction(targetUserId, 'invite_friend', 'manual'); await withRefresh(async () => { });
-                                                showNotification("Simulated: Invite");
-                                            }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
-                                                Simulate Invite
-                                            </button>
+                            {/* Discord section removed - not ready for launch */}
+
+                            {/* 🆕 Full White-Label Branding Settings */}
+                            <WhiteLabelSettings />
+
+                            {isDev && (
+                                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
+                                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
+                                                <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
+                                                    <option value="starter">Starter (Free)</option>
+                                                    <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                    Simulate Renewal
+                                                </button>
+                                                <button onClick={async () => {
+                                                    if (!targetUserId) return;
+                                                    await handleRecordAction(targetUserId, 'post_chat_message', 'manual'); await withRefresh(async () => { });
+                                                    showNotification("Simulated: Post Message");
+                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                    Simulate Message
+                                                </button>
+                                                <button onClick={async () => {
+                                                    if (!targetUserId) return;
+                                                    await handleRecordAction(targetUserId, 'complete_module', 'manual'); await withRefresh(async () => { });
+                                                    showNotification("Simulated: Lesson Complete");
+                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                    Simulate Lesson
+                                                </button>
+                                                <button onClick={async () => {
+                                                    if (!targetUserId) return;
+                                                    await handleRecordAction(targetUserId, 'invite_friend', 'manual'); await withRefresh(async () => { });
+                                                    showNotification("Simulated: Invite");
+                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                    Simulate Invite
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

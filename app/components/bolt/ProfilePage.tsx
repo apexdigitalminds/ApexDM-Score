@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link'; 
-import { useParams } from 'next/navigation'; 
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import type { Profile, Action } from '@/types'; 
+import type { Profile, Action } from '@/types';
 import XPProgress from './XPProgress';
 import StreakCounter from './StreakCounter';
 import BadgeDisplay from './BadgeDisplay';
@@ -15,17 +15,17 @@ import { CameraIcon } from './icons';
 const ProfilePage: React.FC = () => {
     const { userId } = useParams<{ userId: string }>();
     const { selectedUser, getUserById, getUserActions } = useApp();
-    
+
     const [profile, setProfile] = useState<Profile | null>(null);
     const [actions, setActions] = useState<Action[]>([]);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-    
+
     const isOwnProfile = selectedUser?.id === userId || (!userId && selectedUser);
 
     useEffect(() => {
         const fetchProfileData = async () => {
             const targetId = userId || selectedUser?.id;
-            
+
             if (targetId) {
                 if (selectedUser?.id === targetId) {
                     setProfile(selectedUser);
@@ -43,7 +43,7 @@ const ProfilePage: React.FC = () => {
     if (!profile) {
         return <div className="text-center p-8 text-slate-400">Loading profile...</div>;
     }
-    
+
     const registrationDate = profile.joinedAt
         ? new Date(profile.joinedAt).toLocaleDateString('en-US', {
             year: 'numeric', month: 'long', day: 'numeric'
@@ -53,41 +53,43 @@ const ProfilePage: React.FC = () => {
     // COSMETIC LOGIC
     const nameColor = profile.metadata?.nameColor || '#FFFFFF';
     const title = profile.metadata?.title;
-    const titlePos = profile.metadata?.titlePosition || 'prefix'; 
+    const titlePos = profile.metadata?.titlePosition || 'prefix';
     const bannerUrl = profile.metadata?.bannerUrl;
     const pulseColor = profile.metadata?.avatarPulseColor;
+    const frameColor = profile.metadata?.frameColor;
 
     return (
         <div className="space-y-6">
-            <AvatarUpdateModal 
+            <AvatarUpdateModal
                 isOpen={isAvatarModalOpen}
                 onClose={() => setIsAvatarModalOpen(false)}
             />
-            
+
             <div className={`relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden ${bannerUrl ? 'pt-32' : 'p-6'}`}>
                 {bannerUrl && (
-                    <div 
+                    <div
                         className="absolute inset-0 h-32 bg-cover bg-center"
                         style={{ backgroundImage: `url(${bannerUrl})` }}
                     />
                 )}
-                
+
                 <div className={`relative flex flex-col sm:flex-row items-center gap-6 ${bannerUrl ? 'px-6 pb-6' : ''}`}>
                     <div className="relative group">
                         {/* 🟢 FIX: Applied Pulse Wrapper */}
-                        <div 
+                        <div
                             className={`relative rounded-full ${pulseColor ? 'animate-pulse' : ''}`}
                             style={pulseColor ? { boxShadow: `0 0 15px ${pulseColor}` } : {}}
                         >
-                            <Avatar 
-                                src={profile.avatarUrl} 
+                            <Avatar
+                                src={profile.avatarUrl}
                                 alt={profile.username}
                                 className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover bg-slate-800"
+                                frameColor={frameColor}
                             />
                         </div>
-                        
+
                         {isOwnProfile && (
-                            <button 
+                            <button
                                 onClick={() => setIsAvatarModalOpen(true)}
                                 className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             >
@@ -95,22 +97,22 @@ const ProfilePage: React.FC = () => {
                             </button>
                         )}
                     </div>
-                    
+
                     <div className="text-center sm:text-left">
                         <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={{ color: nameColor }}>
                             {title && titlePos === 'prefix' && (
                                 <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
                             )}
-                            
+
                             {profile.username}
-                            
+
                             {title && titlePos === 'suffix' && (
                                 <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
                             )}
                         </h1>
-                        
+
                         {registrationDate && <p className="text-slate-400">Member since {registrationDate}</p>}
-                        
+
                         <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
                             {profile.role === 'admin' && (
                                 <span className="text-xs font-bold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
@@ -158,20 +160,20 @@ const ProfilePage: React.FC = () => {
                                 <span className="font-bold text-blue-400">+{action.xpGained} XP</span>
                             </div>
                         ))}
-                         {actions.length === 0 && (
+                        {actions.length === 0 && (
                             <p className="text-slate-500 text-center py-4">No recent activity.</p>
                         )}
                     </div>
                 </div>
             </div>
-            
-             {!isOwnProfile && (
-                 <div className="text-center mt-6">
-                     <Link href="/dashboard" className="text-purple-400 hover:text-purple-300 font-semibold">
-                         &larr; Return to Your Dashboard
-                     </Link>
-                 </div>
-             )}
+
+            {!isOwnProfile && (
+                <div className="text-center mt-6">
+                    <Link href="/dashboard" className="text-purple-400 hover:text-purple-300 font-semibold">
+                        &larr; Return to Your Dashboard
+                    </Link>
+                </div>
+            )}
         </div>
     );
 };
