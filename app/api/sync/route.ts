@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
                 if (interactionDate < profileCreatedAt) continue;
                 if (interactionDate < sinceSyncDate) continue;
 
-                const externalId = interaction.lesson_id || interaction.id;
+                const externalId = interaction.lesson?.id || interaction.id;
 
                 // Check if already rewarded
                 const { data: existing } = await supabaseAdmin
