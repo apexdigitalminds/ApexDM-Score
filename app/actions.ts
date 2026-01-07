@@ -437,9 +437,9 @@ export async function ensureWhopContext(
       { name: 'XP Veteran', description: 'Reach 5,000 XP milestone', icon: 'Star', color: '#FFD700', xp_reward: 50, trigger_type: 'xp_threshold', trigger_value: 5000, is_active: true, is_archived: false },
       { name: 'XP Master', description: 'Achieve 10,000 XP mastery', icon: 'Crown', color: '#B9F2FF', xp_reward: 100, trigger_type: 'xp_threshold', trigger_value: 10000, is_active: true, is_archived: false },
       // Streak Badges (auto-trigger)
-      { name: '3 Day Streak', description: 'Maintain a 3-day login streak', icon: 'Flame', color: '#CD7F32', xp_reward: 15, trigger_type: 'streak_days', trigger_value: 3, is_active: true, is_archived: false },
-      { name: '7 Day Streak', description: 'Keep the fire burning for 7 days', icon: 'Flame', color: '#C0C0C0', xp_reward: 30, trigger_type: 'streak_days', trigger_value: 7, is_active: true, is_archived: false },
-      { name: '30 Day Streak', description: 'One month of dedication', icon: 'Flame', color: '#FFD700', xp_reward: 75, trigger_type: 'streak_days', trigger_value: 30, is_active: true, is_archived: false },
+      { name: '3 Day Streak', description: 'Maintain a 3-day login streak', icon: 'Fire', color: '#CD7F32', xp_reward: 15, trigger_type: 'streak_days', trigger_value: 3, is_active: true, is_archived: false },
+      { name: '7 Day Streak', description: 'Keep the fire burning for 7 days', icon: 'Fire', color: '#C0C0C0', xp_reward: 30, trigger_type: 'streak_days', trigger_value: 7, is_active: true, is_archived: false },
+      { name: '30 Day Streak', description: 'One month of dedication', icon: 'Fire', color: '#FFD700', xp_reward: 75, trigger_type: 'streak_days', trigger_value: 30, is_active: true, is_archived: false },
       { name: 'Century Club', description: 'Legendary 100-day streak', icon: 'Trophy', color: '#B9F2FF', xp_reward: 200, trigger_type: 'streak_days', trigger_value: 100, is_active: true, is_archived: false },
     ];
 
@@ -486,6 +486,71 @@ export async function ensureWhopContext(
     } else {
       console.log(`✅ Seeded ${defaultStoreItems.length} default store items`);
     }
+
+    // =========================================================================
+    // 📋 STEP 1.8: Seed Default Quests
+    // =========================================================================
+    console.log(`📋 Seeding default quests for community: ${communityId}`);
+
+    const defaultQuests = [
+      {
+        title: 'Getting Started',
+        description: 'Complete your first actions in the community',
+        xpReward: 50,
+        tasks: [
+          { actionType: 'daily_login', targetCount: 3, description: 'Log in 3 times' },
+        ],
+      },
+      {
+        title: 'Content Explorer',
+        description: 'Engage with educational content',
+        xpReward: 100,
+        tasks: [
+          { actionType: 'lesson_completed', targetCount: 3, description: 'Complete 3 lessons' },
+        ],
+      },
+      {
+        title: 'Weekly Warrior',
+        description: 'Stay consistent throughout the week',
+        xpReward: 200,
+        tasks: [
+          { actionType: 'daily_login', targetCount: 7, description: 'Log in 7 days' },
+          { actionType: 'lesson_completed', targetCount: 5, description: 'Complete 5 lessons' },
+        ],
+      },
+    ];
+
+    for (const questData of defaultQuests) {
+      const { data: newQuest, error: questError } = await supabaseAdmin
+        .from('quests')
+        .insert({
+          community_id: communityId,
+          title: questData.title,
+          description: questData.description,
+          xp_reward: questData.xpReward,
+          is_active: true,
+          is_archived: false,
+        })
+        .select()
+        .single();
+
+      if (questError || !newQuest) {
+        console.warn(`⚠️ Failed to seed quest "${questData.title}":`, questError);
+        continue;
+      }
+
+      // Insert quest tasks
+      const tasksToInsert = questData.tasks.map(task => ({
+        quest_id: newQuest.id,
+        action_type: task.actionType,
+        target_count: task.targetCount,
+        description: task.description,
+      }));
+
+      await supabaseAdmin.from('quest_tasks').insert(tasksToInsert);
+    }
+
+    console.log(`✅ Seeded ${defaultQuests.length} default quests`);
   }
 
 
