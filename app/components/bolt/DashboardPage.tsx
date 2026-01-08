@@ -187,8 +187,8 @@ const DashboardPage: React.FC = () => {
                         onClick={handleSync}
                         disabled={isSyncing || !!syncCooldownMins}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-md border ${syncCooldownMins
-                                ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
-                                : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
+                            ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
+                            : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
                             }`}
                         title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Sync your Whop activity'}
                     >
@@ -209,7 +209,7 @@ const DashboardPage: React.FC = () => {
 
             {xpGained && <XpNotification amount={xpGained} />}
             {notification && (
-                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-20 border border-slate-600 animate-pulse">
+                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-pulse">
                     {notification}
                 </div>
             )}

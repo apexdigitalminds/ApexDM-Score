@@ -14,19 +14,51 @@ export async function POST(req: NextRequest) {
         // =====================================================================
         // 1. Verify User & Get Profile
         // =====================================================================
-        const { userId: whopUserId } = await whopsdk.verifyUserToken(await headers());
+        const { userId: whopUserId, experienceId } = await whopsdk.verifyUserToken(await headers());
         if (!whopUserId) {
             return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
         }
 
         // Get the user's profile from our database
-        const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('id, community_id, created_at, last_sync_at')
-            .eq('whop_user_id', whopUserId)
-            .single();
+        // For multi-tenant apps, a user may have profiles in multiple communities
+        // First try to find by experience_id if available
+        let profile;
+        let profileError;
+
+        if (experienceId) {
+            // Get the community for this experience
+            const { data: community } = await supabaseAdmin
+                .from('communities')
+                .select('id')
+                .eq('experience_id', experienceId)
+                .maybeSingle();
+
+            if (community) {
+                const result = await supabaseAdmin
+                    .from('profiles')
+                    .select('id, community_id, created_at, last_sync_at')
+                    .eq('whop_user_id', whopUserId)
+                    .eq('community_id', community.id)
+                    .maybeSingle();
+                profile = result.data;
+                profileError = result.error;
+            }
+        }
+
+        // Fallback: try to find any profile by whop_user_id (for backwards compat)
+        if (!profile) {
+            const result = await supabaseAdmin
+                .from('profiles')
+                .select('id, community_id, created_at, last_sync_at')
+                .eq('whop_user_id', whopUserId)
+                .limit(1)
+                .maybeSingle();
+            profile = result.data;
+            profileError = result.error;
+        }
 
         if (profileError || !profile) {
+            console.error("Sync profile lookup failed:", { whopUserId, experienceId, profileError });
             return NextResponse.json({
                 success: false,
                 message: "Profile not found. Please refresh the app."
@@ -61,7 +93,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         const companyId = community?.whop_store_id || profile.community_id;
-        const experienceId = community?.experience_id || companyId;
+        const communityExperienceId = community?.experience_id || experienceId || companyId;
         const profileCreatedAt = new Date(profile.created_at);
         const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : profileCreatedAt;
 
@@ -143,7 +175,7 @@ export async function POST(req: NextRequest) {
         // =====================================================================
         try {
             // Use experience_id per Whop SDK docs (not company_id)
-            const posts = await whopsdk.forumPosts.list({ experience_id: experienceId });
+            const posts = await whopsdk.forumPosts.list({ experience_id: communityExperienceId });
             let forumPostsRewarded = 0;
 
             for (const post of posts?.data || []) {
