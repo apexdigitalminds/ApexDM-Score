@@ -809,7 +809,7 @@ export async function syncCommunityBrandingAction() {
 
     if (!realWhopId) throw new Error("No Whop Store ID linked");
 
-    let companyName = "ApexDM Community";
+    let companyName = "CommunityXP Community";
     let logoUrl = "";
 
     if (process.env.WHOP_API_KEY) {

@@ -86,7 +86,7 @@ export default function WhiteLabelSettings() {
                     </span>
                 </div>
                 <p className="text-slate-400 text-sm mb-4">
-                    Customize your community's branding with a custom logo, colors, and remove ApexDM references.
+                    Customize your community's branding with a custom logo, colors, and remove CommunityXP references.
                 </p>
                 <a
                     href="/pricing"
@@ -109,7 +109,7 @@ export default function WhiteLabelSettings() {
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-700">
                 <div>
                     <p className="text-white font-medium">Enable White-Label Mode</p>
-                    <p className="text-slate-400 text-sm">Replace ApexDM branding with your own</p>
+                    <p className="text-slate-400 text-sm">Replace CommunityXP branding with your own</p>
                 </div>
                 <ToggleSwitch checked={whiteLabelEnabled} onChange={setWhiteLabelEnabled} />
             </div>
@@ -127,7 +127,7 @@ export default function WhiteLabelSettings() {
                         placeholder="Daily Score"
                         className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
-                    <p className="text-slate-500 text-xs mt-1">Replace "ApexDM Score" with your custom name (e.g. "Daily Score")</p>
+                    <p className="text-slate-500 text-xs mt-1">Replace "CommunityXP" with your custom name (e.g. "Daily Score")</p>
                 </div>
 
                 {/* Logo URL */}

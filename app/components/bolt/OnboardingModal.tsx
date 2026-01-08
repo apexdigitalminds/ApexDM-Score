@@ -40,7 +40,7 @@ export default function OnboardingModal({ onNavigateToSetup }: OnboardingModalPr
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Welcome to ApexDM Score! 🎉</h2>
+                    <h2 className="text-2xl font-bold text-white mb-2">Welcome to CommunityXP! 🎉</h2>
                     <p className="text-slate-400">
                         Let's get your community set up with XP rewards, badges, and more.
                     </p>

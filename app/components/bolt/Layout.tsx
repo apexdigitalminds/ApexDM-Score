@@ -68,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 if (community.name) document.title = community.name;
             } else {
                 link.href = '/favicon.png';
-                document.title = 'ApexDM Score';
+                document.title = 'CommunityXP';
             }
         };
 
@@ -128,8 +128,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 ) : (
                                     <>
                                         <LogoIcon className="h-8 w-8" />
-                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text hidden sm:block">ApexDM Score</span>
-                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text sm:hidden">ApexDM</span>
+                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text hidden sm:block">CommunityXP</span>
+                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text sm:hidden">CXP</span>
                                     </>
                                 )}
                             </Link>
@@ -248,7 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             Powered by
                             <span className="flex items-center gap-1.5 font-semibold text-slate-400">
                                 <LogoIcon className="w-4 h-4 text-purple-500" />
-                                <span>ApexDM Score</span>
+                                <span>CommunityXP</span>
                             </span>
                         </p>
                     )}

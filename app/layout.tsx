@@ -7,7 +7,7 @@ import { headers } from 'next/headers';
 import { whopsdk } from "@/lib/whop-sdk";
 
 export const metadata: Metadata = {
-  title: "ApexDM Score",
+  title: "CommunityXP",
   description: "Admin and Member Dashboard",
 };
 
