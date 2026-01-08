@@ -290,6 +290,7 @@ export const api = {
                 trialEndsAt: data.trial_ends_at,
                 whiteLabelEnabled: data.white_label_enabled ?? false,
                 // 🆕 White-Label Branding Fields (Phase 1 + 3)
+                customAppName: data.custom_app_name ?? null,
                 themeColor: data.theme_color ?? null,
                 faviconUrl: data.favicon_url ?? null,
                 customFooterText: data.custom_footer_text ?? null,
