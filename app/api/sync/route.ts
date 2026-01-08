@@ -228,17 +228,35 @@ export async function POST(req: NextRequest) {
         if (forumExperienceId) {
             try {
                 // Use dynamically discovered forum experience ID
+                console.log(`📝 Fetching forum posts for experience: ${forumExperienceId}`);
                 const posts = await whopsdk.forumPosts.list({ experience_id: forumExperienceId });
-                let forumPostsRewarded = 0;
+                const postList = posts?.data || [];
+                console.log(`📝 Found ${postList.length} total forum posts`);
 
-                for (const post of posts?.data || []) {
+                let forumPostsRewarded = 0;
+                let postsChecked = 0;
+
+                for (const post of postList) {
+                    postsChecked++;
+
                     // Check if this post is from the current user
-                    if (post.user?.id !== whopUserId) continue;
+                    if (post.user?.id !== whopUserId) {
+                        console.log(`   Post ${post.id}: skipped (user ${post.user?.id} != ${whopUserId})`);
+                        continue;
+                    }
 
                     // Check if post was created after profile creation
                     const postDate = new Date(post.created_at);
-                    if (postDate < profileCreatedAt) continue;
-                    if (postDate < sinceSyncDate) continue;
+                    if (postDate < profileCreatedAt) {
+                        console.log(`   Post ${post.id}: skipped (before profile created)`);
+                        continue;
+                    }
+                    if (postDate < sinceSyncDate) {
+                        console.log(`   Post ${post.id}: skipped (before last sync)`);
+                        continue;
+                    }
+
+                    console.log(`   Post ${post.id}: eligible for XP (created ${post.created_at})`);
 
                     // Check if already rewarded
                     const { data: existing } = await supabaseAdmin
@@ -256,6 +274,7 @@ export async function POST(req: NextRequest) {
                             totalXp += result.xpGained;
                             syncedCount++;
                             forumPostsRewarded++;
+                            console.log(`   Post ${post.id}: ✅ Rewarded +${result.xpGained} XP`);
                         }
 
                         // Mark as rewarded
@@ -264,8 +283,12 @@ export async function POST(req: NextRequest) {
                             activity_type: 'forum_post',
                             external_id: post.id
                         });
+                    } else {
+                        console.log(`   Post ${post.id}: already rewarded`);
                     }
                 }
+
+                console.log(`📝 Forum sync complete: ${postsChecked} checked, ${forumPostsRewarded} rewarded`);
 
                 if (forumPostsRewarded > 0) {
                     syncResults.push(`📝 ${forumPostsRewarded} forum post${forumPostsRewarded !== 1 ? 's' : ''}`);
