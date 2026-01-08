@@ -122,8 +122,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                         ) : (
                                             <LogoIcon className="h-8 w-8" />
                                         )}
-                                        {/* 🆕 Always show community name when white-label is active */}
-                                        <span className="text-white hidden sm:block">{community?.name || 'My Community'}</span>
+                                        {/* 🆕 Show custom app name if set, otherwise community name */}
+                                        <span className="text-white hidden sm:block">{community?.customAppName || community?.name || 'My Community'}</span>
                                     </>
                                 ) : (
                                     <>

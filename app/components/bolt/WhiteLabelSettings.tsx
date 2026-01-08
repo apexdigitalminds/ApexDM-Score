@@ -23,6 +23,7 @@ export default function WhiteLabelSettings() {
 
     // Form state
     const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(false);
+    const [customAppName, setCustomAppName] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [themeColor, setThemeColor] = useState('#7c3aed');
     const [faviconUrl, setFaviconUrl] = useState('');
@@ -37,6 +38,7 @@ export default function WhiteLabelSettings() {
     useEffect(() => {
         if (community) {
             setWhiteLabelEnabled(community.whiteLabelEnabled ?? false);
+            setCustomAppName(community.customAppName ?? '');
             setLogoUrl(community.logoUrl ?? '');
             setThemeColor(community.themeColor ?? '#7c3aed');
             setFaviconUrl(community.faviconUrl ?? '');
@@ -52,6 +54,7 @@ export default function WhiteLabelSettings() {
         try {
             const result = await updateCommunityBrandingAction({
                 whiteLabelEnabled,
+                customAppName: customAppName.trim() || undefined,
                 logoUrl: logoUrl.trim() || undefined,
                 themeColor: themeColor || undefined,
                 faviconUrl: faviconUrl.trim() || undefined,
@@ -113,6 +116,19 @@ export default function WhiteLabelSettings() {
 
             {/* Branding Options */}
             <div className={`space-y-5 ${!whiteLabelEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+
+                {/* Custom App Name */}
+                <div>
+                    <label className="block text-white text-sm font-medium mb-2">Custom App Name</label>
+                    <input
+                        type="text"
+                        value={customAppName}
+                        onChange={(e) => setCustomAppName(e.target.value)}
+                        placeholder="Daily Score"
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">Replace "ApexDM Score" with your custom name (e.g. "Daily Score")</p>
+                </div>
 
                 {/* Logo URL */}
                 <div>

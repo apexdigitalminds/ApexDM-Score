@@ -367,10 +367,35 @@ export async function ensureWhopContext(
     const initialTier = mappedTier;
     console.log(`   Initial tier: ${initialTier}${isTrial ? ' (TRIAL - 14 days)' : ''}`);
 
+    // 🆕 Fetch actual company name from Whop API
+    let companyName = `Community ${whopStoreId.substring(0, 8)}`;
+    let logoUrl = '';
+
+    if (process.env.WHOP_API_KEY) {
+      try {
+        const response = await fetch(`https://api.whop.com/api/v2/companies/${whopStoreId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          companyName = data.title || data.name || companyName;
+          logoUrl = data.image_url || data.logo_url || '';
+          console.log(`   Fetched company name: ${companyName}`);
+        }
+      } catch (e) {
+        console.warn(`   Could not fetch company name, using default`);
+      }
+    }
+
     const insertData: any = {
       whop_store_id: whopStoreId,
       whop_company_id: whopStoreId,
-      name: `Community ${whopStoreId.substring(0, 8)}`,
+      name: companyName,
+      logo_url: logoUrl || null,
       subscription_tier: initialTier,
     };
 
@@ -714,6 +739,7 @@ export async function createCheckoutConfigAction(planId: string) {
  */
 export async function updateCommunityBrandingAction(data: {
   whiteLabelEnabled?: boolean;
+  customAppName?: string;
   logoUrl?: string;
   themeColor?: string;
   faviconUrl?: string;
@@ -735,6 +761,7 @@ export async function updateCommunityBrandingAction(data: {
     // Build update object with only defined fields
     const updateData: Record<string, any> = {};
     if (data.whiteLabelEnabled !== undefined) updateData.white_label_enabled = data.whiteLabelEnabled;
+    if (data.customAppName !== undefined) updateData.custom_app_name = data.customAppName || null;
     if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl || null;
     if (data.themeColor !== undefined) updateData.theme_color = data.themeColor || null;
     if (data.faviconUrl !== undefined) updateData.favicon_url = data.faviconUrl || null;
