@@ -14,7 +14,11 @@ export async function POST(req: NextRequest) {
         // =====================================================================
         // 1. Verify User & Get Profile
         // =====================================================================
-        const { userId: whopUserId, experienceId } = await whopsdk.verifyUserToken(await headers());
+        const payload = await whopsdk.verifyUserToken(await headers());
+        const token = payload as any;
+        const whopUserId = token.userId || token.user_id;
+        const experienceId = token.experienceId || token.experience_id || '';
+
         if (!whopUserId) {
             return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
         }
