@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
             if (community) {
                 const result = await supabaseAdmin
                     .from('profiles')
-                    .select('id, community_id, created_at, last_sync_at')
+                    .select('id, community_id, updated_at, last_sync_at')
                     .eq('whop_user_id', whopUserId)
                     .eq('community_id', community.id)
                     .maybeSingle();
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         if (!profile) {
             const result = await supabaseAdmin
                 .from('profiles')
-                .select('id, community_id, created_at, last_sync_at')
+                .select('id, community_id, updated_at, last_sync_at')
                 .eq('whop_user_id', whopUserId)
                 .limit(1)
                 .maybeSingle();
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
         const companyId = community?.whop_store_id || profile.community_id;
         const communityExperienceId = community?.experience_id || experienceId || companyId;
-        const profileCreatedAt = new Date(profile.created_at);
+        const profileCreatedAt = new Date(profile.updated_at || Date.now());
         const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : profileCreatedAt;
 
         let totalXp = 0;
