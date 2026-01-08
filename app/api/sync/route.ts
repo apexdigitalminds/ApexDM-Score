@@ -223,40 +223,41 @@ export async function POST(req: NextRequest) {
         }
 
         // =====================================================================
-        // 4. Sync Forum Posts
+        // 4. Sync Forum Posts AND Replies
         // =====================================================================
         if (forumExperienceId) {
             try {
-                // Use dynamically discovered forum experience ID
                 console.log(`📝 Fetching forum posts for experience: ${forumExperienceId}`);
                 const posts = await whopsdk.forumPosts.list({ experience_id: forumExperienceId });
                 const postList = posts?.data || [];
-                console.log(`📝 Found ${postList.length} total forum posts`);
+                console.log(`📝 Found ${postList.length} top-level forum posts`);
 
                 let forumPostsRewarded = 0;
                 let postsChecked = 0;
+                let repliesChecked = 0;
 
-                for (const post of postList) {
+                // Helper function to process a post or reply
+                const processForumItem = async (item: any, isReply: boolean = false) => {
                     postsChecked++;
+                    const itemType = isReply ? 'Reply' : 'Post';
 
-                    // Check if this post is from the current user
-                    if (post.user?.id !== whopUserId) {
-                        console.log(`   Post ${post.id}: skipped (user ${post.user?.id} != ${whopUserId})`);
-                        continue;
+                    // Check if this item is from the current user
+                    if (item.user?.id !== whopUserId) {
+                        return false; // Skip silently for replies to reduce log spam
                     }
 
-                    // Check if post was created after profile creation
-                    const postDate = new Date(post.created_at);
-                    if (postDate < profileCreatedAt) {
-                        console.log(`   Post ${post.id}: skipped (before profile created)`);
-                        continue;
+                    // Check if item was created after profile creation
+                    const itemDate = new Date(item.created_at);
+                    if (itemDate < profileCreatedAt) {
+                        console.log(`   ${itemType} ${item.id}: skipped (before profile created)`);
+                        return false;
                     }
-                    if (postDate < sinceSyncDate) {
-                        console.log(`   Post ${post.id}: skipped (before last sync)`);
-                        continue;
+                    if (itemDate < sinceSyncDate) {
+                        console.log(`   ${itemType} ${item.id}: skipped (before last sync)`);
+                        return false;
                     }
 
-                    console.log(`   Post ${post.id}: eligible for XP (created ${post.created_at})`);
+                    console.log(`   ${itemType} ${item.id}: eligible for XP (created ${item.created_at})`);
 
                     // Check if already rewarded
                     const { data: existing } = await supabaseAdmin
@@ -264,31 +265,55 @@ export async function POST(req: NextRequest) {
                         .select('id')
                         .eq('profile_id', profile.id)
                         .eq('activity_type', 'forum_post')
-                        .eq('external_id', post.id)
+                        .eq('external_id', item.id)
                         .maybeSingle();
 
                     if (!existing) {
-                        // Award XP for forum post
                         const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
                         if (result) {
                             totalXp += result.xpGained;
                             syncedCount++;
                             forumPostsRewarded++;
-                            console.log(`   Post ${post.id}: ✅ Rewarded +${result.xpGained} XP`);
+                            console.log(`   ${itemType} ${item.id}: ✅ Rewarded +${result.xpGained} XP`);
                         }
 
-                        // Mark as rewarded
                         await supabaseAdmin.from('rewarded_activities').insert({
                             profile_id: profile.id,
                             activity_type: 'forum_post',
-                            external_id: post.id
+                            external_id: item.id
                         });
+                        return true;
                     } else {
-                        console.log(`   Post ${post.id}: already rewarded`);
+                        console.log(`   ${itemType} ${item.id}: already rewarded`);
+                        return false;
+                    }
+                };
+
+                // Process top-level posts
+                for (const post of postList) {
+                    await processForumItem(post, false);
+
+                    // Also fetch replies/comments for this post
+                    const commentCount = (post as any).comment_count || 0;
+                    if (commentCount > 0) {
+                        try {
+                            console.log(`   Fetching ${commentCount} replies for post ${post.id}`);
+                            const replies = await whopsdk.forumPosts.list({
+                                experience_id: forumExperienceId,
+                                parent_id: post.id
+                            });
+
+                            for (const reply of replies?.data || []) {
+                                repliesChecked++;
+                                await processForumItem(reply, true);
+                            }
+                        } catch (replyError: any) {
+                            console.warn(`   Failed to fetch replies for ${post.id}:`, replyError.message);
+                        }
                     }
                 }
 
-                console.log(`📝 Forum sync complete: ${postsChecked} checked, ${forumPostsRewarded} rewarded`);
+                console.log(`📝 Forum sync complete: ${postsChecked} posts, ${repliesChecked} replies checked, ${forumPostsRewarded} rewarded`);
 
                 if (forumPostsRewarded > 0) {
                     syncResults.push(`📝 ${forumPostsRewarded} forum post${forumPostsRewarded !== 1 ? 's' : ''}`);
