@@ -92,14 +92,37 @@ export async function POST(req: NextRequest) {
         // Get company ID and experience ID for API calls
         const { data: community } = await supabaseAdmin
             .from('communities')
-            .select('whop_store_id, experience_id')
+            .select('whop_store_id, whop_company_id, experience_id')
             .eq('id', profile.community_id)
             .single();
 
-        const companyId = community?.whop_store_id || profile.community_id;
-        const communityExperienceId = community?.experience_id || experienceId || companyId;
+        // Use whop_company_id for API calls (format: biz_xxxx), with fallbacks
+        const companyId = community?.whop_company_id || community?.whop_store_id || profile.community_id;
+
+        // Use experience_id from DB if available, otherwise from token
+        let communityExperienceId = community?.experience_id || experienceId || '';
+
+        // Auto-save experience_id if we have it from token but not in DB
+        if (experienceId && !community?.experience_id) {
+            console.log(`💾 Saving experience_id ${experienceId} to community ${profile.community_id}`);
+            await supabaseAdmin
+                .from('communities')
+                .update({ experience_id: experienceId })
+                .eq('id', profile.community_id);
+            communityExperienceId = experienceId;
+        }
+
         const profileCreatedAt = new Date(profile.updated_at || Date.now());
         const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : profileCreatedAt;
+
+        // Debug logging
+        console.log('🔄 Sync starting with IDs:', {
+            companyId,
+            communityExperienceId,
+            experienceIdFromToken: experienceId,
+            profileId: profile.id,
+            communityData: community
+        });
 
         let totalXp = 0;
         let syncedCount = 0;
@@ -230,44 +253,62 @@ export async function POST(req: NextRequest) {
         // 5. Sync Course Lesson Interactions
         // =====================================================================
         try {
-            const interactions = await whopsdk.courseLessonInteractions.list({
-                user_id: whopUserId
-            });
             let lessonsRewarded = 0;
 
-            for (const interaction of interactions?.data || []) {
-                if (!interaction.completed) continue;
+            // First, list all courses for this experience
+            const coursesResult = await whopsdk.courses.list({
+                experience_id: communityExperienceId || undefined,
+                company_id: communityExperienceId ? undefined : companyId
+            });
 
-                const interactionDate = new Date(interaction.created_at);
-                if (interactionDate < profileCreatedAt) continue;
-                if (interactionDate < sinceSyncDate) continue;
+            const courseList = coursesResult?.data || [];
+            console.log(`📚 Found ${courseList.length} courses to check`);
 
-                const externalId = interaction.lesson?.id || interaction.id;
-
-                // Check if already rewarded
-                const { data: existing } = await supabaseAdmin
-                    .from('rewarded_activities')
-                    .select('id')
-                    .eq('profile_id', profile.id)
-                    .eq('activity_type', 'course_lesson')
-                    .eq('external_id', externalId)
-                    .maybeSingle();
-
-                if (!existing) {
-                    // Award XP for lesson completion
-                    const result = await recordActionServer(profile.id, 'lesson_completed' as ActionType, 'sync');
-                    if (result) {
-                        totalXp += result.xpGained;
-                        syncedCount++;
-                        lessonsRewarded++;
-                    }
-
-                    // Mark as rewarded
-                    await supabaseAdmin.from('rewarded_activities').insert({
-                        profile_id: profile.id,
-                        activity_type: 'course_lesson',
-                        external_id: externalId
+            // For each course, get the user's lesson interactions
+            for (const course of courseList) {
+                try {
+                    const interactions = await whopsdk.courseLessonInteractions.list({
+                        course_id: course.id,
+                        user_id: whopUserId
                     });
+
+                    for (const interaction of interactions?.data || []) {
+                        if (!interaction.completed) continue;
+
+                        const interactionDate = new Date(interaction.created_at);
+                        if (interactionDate < profileCreatedAt) continue;
+                        if (interactionDate < sinceSyncDate) continue;
+
+                        const externalId = interaction.lesson?.id || interaction.id;
+
+                        // Check if already rewarded
+                        const { data: existing } = await supabaseAdmin
+                            .from('rewarded_activities')
+                            .select('id')
+                            .eq('profile_id', profile.id)
+                            .eq('activity_type', 'course_lesson')
+                            .eq('external_id', externalId)
+                            .maybeSingle();
+
+                        if (!existing) {
+                            // Award XP for lesson completion
+                            const result = await recordActionServer(profile.id, 'lesson_completed' as ActionType, 'sync');
+                            if (result) {
+                                totalXp += result.xpGained;
+                                syncedCount++;
+                                lessonsRewarded++;
+                            }
+
+                            // Mark as rewarded
+                            await supabaseAdmin.from('rewarded_activities').insert({
+                                profile_id: profile.id,
+                                activity_type: 'course_lesson',
+                                external_id: externalId
+                            });
+                        }
+                    }
+                } catch (courseInteractionError: any) {
+                    console.warn(`Course ${course.id} interactions skipped:`, courseInteractionError.message);
                 }
             }
 
@@ -276,7 +317,7 @@ export async function POST(req: NextRequest) {
             }
         } catch (courseError: any) {
             console.warn("Course sync skipped:", courseError.message);
-            syncResults.push("Courses: Requires course permissions");
+            // Don't add error message to results unless we want to show it
         }
 
         // =====================================================================
