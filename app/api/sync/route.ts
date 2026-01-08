@@ -129,6 +129,31 @@ export async function POST(req: NextRequest) {
         const syncResults: string[] = [];
 
         // =====================================================================
+        // 2.5 Discover Forum and Course Experiences
+        // =====================================================================
+        let forumExperienceId = '';
+        let courseExperienceIds: string[] = [];
+
+        try {
+            const experiences = await whopsdk.experiences.list({ company_id: companyId });
+            for (const exp of experiences?.data || []) {
+                const appName = (exp.app?.name || '').toLowerCase();
+                console.log(`  📦 Found experience: ${exp.name} (${exp.id}) - App: ${exp.app?.name}`);
+
+                if (appName.includes('forum')) {
+                    forumExperienceId = exp.id;
+                    console.log(`  ✅ Forum experience: ${exp.id}`);
+                }
+                if (appName.includes('course')) {
+                    courseExperienceIds.push(exp.id);
+                    console.log(`  ✅ Course experience: ${exp.id}`);
+                }
+            }
+        } catch (expError: any) {
+            console.warn('Experience discovery skipped:', expError.message);
+        }
+
+        // =====================================================================
         // 3. Sync Chat Messages
         // =====================================================================
         try {
@@ -200,53 +225,56 @@ export async function POST(req: NextRequest) {
         // =====================================================================
         // 4. Sync Forum Posts
         // =====================================================================
-        try {
-            // Use experience_id per Whop SDK docs (not company_id)
-            const posts = await whopsdk.forumPosts.list({ experience_id: communityExperienceId });
-            let forumPostsRewarded = 0;
+        if (forumExperienceId) {
+            try {
+                // Use dynamically discovered forum experience ID
+                const posts = await whopsdk.forumPosts.list({ experience_id: forumExperienceId });
+                let forumPostsRewarded = 0;
 
-            for (const post of posts?.data || []) {
-                // Check if this post is from the current user
-                if (post.user?.id !== whopUserId) continue;
+                for (const post of posts?.data || []) {
+                    // Check if this post is from the current user
+                    if (post.user?.id !== whopUserId) continue;
 
-                // Check if post was created after profile creation
-                const postDate = new Date(post.created_at);
-                if (postDate < profileCreatedAt) continue;
-                if (postDate < sinceSyncDate) continue;
+                    // Check if post was created after profile creation
+                    const postDate = new Date(post.created_at);
+                    if (postDate < profileCreatedAt) continue;
+                    if (postDate < sinceSyncDate) continue;
 
-                // Check if already rewarded
-                const { data: existing } = await supabaseAdmin
-                    .from('rewarded_activities')
-                    .select('id')
-                    .eq('profile_id', profile.id)
-                    .eq('activity_type', 'forum_post')
-                    .eq('external_id', post.id)
-                    .maybeSingle();
+                    // Check if already rewarded
+                    const { data: existing } = await supabaseAdmin
+                        .from('rewarded_activities')
+                        .select('id')
+                        .eq('profile_id', profile.id)
+                        .eq('activity_type', 'forum_post')
+                        .eq('external_id', post.id)
+                        .maybeSingle();
 
-                if (!existing) {
-                    // Award XP for forum post
-                    const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
-                    if (result) {
-                        totalXp += result.xpGained;
-                        syncedCount++;
-                        forumPostsRewarded++;
+                    if (!existing) {
+                        // Award XP for forum post
+                        const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
+                        if (result) {
+                            totalXp += result.xpGained;
+                            syncedCount++;
+                            forumPostsRewarded++;
+                        }
+
+                        // Mark as rewarded
+                        await supabaseAdmin.from('rewarded_activities').insert({
+                            profile_id: profile.id,
+                            activity_type: 'forum_post',
+                            external_id: post.id
+                        });
                     }
-
-                    // Mark as rewarded
-                    await supabaseAdmin.from('rewarded_activities').insert({
-                        profile_id: profile.id,
-                        activity_type: 'forum_post',
-                        external_id: post.id
-                    });
                 }
-            }
 
-            if (forumPostsRewarded > 0) {
-                syncResults.push(`📝 ${forumPostsRewarded} forum post${forumPostsRewarded !== 1 ? 's' : ''}`);
+                if (forumPostsRewarded > 0) {
+                    syncResults.push(`📝 ${forumPostsRewarded} forum post${forumPostsRewarded !== 1 ? 's' : ''}`);
+                }
+            } catch (forumError: any) {
+                console.warn("Forum sync skipped:", forumError.message);
             }
-        } catch (forumError: any) {
-            console.warn("Forum sync skipped:", forumError.message);
-            syncResults.push("Forum: Requires forum permissions");
+        } else {
+            console.log('📝 No forum experience found - skipping forum sync');
         }
 
         // =====================================================================
@@ -254,70 +282,74 @@ export async function POST(req: NextRequest) {
         // =====================================================================
         try {
             let lessonsRewarded = 0;
+            let totalCoursesChecked = 0;
 
-            // First, list all courses for this experience
-            const coursesResult = await whopsdk.courses.list({
-                experience_id: communityExperienceId || undefined,
-                company_id: communityExperienceId ? undefined : companyId
-            });
+            // Use discovered course experience IDs, or fall back to listing by company
+            if (courseExperienceIds.length > 0) {
+                // Fetch courses from each course experience
+                for (const courseExpId of courseExperienceIds) {
+                    const coursesResult = await whopsdk.courses.list({ experience_id: courseExpId });
+                    const courseList = coursesResult?.data || [];
+                    totalCoursesChecked += courseList.length;
 
-            const courseList = coursesResult?.data || [];
-            console.log(`📚 Found ${courseList.length} courses to check`);
-
-            // For each course, get the user's lesson interactions
-            for (const course of courseList) {
-                try {
-                    const interactions = await whopsdk.courseLessonInteractions.list({
-                        course_id: course.id,
-                        user_id: whopUserId
-                    });
-
-                    for (const interaction of interactions?.data || []) {
-                        if (!interaction.completed) continue;
-
-                        const interactionDate = new Date(interaction.created_at);
-                        if (interactionDate < profileCreatedAt) continue;
-                        if (interactionDate < sinceSyncDate) continue;
-
-                        const externalId = interaction.lesson?.id || interaction.id;
-
-                        // Check if already rewarded
-                        const { data: existing } = await supabaseAdmin
-                            .from('rewarded_activities')
-                            .select('id')
-                            .eq('profile_id', profile.id)
-                            .eq('activity_type', 'course_lesson')
-                            .eq('external_id', externalId)
-                            .maybeSingle();
-
-                        if (!existing) {
-                            // Award XP for lesson completion
-                            const result = await recordActionServer(profile.id, 'lesson_completed' as ActionType, 'sync');
-                            if (result) {
-                                totalXp += result.xpGained;
-                                syncedCount++;
-                                lessonsRewarded++;
-                            }
-
-                            // Mark as rewarded
-                            await supabaseAdmin.from('rewarded_activities').insert({
-                                profile_id: profile.id,
-                                activity_type: 'course_lesson',
-                                external_id: externalId
+                    for (const course of courseList) {
+                        try {
+                            const interactions = await whopsdk.courseLessonInteractions.list({
+                                course_id: course.id,
+                                user_id: whopUserId
                             });
+
+                            for (const interaction of interactions?.data || []) {
+                                if (!interaction.completed) continue;
+
+                                const interactionDate = new Date(interaction.created_at);
+                                if (interactionDate < profileCreatedAt) continue;
+                                if (interactionDate < sinceSyncDate) continue;
+
+                                const externalId = interaction.lesson?.id || interaction.id;
+
+                                // Check if already rewarded
+                                const { data: existing } = await supabaseAdmin
+                                    .from('rewarded_activities')
+                                    .select('id')
+                                    .eq('profile_id', profile.id)
+                                    .eq('activity_type', 'course_lesson')
+                                    .eq('external_id', externalId)
+                                    .maybeSingle();
+
+                                if (!existing) {
+                                    // Award XP for lesson completion
+                                    const result = await recordActionServer(profile.id, 'lesson_completed' as ActionType, 'sync');
+                                    if (result) {
+                                        totalXp += result.xpGained;
+                                        syncedCount++;
+                                        lessonsRewarded++;
+                                    }
+
+                                    // Mark as rewarded
+                                    await supabaseAdmin.from('rewarded_activities').insert({
+                                        profile_id: profile.id,
+                                        activity_type: 'course_lesson',
+                                        external_id: externalId
+                                    });
+                                }
+                            }
+                        } catch (courseInteractionError: any) {
+                            console.warn(`Course ${course.id} interactions skipped:`, courseInteractionError.message);
                         }
                     }
-                } catch (courseInteractionError: any) {
-                    console.warn(`Course ${course.id} interactions skipped:`, courseInteractionError.message);
                 }
+            } else {
+                console.log('📚 No course experiences found - skipping course sync');
             }
+
+            console.log(`📚 Found ${totalCoursesChecked} courses to check`);
 
             if (lessonsRewarded > 0) {
                 syncResults.push(`📚 ${lessonsRewarded} lesson${lessonsRewarded !== 1 ? 's' : ''} completed`);
             }
         } catch (courseError: any) {
             console.warn("Course sync skipped:", courseError.message);
-            // Don't add error message to results unless we want to show it
         }
 
         // =====================================================================
