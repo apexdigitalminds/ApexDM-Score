@@ -112,8 +112,11 @@ export async function POST(req: NextRequest) {
             communityExperienceId = experienceId;
         }
 
-        const profileCreatedAt = new Date(profile.updated_at || Date.now());
-        const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : profileCreatedAt;
+        // profileCreatedAt: Use a very old date as fallback since profiles table doesn't have created_at
+        // The sinceSyncDate is the main filter - profileCreatedAt is just a safety check
+        // to avoid rewarding activity from before the user ever joined the app
+        const profileCreatedAt = new Date('2020-01-01'); // Safe fallback - most activity will be after this
+        const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : new Date('2020-01-01');
 
         // Debug logging
         console.log('🔄 Sync starting with IDs:', {
