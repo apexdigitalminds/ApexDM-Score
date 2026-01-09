@@ -1413,19 +1413,63 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
   // 🆕 Update last_action_date and increment streak for daily_login
   if (actionType === 'daily_login') {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const { data: profile } = await supabaseAdmin.from('profiles').select('streak, last_action_date').eq('id', userId).single();
+    const { data: profile } = await supabaseAdmin.from('profiles').select('streak, streak_freezes, last_action_date').eq('id', userId).single();
 
-    const lastDate = profile?.last_action_date ? profile.last_action_date.split('T')[0] : null;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    // Use UTC dates for consistent comparison
+    const now = new Date();
+    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
-    // Increment streak only if last action was yesterday, otherwise reset to 1
-    const newStreak = lastDate === yesterday ? (profile?.streak || 0) + 1 : 1;
+    let lastActionUTC: number | null = null;
+    if (profile?.last_action_date) {
+      const lastDate = new Date(profile.last_action_date);
+      lastActionUTC = Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate());
+    }
+
+    // Calculate days difference using UTC calendar days (not 24-hour windows)
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const daysDiff = lastActionUTC ? Math.floor((todayUTC - lastActionUTC) / oneDayMs) : null;
+
+    console.log(`🔥 Streak calculation for user ${userId}:`);
+    console.log(`   last_action_date: ${profile?.last_action_date}`);
+    console.log(`   todayUTC: ${new Date(todayUTC).toISOString()}`);
+    console.log(`   lastActionUTC: ${lastActionUTC ? new Date(lastActionUTC).toISOString() : 'null'}`);
+    console.log(`   daysDiff: ${daysDiff}`);
+    console.log(`   current streak: ${profile?.streak || 0}`);
+    console.log(`   streak_freezes: ${profile?.streak_freezes || 0}`);
+
+    let newStreak: number;
+    let newFreezes = profile?.streak_freezes || 0;
+
+    if (daysDiff === null) {
+      // First ever action
+      newStreak = 1;
+      console.log(`   → First action, starting streak at 1`);
+    } else if (daysDiff === 0) {
+      // Same day - keep streak (shouldn't happen due to checkDailyLogin, but safety check)
+      newStreak = profile?.streak || 1;
+      console.log(`   → Same day, keeping streak at ${newStreak}`);
+    } else if (daysDiff === 1) {
+      // Consecutive day - increment streak!
+      newStreak = (profile?.streak || 0) + 1;
+      console.log(`   → Consecutive day! Incrementing streak to ${newStreak}`);
+    } else if (daysDiff === 2 && newFreezes > 0) {
+      // Missed exactly 1 day but have a freeze available - use it!
+      newFreezes = newFreezes - 1;
+      newStreak = (profile?.streak || 0) + 1; // Continue the streak
+      console.log(`   → Missed 1 day but used a streak freeze! Continuing streak to ${newStreak} (${newFreezes} freezes remaining)`);
+    } else {
+      // Missed 2+ days or no freeze available - reset streak
+      newStreak = 1;
+      console.log(`   → Missed ${daysDiff - 1} day(s) with no freeze available, resetting streak to 1`);
+    }
 
     await supabaseAdmin.from('profiles').update({
       last_action_date: new Date().toISOString(),
-      streak: newStreak
+      streak: newStreak,
+      streak_freezes: newFreezes
     }).eq('id', userId);
+
+    console.log(`   ✅ Updated streak to ${newStreak}, freezes to ${newFreezes}`);
   }
 
   // Log the action
