@@ -264,6 +264,9 @@ export const AppProvider = ({
             }
         } else {
             console.log("   ⏭️ Already logged in today, skipping XP");
+            // 🔧 Still check for badges even if daily login was skipped
+            // This ensures badges are awarded if user earned XP from other sources
+            await checkAutomatedBadges(user.id);
         }
     };
 
