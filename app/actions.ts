@@ -1476,9 +1476,12 @@ export async function recordActionServer(userId: string, actionType: ActionType,
   await supabaseAdmin.from('actions_log').insert({ user_id: userId, community_id: userProfile.community_id, action_type: actionType, xp_gained: xp_to_add, source: source });
 
   // 🆕 Update quest progress for any active quests that require this action
+  let questDebug: any = { stage: 'start' };
   try {
     console.log(`📋 Quest progress check for action: ${actionType}`);
     console.log(`   User: ${userId}, Community: ${userProfile.community_id}`);
+    questDebug.actionType = actionType;
+    questDebug.communityId = userProfile.community_id;
 
     // Step 1: Get all active quests for this community (simpler query - no nested join)
     const { data: activeQuests, error: questsError } = await supabaseAdmin
@@ -1490,15 +1493,21 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
     if (questsError) {
       console.error(`   Error fetching quests:`, questsError);
+      questDebug.questsError = questsError.message;
     }
+
+    questDebug.activeQuestsCount = activeQuests?.length || 0;
 
     if (!activeQuests || activeQuests.length === 0) {
       console.log(`   No active quests for this community`);
+      questDebug.stage = 'no_active_quests';
     } else {
       console.log(`   Active quests found: ${activeQuests.length}`);
+      questDebug.stage = 'found_quests';
 
       // Get quest IDs
-      const questIds = activeQuests.map(q => q.id);
+      const questIds = activeQuests.map((q: any) => q.id);
+      questDebug.questIds = questIds;
 
       // Step 2: Get tasks that match this action type from those quests
       const { data: matchingTasks, error: tasksError } = await supabaseAdmin
@@ -1509,11 +1518,16 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
       if (tasksError) {
         console.error(`   Error fetching tasks:`, tasksError);
+        questDebug.tasksError = tasksError.message;
       }
 
+      questDebug.matchingTasksCount = matchingTasks?.length || 0;
       console.log(`   Matching tasks found: ${matchingTasks?.length || 0}`);
 
       if (matchingTasks && matchingTasks.length > 0) {
+        questDebug.stage = 'processing_tasks';
+        questDebug.updates = [];
+
         for (const task of matchingTasks) {
           const questId = task.quest_id;
           console.log(`   Processing quest: ${questId}, task: ${task.id}`);
@@ -1530,6 +1544,7 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
           if (existingProgress?.is_completed) {
             console.log(`   Quest already completed, skipping`);
+            questDebug.updates.push({ questId, status: 'already_completed' });
             continue;
           }
 
@@ -1568,8 +1583,13 @@ export async function recordActionServer(userId: string, actionType: ActionType,
               })
               .eq('id', existingProgress.id);
 
-            if (updateError) console.error(`   Update error:`, updateError);
-            else console.log(`✅ Quest progress updated: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
+            if (updateError) {
+              console.error(`   Update error:`, updateError);
+              questDebug.updates.push({ questId, status: 'update_error', error: updateError.message });
+            } else {
+              console.log(`✅ Quest progress updated: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
+              questDebug.updates.push({ questId, status: 'updated', from: currentProgress[taskKey] || 0, to: newCount });
+            }
           } else {
             const { error: insertError } = await supabaseAdmin
               .from('user_quest_progress')
@@ -1581,21 +1601,28 @@ export async function recordActionServer(userId: string, actionType: ActionType,
                 is_claimed: false
               });
 
-            if (insertError) console.error(`   Insert error:`, insertError);
-            else console.log(`✅ Quest progress created: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
+            if (insertError) {
+              console.error(`   Insert error:`, insertError);
+              questDebug.updates.push({ questId, status: 'insert_error', error: insertError.message });
+            } else {
+              console.log(`✅ Quest progress created: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
+              questDebug.updates.push({ questId, status: 'created', newCount });
+            }
           }
         }
       } else {
         console.log(`   No tasks match action: ${actionType}`);
+        questDebug.stage = 'no_matching_tasks';
       }
     }
-  } catch (questError) {
+  } catch (questError: any) {
     console.error('Error updating quest progress:', questError);
-    // Don't fail the action recording if quest progress fails
+    questDebug.stage = 'exception';
+    questDebug.error = questError?.message || String(questError);
   }
 
   console.log(`✅ recordActionServer completed: xpGained=${xp_to_add}`);
-  return { xpGained: xp_to_add };
+  return { xpGained: xp_to_add, questDebug };
 }
 
 export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<AnalyticsData | null> {
