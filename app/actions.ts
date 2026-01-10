@@ -1578,8 +1578,7 @@ export async function recordActionServer(userId: string, actionType: ActionType,
               .from('user_quest_progress')
               .update({
                 progress: updatedProgress,
-                is_completed: allComplete,
-                updated_at: new Date().toISOString()
+                is_completed: allComplete
               })
               .eq('id', existingProgress.id);
 
