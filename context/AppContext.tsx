@@ -147,14 +147,34 @@ export const AppProvider = ({
     // 🟢 DATABASE-DRIVEN AUTOMATED BADGE CHECKER
     // Reads trigger configurations from badges table instead of hardcoded values
     const checkAutomatedBadges = async (userId: string) => {
-        const user = await api.getUserById(userId);
-        if (!user) return;
+        console.log(`🏆 checkAutomatedBadges called for user: ${userId}`);
 
-        // Fetch all badges with triggers configured for this community
+        const user = await api.getUserById(userId);
+        if (!user) {
+            console.log(`   ❌ User not found`);
+            return;
+        }
+
+        console.log(`   User XP: ${user.xp}, Streak: ${user.streak}`);
+        console.log(`   User community: ${user.communityId}`);
+        console.log(`   User badges count: ${user.badges?.length || 0}`);
+
+        // Fetch all badges with triggers configured
         const allBadges = await api.getBadges();
+        console.log(`   Total badges fetched: ${allBadges.length}`);
+
+        // 🔧 FIX: Filter by user's community AND trigger configuration
         const triggerBadges = allBadges.filter(
-            (b: any) => b.triggerType && b.triggerType !== 'none' && b.isActive
+            (b: any) => b.communityId === user.communityId &&
+                b.triggerType &&
+                b.triggerType !== 'none' &&
+                b.isActive
         );
+
+        console.log(`   Trigger-configured badges for this community: ${triggerBadges.length}`);
+        triggerBadges.forEach((b: any) => {
+            console.log(`     - ${b.name}: ${b.triggerType} >= ${b.triggerValue}`);
+        });
 
         if (triggerBadges.length === 0) {
             console.log('📛 No trigger-configured badges found');
@@ -166,22 +186,28 @@ export const AppProvider = ({
         for (const badge of triggerBadges) {
             // Skip if user already has this badge
             const hasBadge = user.badges?.some(b => b.name === badge.name);
-            if (hasBadge) continue;
+            if (hasBadge) {
+                console.log(`   Skipping ${badge.name} - user already has it`);
+                continue;
+            }
 
             let shouldAward = false;
 
             switch (badge.triggerType) {
                 case 'xp_threshold':
                     shouldAward = user.xp >= (badge.triggerValue ?? 0);
+                    console.log(`   ${badge.name}: XP check - ${user.xp} >= ${badge.triggerValue} = ${shouldAward}`);
                     break;
                 case 'streak_days':
                     shouldAward = user.streak >= (badge.triggerValue ?? 0);
+                    console.log(`   ${badge.name}: Streak check - ${user.streak} >= ${badge.triggerValue} = ${shouldAward}`);
                     break;
                 case 'action_count':
                     // Get count of specific action type
                     if (badge.triggerAction) {
                         const actionCount = await api.getActionCount(userId, badge.triggerAction);
                         shouldAward = actionCount >= (badge.triggerValue ?? 0);
+                        console.log(`   ${badge.name}: Action check - ${actionCount} >= ${badge.triggerValue} = ${shouldAward}`);
                     }
                     break;
             }

@@ -1477,8 +1477,11 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
   // 🆕 Update quest progress for any active quests that require this action
   try {
+    console.log(`📋 Quest progress check for action: ${actionType}`);
+    console.log(`   User: ${userId}, Community: ${userProfile.community_id}`);
+
     // Find quest_tasks that match this action type
-    const { data: matchingTasks } = await supabaseAdmin
+    const { data: matchingTasks, error: matchError } = await supabaseAdmin
       .from('quest_tasks')
       .select('id, quest_id, action_type, target_count, quests!inner(id, community_id, is_active, is_archived)')
       .eq('action_type', actionType)
@@ -1486,9 +1489,13 @@ export async function recordActionServer(userId: string, actionType: ActionType,
       .eq('quests.is_active', true)
       .eq('quests.is_archived', false);
 
+    console.log(`   Matching tasks found: ${matchingTasks?.length || 0}`);
+    if (matchError) console.error(`   Match error:`, matchError);
+
     if (matchingTasks && matchingTasks.length > 0) {
       for (const task of matchingTasks) {
         const questId = task.quest_id;
+        console.log(`   Processing quest: ${questId}, task: ${task.id}`);
 
         // Get or create user's progress for this quest
         const { data: existingProgress } = await supabaseAdmin
@@ -1498,8 +1505,11 @@ export async function recordActionServer(userId: string, actionType: ActionType,
           .eq('quest_id', questId)
           .maybeSingle();
 
+        console.log(`   Existing progress:`, existingProgress);
+
         if (existingProgress?.is_completed) {
           // Quest already completed, skip
+          console.log(`   Quest already completed, skipping`);
           continue;
         }
 
@@ -1515,6 +1525,9 @@ export async function recordActionServer(userId: string, actionType: ActionType,
         const newCount = (currentProgress[taskKey] || 0) + 1;
         const updatedProgress = { ...currentProgress, [taskKey]: newCount };
 
+        console.log(`   Current progress for ${taskKey}: ${currentProgress[taskKey] || 0}`);
+        console.log(`   New count: ${newCount}`);
+
         // Check if all tasks are now complete
         let allComplete = true;
         if (allQuestTasks) {
@@ -1529,7 +1542,7 @@ export async function recordActionServer(userId: string, actionType: ActionType,
 
         if (existingProgress) {
           // Update existing progress
-          await supabaseAdmin
+          const { error: updateError } = await supabaseAdmin
             .from('user_quest_progress')
             .update({
               progress: updatedProgress,
@@ -1537,9 +1550,11 @@ export async function recordActionServer(userId: string, actionType: ActionType,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingProgress.id);
+
+          if (updateError) console.error(`   Update error:`, updateError);
         } else {
           // Create new progress entry
-          await supabaseAdmin
+          const { error: insertError } = await supabaseAdmin
             .from('user_quest_progress')
             .insert({
               user_id: userId,
@@ -1548,10 +1563,14 @@ export async function recordActionServer(userId: string, actionType: ActionType,
               is_completed: allComplete,
               is_claimed: false
             });
+
+          if (insertError) console.error(`   Insert error:`, insertError);
         }
 
         console.log(`📋 Quest progress updated: ${questId} - ${actionType} (${newCount}/${task.target_count})`);
       }
+    } else {
+      console.log(`   No matching quests found for action: ${actionType}`);
     }
   } catch (questError) {
     console.error('Error updating quest progress:', questError);
