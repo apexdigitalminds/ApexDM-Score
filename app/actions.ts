@@ -46,12 +46,49 @@ export async function verifyUser(routeCompanyId?: string) {
 
     console.log(`🔐 Verifying user: ${whopUserId}${routeCompanyId ? ` for company: ${routeCompanyId}` : ''}`);
 
-    // 🟢 Step 2: Check if User Exists in Database
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
-      .eq('whop_user_id', whopUserId)
-      .maybeSingle();
+    // 🟢 Step 2: Check if User Exists in Database FOR THIS COMMUNITY
+    // First, find the community by whop_store_id to get its Supabase UUID
+    let targetCommunityId: string | null = null;
+
+    if (routeCompanyId) {
+      const { data: community } = await supabaseAdmin
+        .from('communities')
+        .select('id')
+        .eq('whop_store_id', routeCompanyId)
+        .maybeSingle();
+
+      targetCommunityId = community?.id || null;
+      console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
+    }
+
+    // 🔧 FIX: Look up profile by BOTH whop_user_id AND community_id
+    // This ensures users get the correct profile for each community they belong to
+    let existingProfile = null;
+    let profileError = null;
+
+    if (targetCommunityId) {
+      // Look for profile in THIS specific community
+      const result = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+        .eq('whop_user_id', whopUserId)
+        .eq('community_id', targetCommunityId)
+        .maybeSingle();
+
+      existingProfile = result.data;
+      profileError = result.error;
+    } else {
+      // No target community yet (community doesn't exist) - check if user has ANY profile
+      // This is for the case where the community hasn't been created yet
+      const result = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+        .eq('whop_user_id', whopUserId)
+        .maybeSingle();
+
+      existingProfile = result.data;
+      profileError = result.error;
+    }
 
     if (profileError) {
       console.error("❌ Database error checking profile:", profileError);
@@ -59,35 +96,12 @@ export async function verifyUser(routeCompanyId?: string) {
     }
 
     if (existingProfile) {
-      // ✅ User exists in database
+      // ✅ User exists in database FOR THIS COMMUNITY
       const communityData = existingProfile.communities as any;
-      const userCompanyId = communityData?.whop_store_id || communityData?.whop_company_id;
 
-      console.log(`✅ User found in DB: ${existingProfile.username} (${existingProfile.id})`);
+      console.log(`✅ User found in DB for this community: ${existingProfile.username} (${existingProfile.id})`);
       console.log(`   Community: ${communityData?.name} (${existingProfile.community_id})`);
       console.log(`   Role: ${existingProfile.role}`);
-
-      // 🔍 Optional: Verify company match (for security/debugging)
-      // 🔧 FIX: Compare routeCompanyId against BOTH Supabase UUID and Whop ID
-      const communitySupabaseId = existingProfile.community_id;
-      const communityWhopId = communityData?.whop_store_id || communityData?.whop_company_id;
-
-      // Route could be either Supabase UUID or Whop biz_xxx format
-      const routeMatchesSupabaseId = routeCompanyId === communitySupabaseId;
-      const routeMatchesWhopId = routeCompanyId === communityWhopId;
-
-      if (routeCompanyId && !routeMatchesSupabaseId && !routeMatchesWhopId) {
-        console.warn(`⚠️ COMPANY MISMATCH:`);
-        console.warn(`   User's community (Supabase): ${communitySupabaseId}`);
-        console.warn(`   User's community (Whop): ${communityWhopId}`);
-        console.warn(`   Route company: ${routeCompanyId}`);
-        console.warn(`   This could indicate:`);
-        console.warn(`   1. User switching between companies (ok if intentional)`);
-        console.warn(`   2. Security issue (investigate)`);
-        // For now we allow it, but you could block cross-company access here
-      } else if (routeCompanyId) {
-        console.log(`   Route matches: ${routeMatchesSupabaseId ? 'Supabase ID' : routeMatchesWhopId ? 'Whop ID' : 'Unknown'}`);
-      }
 
       return {
         userId: existingProfile.id,
