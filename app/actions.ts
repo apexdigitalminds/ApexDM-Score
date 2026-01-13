@@ -588,10 +588,13 @@ export async function ensureWhopContext(
     return false;
   }
 
+  // 🔧 FIX: Look up profile by BOTH whop_user_id AND community_id
+  // Users should have separate profiles for each community they belong to
   const { data: existingProfile, error: profileFindError } = await supabaseAdmin
     .from('profiles')
     .select('id, community_id, role, username, whop_user_id')
     .eq('whop_user_id', whopUserId)
+    .eq('community_id', communityId)  // 🆕 Added community filter
     .maybeSingle();
 
   if (profileFindError) {
@@ -607,39 +610,30 @@ export async function ensureWhopContext(
   const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
   if (existingProfile) {
-    console.log(`👤 User profile found: ${existingProfile.username} (${existingProfile.id})`);
-    console.log(`   Current community: ${existingProfile.community_id}`);
-    console.log(`   Current role: ${existingProfile.role}`);
+    console.log(`👤 User profile found for this community: ${existingProfile.username} (${existingProfile.id})`);
+    console.log(`   Community: ${existingProfile.community_id}`);
+    console.log(`   Role: ${existingProfile.role}`);
 
-    const updates: any = {};
-
-    if (existingProfile.community_id !== communityId) {
-      console.log(`🔄 Moving user to new community`);
-      updates.community_id = communityId;
-    }
-
+    // Only update role if needed (no more moving between communities)
     if (targetRole === 'admin' && existingProfile.role !== 'admin') {
       console.log(`⬆️ Upgrading user role: ${existingProfile.role} → admin`);
-      updates.role = 'admin';
-    }
-
-    if (Object.keys(updates).length > 0) {
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
-        .update(updates)
+        .update({ role: 'admin' })
         .eq('id', existingProfile.id);
 
       if (updateError) {
         console.error("❌ Failed to update profile:", updateError);
         return false;
       }
-      console.log(`✅ Profile updated successfully`);
+      console.log(`✅ Profile role updated to admin`);
     } else {
       console.log(`✅ Profile already correct - no updates needed`);
     }
 
   } else {
-    console.log(`👤 Creating NEW profile`);
+    // 🆕 Create NEW profile for this community (user may have profiles in other communities)
+    console.log(`👤 Creating NEW profile for this community`);
     console.log(`   User: ${whopUserId}`);
     console.log(`   Role: ${targetRole}`);
     console.log(`   Community: ${communityId}`);
@@ -660,7 +654,7 @@ export async function ensureWhopContext(
       console.error("❌ Failed to create profile:", createError);
       return false;
     }
-    console.log(`✅ Profile created as ${targetRole}`);
+    console.log(`✅ Profile created as ${targetRole} in community ${communityId}`);
   }
 
   console.log(`✅ ensureWhopContext completed successfully`);
