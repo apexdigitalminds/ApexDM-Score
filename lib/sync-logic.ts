@@ -230,11 +230,14 @@ export async function performSync(
                                     user_id: whopUserId
                                 });
 
-                                for (const inter of interactions?.data || []) {
-                                    if (inter.status !== 'completed') continue;
-                                    if (!inter.lesson_id) continue;
+                                for (const interaction of interactions?.data || []) {
+                                    if (!interaction.completed) continue;
 
-                                    const externalId = `lesson_${inter.lesson_id}`;
+                                    const interactionDate = new Date(interaction.created_at);
+                                    if (interactionDate < profileCreatedAt) continue;
+                                    if (interactionDate < sinceSyncDate) continue;
+
+                                    const externalId = interaction.lesson?.id || interaction.id;
 
                                     const { data: existing } = await supabaseAdmin
                                         .from('rewarded_activities')
