@@ -18,8 +18,9 @@ import { performSync, type SyncResult } from '@/lib/sync-logic';
 // 1 hour cooldown between syncs
 const SYNC_COOLDOWN_MS = 60 * 60 * 1000;
 
-// Feature flag - set to false to disable queue and use immediate sync only
-const QUEUE_ENABLED = true;
+// Feature flag - set to true when you upgrade to Vercel Pro (enables queue protection)
+// On Hobby plan, crons are limited to daily, so queue processing won't work
+const QUEUE_ENABLED = false;
 
 export async function POST(req: NextRequest) {
     try {
