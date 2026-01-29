@@ -225,7 +225,7 @@ export async function performSync(
 
                         for (const course of courses) {
                             try {
-                                const interactions = await whopsdk.courseInteractions.list({
+                                const interactions = await whopsdk.courseLessonInteractions.list({
                                     course_id: course.id,
                                     user_id: whopUserId
                                 });
