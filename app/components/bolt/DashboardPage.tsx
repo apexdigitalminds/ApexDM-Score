@@ -113,7 +113,7 @@ const DashboardPage: React.FC = () => {
         }
     };
 
-    // Sync Handler
+    // Sync Handler with Queue Support
     const handleSync = async () => {
         setIsSyncing(true);
         setSyncCooldownMins(null);
@@ -125,25 +125,95 @@ const DashboardPage: React.FC = () => {
                 // On cooldown - show remaining time
                 setSyncCooldownMins(data.minutesRemaining);
                 showNotification(`⏳ ${data.message}`);
+                setIsSyncing(false);
+            } else if (data.queued) {
+                // 🆕 QUEUED - sync added to queue, start polling
+                showNotification(`📥 ${data.message}`);
+                // Keep syncing state true and start polling
+                pollSyncStatus();
             } else if (data.success) {
-                // Success - show detailed results
+                // IMMEDIATE - sync completed immediately
                 const details = data.details?.join(', ') || '';
                 if (data.xpAwarded > 0) {
                     showNotification(`✅ +${data.xpAwarded} XP from ${details}`);
                 } else {
                     showNotification(data.message || 'Sync complete. No new activity.');
                 }
-                setSyncCooldownMins(null); // Reset cooldown on successful sync
+                setSyncCooldownMins(null);
                 await triggerRefresh();
+                setIsSyncing(false);
             } else {
                 showNotification(data.message || 'Sync completed with no changes.');
+                setIsSyncing(false);
             }
         } catch (e) {
             console.error('Sync error:', e);
             showNotification('Sync failed. Check connection.');
-        } finally {
             setIsSyncing(false);
         }
+    };
+
+    // 🆕 Poll for sync queue status
+    const pollSyncStatus = async () => {
+        let attempts = 0;
+        const maxAttempts = 30; // Poll for up to 5 minutes (10 sec intervals)
+
+        const checkStatus = async () => {
+            try {
+                const res = await fetch('/api/sync/status');
+                const data = await res.json();
+
+                console.log('📊 Sync status:', data.status);
+
+                if (data.status === 'completed') {
+                    // Sync complete!
+                    if (data.xpGained > 0) {
+                        showNotification(`✅ Sync complete! +${data.xpGained} XP from ${data.actionsSynced} action${data.actionsSynced !== 1 ? 's' : ''}`);
+                    } else {
+                        showNotification('✅ Sync complete. No new activity to reward.');
+                    }
+                    await triggerRefresh();
+                    setIsSyncing(false);
+                    return true; // Stop polling
+
+                } else if (data.status === 'failed') {
+                    showNotification(`❌ Sync failed: ${data.error || 'Unknown error'}`);
+                    setIsSyncing(false);
+                    return true; // Stop polling
+
+                } else if (data.status === 'pending' || data.status === 'processing') {
+                    // Still in progress
+                    attempts++;
+                    if (attempts >= maxAttempts) {
+                        showNotification('⏳ Sync is taking longer than expected. Check back soon.');
+                        setIsSyncing(false);
+                        return true; // Stop polling
+                    }
+                    return false; // Continue polling
+                }
+
+                return false;
+            } catch (e) {
+                console.error('Status check error:', e);
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    setIsSyncing(false);
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        // Poll every 10 seconds
+        const poll = async () => {
+            const done = await checkStatus();
+            if (!done) {
+                setTimeout(poll, 10000); // 10 second intervals
+            }
+        };
+
+        // Start polling after a short delay
+        setTimeout(poll, 3000); // First check after 3 seconds
     };
 
     // Manual Action Handler

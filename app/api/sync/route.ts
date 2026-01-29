@@ -1,13 +1,25 @@
+/**
+ * Sync API Route - Hybrid Queue Implementation
+ * 
+ * SAFETY DESIGN:
+ * - If no one is processing → sync immediately (current behavior)
+ * - If someone is processing → add to queue (prevents API overload)
+ * - On any queue check error → fallback to immediate sync
+ * 
+ * This ensures the sync always works, with queue as a safety net.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { whopsdk } from '@/lib/whop-sdk';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { recordActionServer } from '@/app/actions';
-import type { ActionType } from '@/types';
+import { performSync, type SyncResult } from '@/lib/sync-logic';
 
 // 1 hour cooldown between syncs
 const SYNC_COOLDOWN_MS = 60 * 60 * 1000;
-const MAX_ITEMS_PER_CHANNEL = 100;
+
+// Feature flag - set to false to disable queue and use immediate sync only
+const QUEUE_ENABLED = true;
 
 export async function POST(req: NextRequest) {
     try {
@@ -23,14 +35,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
         }
 
-        // Get the user's profile from our database
-        // For multi-tenant apps, a user may have profiles in multiple communities
-        // First try to find by experience_id if available
+        // Get the user's profile - handle multi-tenant properly
         let profile;
         let profileError;
 
         if (experienceId) {
-            // Get the community for this experience
             const { data: community } = await supabaseAdmin
                 .from('communities')
                 .select('id')
@@ -49,7 +58,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Fallback: try to find any profile by whop_user_id (for backwards compat)
+        // Fallback: try to find any profile by whop_user_id
         if (!profile) {
             const result = await supabaseAdmin
                 .from('profiles')
@@ -89,341 +98,114 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Get company ID and experience ID for API calls
-        const { data: community } = await supabaseAdmin
-            .from('communities')
-            .select('whop_store_id, whop_company_id, experience_id')
-            .eq('id', profile.community_id)
-            .single();
-
-        // Use whop_company_id for API calls (format: biz_xxxx), with fallbacks
-        const companyId = community?.whop_company_id || community?.whop_store_id || profile.community_id;
-
-        // Use experience_id from DB if available, otherwise from token
-        let communityExperienceId = community?.experience_id || experienceId || '';
-
-        // Auto-save experience_id if we have it from token but not in DB
-        if (experienceId && !community?.experience_id) {
-            console.log(`💾 Saving experience_id ${experienceId} to community ${profile.community_id}`);
-            await supabaseAdmin
-                .from('communities')
-                .update({ experience_id: experienceId })
-                .eq('id', profile.community_id);
-            communityExperienceId = experienceId;
-        }
-
-        // profileCreatedAt: Use a very old date as fallback since profiles table doesn't have created_at
-        // The sinceSyncDate is the main filter - profileCreatedAt is just a safety check
-        // to avoid rewarding activity from before the user ever joined the app
-        const profileCreatedAt = new Date('2020-01-01'); // Safe fallback - most activity will be after this
-        const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : new Date('2020-01-01');
-
-        // Debug logging
-        console.log('🔄 Sync starting with IDs:', {
-            companyId,
-            communityExperienceId,
-            experienceIdFromToken: experienceId,
-            profileId: profile.id,
-            communityData: community
-        });
-
-        let totalXp = 0;
-        let syncedCount = 0;
-        const syncResults: string[] = [];
-
         // =====================================================================
-        // 2.5 Discover Forum and Course Experiences
+        // 3. HYBRID QUEUE LOGIC
         // =====================================================================
-        let forumExperienceId = '';
-        let courseExperienceIds: string[] = [];
 
-        try {
-            const experiences = await whopsdk.experiences.list({ company_id: companyId });
-            for (const exp of experiences?.data || []) {
-                const appName = (exp.app?.name || '').toLowerCase();
-                console.log(`  📦 Found experience: ${exp.name} (${exp.id}) - App: ${exp.app?.name}`);
+        // Check if we should use queue or immediate processing
+        let useQueue = false;
+        let queuePosition = 0;
 
-                if (appName.includes('forum')) {
-                    forumExperienceId = exp.id;
-                    console.log(`  ✅ Forum experience: ${exp.id}`);
+        if (QUEUE_ENABLED) {
+            try {
+                // Check if anyone is currently processing a sync
+                const { count: processingCount, error: countError } = await supabaseAdmin
+                    .from('sync_queue')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'processing');
+
+                if (countError) {
+                    console.warn('⚠️ Queue check failed, falling back to immediate sync:', countError.message);
+                    // Fallback to immediate sync on error
+                } else if (processingCount && processingCount > 0) {
+                    console.log(`🔄 ${processingCount} sync(s) in progress - adding to queue`);
+                    useQueue = true;
+
+                    // Get queue position (pending jobs ahead of us + processing)
+                    const { count: pendingCount } = await supabaseAdmin
+                        .from('sync_queue')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'pending');
+
+                    queuePosition = (processingCount || 0) + (pendingCount || 0) + 1;
+                } else {
+                    console.log('✅ No sync in progress - processing immediately');
                 }
-                if (appName.includes('course')) {
-                    courseExperienceIds.push(exp.id);
-                    console.log(`  ✅ Course experience: ${exp.id}`);
-                }
+            } catch (queueCheckError: any) {
+                console.warn('⚠️ Queue check exception, falling back to immediate sync:', queueCheckError.message);
+                // Fallback to immediate sync on any error
             }
-        } catch (expError: any) {
-            console.warn('Experience discovery skipped:', expError.message);
         }
 
         // =====================================================================
-        // 3. Sync Chat Messages
+        // 4A. QUEUED PATH - Add to queue for cron processing
         // =====================================================================
-        try {
-            const channels = await whopsdk.chatChannels.list({ company_id: companyId });
-            const channelList = channels?.data || [];
-            let chatMessagesFound = 0;
-            let chatMessagesRewarded = 0;
+        if (useQueue) {
+            try {
+                // Check if user already has a pending job
+                const { data: existingJob } = await supabaseAdmin
+                    .from('sync_queue')
+                    .select('id, status')
+                    .eq('user_id', profile.id)
+                    .eq('status', 'pending')
+                    .maybeSingle();
 
-            for (const channel of channelList) {
-                try {
-                    // Use whopsdk.messages.list per Whop SDK docs
-                    const messages = await whopsdk.messages.list({
-                        channel_id: channel.id,
-                        first: MAX_ITEMS_PER_CHANNEL
+                if (existingJob) {
+                    return NextResponse.json({
+                        success: true,
+                        queued: true,
+                        message: "Your sync is already in queue! Please wait.",
+                        position: queuePosition
+                    });
+                }
+
+                // Add to queue
+                const { error: insertError } = await supabaseAdmin
+                    .from('sync_queue')
+                    .insert({
+                        user_id: profile.id,
+                        community_id: profile.community_id,
+                        status: 'pending'
                     });
 
-                    for (const msg of messages?.data || []) {
-                        // Check if this message is from the current user
-                        if (msg.user?.id !== whopUserId) continue;
+                if (insertError) {
+                    console.error('Failed to add to queue, falling back to immediate:', insertError);
+                    // Fallback to immediate sync
+                } else {
+                    console.log(`📥 Added sync job to queue for user ${profile.id}, position ${queuePosition}`);
 
-                        // Check if message was created after profile creation
-                        const msgDate = new Date(msg.created_at);
-                        if (msgDate < profileCreatedAt) continue;
-
-                        // Check if message was created after last sync (for efficiency)
-                        if (msgDate < sinceSyncDate) continue;
-
-                        chatMessagesFound++;
-
-                        // Check if already rewarded
-                        const { data: existing } = await supabaseAdmin
-                            .from('rewarded_activities')
-                            .select('id')
-                            .eq('profile_id', profile.id)
-                            .eq('activity_type', 'chat_message')
-                            .eq('external_id', msg.id)
-                            .maybeSingle();
-
-                        if (!existing) {
-                            // Award XP
-                            const result = await recordActionServer(profile.id, 'post_chat_message' as ActionType, 'sync');
-                            if (result) {
-                                totalXp += result.xpGained;
-                                syncedCount++;
-                                chatMessagesRewarded++;
-                            }
-
-                            // Mark as rewarded
-                            await supabaseAdmin.from('rewarded_activities').insert({
-                                profile_id: profile.id,
-                                activity_type: 'chat_message',
-                                external_id: msg.id
-                            });
-                        }
-                    }
-                } catch (channelError: any) {
-                    console.warn(`Chat sync skipped for channel ${channel.id}:`, channelError.message);
+                    return NextResponse.json({
+                        success: true,
+                        queued: true,
+                        message: `Sync queued! Position #${queuePosition}. Processing shortly...`,
+                        position: queuePosition,
+                        estimatedWait: `~${queuePosition} minute${queuePosition !== 1 ? 's' : ''}`
+                    });
                 }
+            } catch (queueError: any) {
+                console.error('Queue insert failed, falling back to immediate:', queueError);
+                // Fallback to immediate sync
             }
-
-            if (chatMessagesRewarded > 0) {
-                syncResults.push(`💬 ${chatMessagesRewarded} chat message${chatMessagesRewarded !== 1 ? 's' : ''}`);
-            }
-        } catch (chatError: any) {
-            console.warn("Chat sync skipped:", chatError.message);
-            syncResults.push("Chat: Requires chat permissions");
         }
 
         // =====================================================================
-        // 4. Sync Forum Posts AND Replies
+        // 4B. IMMEDIATE PATH - Process sync now
         // =====================================================================
-        if (forumExperienceId) {
-            try {
-                console.log(`📝 Fetching forum posts for experience: ${forumExperienceId}`);
-                const posts = await whopsdk.forumPosts.list({ experience_id: forumExperienceId });
-                const postList = posts?.data || [];
-                console.log(`📝 Found ${postList.length} top-level forum posts`);
+        console.log(`🚀 Processing sync immediately for user ${profile.id}`);
 
-                let forumPostsRewarded = 0;
-                let postsChecked = 0;
-                let repliesChecked = 0;
-
-                // Helper function to process a post or reply
-                const processForumItem = async (item: any, isReply: boolean = false) => {
-                    postsChecked++;
-                    const itemType = isReply ? 'Reply' : 'Post';
-
-                    // Check if this item is from the current user
-                    if (item.user?.id !== whopUserId) {
-                        return false; // Skip silently for replies to reduce log spam
-                    }
-
-                    // Check if item was created after profile creation
-                    const itemDate = new Date(item.created_at);
-                    if (itemDate < profileCreatedAt) {
-                        console.log(`   ${itemType} ${item.id}: skipped (before profile created)`);
-                        return false;
-                    }
-                    if (itemDate < sinceSyncDate) {
-                        console.log(`   ${itemType} ${item.id}: skipped (before last sync)`);
-                        return false;
-                    }
-
-                    console.log(`   ${itemType} ${item.id}: eligible for XP (created ${item.created_at})`);
-
-                    // Check if already rewarded
-                    const { data: existing } = await supabaseAdmin
-                        .from('rewarded_activities')
-                        .select('id')
-                        .eq('profile_id', profile.id)
-                        .eq('activity_type', 'forum_post')
-                        .eq('external_id', item.id)
-                        .maybeSingle();
-
-                    if (!existing) {
-                        const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
-                        if (result) {
-                            totalXp += result.xpGained;
-                            syncedCount++;
-                            forumPostsRewarded++;
-                            console.log(`   ${itemType} ${item.id}: ✅ Rewarded +${result.xpGained} XP`);
-                        }
-
-                        await supabaseAdmin.from('rewarded_activities').insert({
-                            profile_id: profile.id,
-                            activity_type: 'forum_post',
-                            external_id: item.id
-                        });
-                        return true;
-                    } else {
-                        console.log(`   ${itemType} ${item.id}: already rewarded`);
-                        return false;
-                    }
-                };
-
-                // Process top-level posts
-                for (const post of postList) {
-                    await processForumItem(post, false);
-
-                    // Also fetch replies/comments for this post
-                    const commentCount = (post as any).comment_count || 0;
-                    if (commentCount > 0) {
-                        try {
-                            console.log(`   Fetching ${commentCount} replies for post ${post.id}`);
-                            const replies = await whopsdk.forumPosts.list({
-                                experience_id: forumExperienceId,
-                                parent_id: post.id
-                            });
-
-                            for (const reply of replies?.data || []) {
-                                repliesChecked++;
-                                await processForumItem(reply, true);
-                            }
-                        } catch (replyError: any) {
-                            console.warn(`   Failed to fetch replies for ${post.id}:`, replyError.message);
-                        }
-                    }
-                }
-
-                console.log(`📝 Forum sync complete: ${postsChecked} posts, ${repliesChecked} replies checked, ${forumPostsRewarded} rewarded`);
-
-                if (forumPostsRewarded > 0) {
-                    syncResults.push(`📝 ${forumPostsRewarded} forum post${forumPostsRewarded !== 1 ? 's' : ''}`);
-                }
-            } catch (forumError: any) {
-                console.warn("Forum sync skipped:", forumError.message);
-            }
-        } else {
-            console.log('📝 No forum experience found - skipping forum sync');
-        }
-
-        // =====================================================================
-        // 5. Sync Course Lesson Interactions
-        // =====================================================================
-        try {
-            let lessonsRewarded = 0;
-            let totalCoursesChecked = 0;
-
-            // Use discovered course experience IDs, or fall back to listing by company
-            if (courseExperienceIds.length > 0) {
-                // Fetch courses from each course experience
-                for (const courseExpId of courseExperienceIds) {
-                    const coursesResult = await whopsdk.courses.list({ experience_id: courseExpId });
-                    const courseList = coursesResult?.data || [];
-                    totalCoursesChecked += courseList.length;
-
-                    for (const course of courseList) {
-                        try {
-                            const interactions = await whopsdk.courseLessonInteractions.list({
-                                course_id: course.id,
-                                user_id: whopUserId
-                            });
-
-                            for (const interaction of interactions?.data || []) {
-                                if (!interaction.completed) continue;
-
-                                const interactionDate = new Date(interaction.created_at);
-                                if (interactionDate < profileCreatedAt) continue;
-                                if (interactionDate < sinceSyncDate) continue;
-
-                                const externalId = interaction.lesson?.id || interaction.id;
-
-                                // Check if already rewarded
-                                const { data: existing } = await supabaseAdmin
-                                    .from('rewarded_activities')
-                                    .select('id')
-                                    .eq('profile_id', profile.id)
-                                    .eq('activity_type', 'course_lesson')
-                                    .eq('external_id', externalId)
-                                    .maybeSingle();
-
-                                if (!existing) {
-                                    // Award XP for lesson completion
-                                    const result = await recordActionServer(profile.id, 'lesson_completed' as ActionType, 'sync');
-                                    if (result) {
-                                        totalXp += result.xpGained;
-                                        syncedCount++;
-                                        lessonsRewarded++;
-                                    }
-
-                                    // Mark as rewarded
-                                    await supabaseAdmin.from('rewarded_activities').insert({
-                                        profile_id: profile.id,
-                                        activity_type: 'course_lesson',
-                                        external_id: externalId
-                                    });
-                                }
-                            }
-                        } catch (courseInteractionError: any) {
-                            console.warn(`Course ${course.id} interactions skipped:`, courseInteractionError.message);
-                        }
-                    }
-                }
-            } else {
-                console.log('📚 No course experiences found - skipping course sync');
-            }
-
-            console.log(`📚 Found ${totalCoursesChecked} courses to check`);
-
-            if (lessonsRewarded > 0) {
-                syncResults.push(`📚 ${lessonsRewarded} lesson${lessonsRewarded !== 1 ? 's' : ''} completed`);
-            }
-        } catch (courseError: any) {
-            console.warn("Course sync skipped:", courseError.message);
-        }
-
-        // =====================================================================
-        // 6. Update last_sync_at
-        // =====================================================================
-        await supabaseAdmin
-            .from('profiles')
-            .update({ last_sync_at: new Date().toISOString() })
-            .eq('id', profile.id);
-
-        // =====================================================================
-        // 7. Return Results
-        // =====================================================================
-        const message = syncedCount > 0
-            ? `Synced! +${totalXp} XP from ${syncedCount} action${syncedCount !== 1 ? 's' : ''}`
-            : "Sync complete. No new activity to reward.";
+        const result = await performSync(
+            { id: profile.id, community_id: profile.community_id, last_sync_at: profile.last_sync_at },
+            whopUserId,
+            experienceId
+        );
 
         return NextResponse.json({
-            success: true,
-            message,
-            details: syncResults.length > 0 ? syncResults : ["No new activity found"],
-            xpAwarded: totalXp,
-            actionsCount: syncedCount
+            success: result.success,
+            message: result.message,
+            details: result.details,
+            xpAwarded: result.xpAwarded,
+            actionsCount: result.actionsCount,
+            immediate: true  // Flag to indicate immediate processing
         });
 
     } catch (error: any) {
