@@ -173,7 +173,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                 className="w-8 h-8 rounded-full bg-slate-700 object-cover"
                                             />
                                         </div>
-                                        <span className="font-semibold text-white text-sm max-w-[100px] truncate">{selectedUser.username}</span>
+                                        <span
+                                            className={`font-semibold text-sm max-w-[100px] truncate ${!selectedUser.metadata?.nameColor ? 'text-slate-900 dark:text-white' : ''}`}
+                                            style={selectedUser.metadata?.nameColor
+                                                ? { color: selectedUser.metadata.nameColor }
+                                                : undefined}
+                                        >{selectedUser.username}</span>
                                     </Link>
 
                                     <button
