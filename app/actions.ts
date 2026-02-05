@@ -652,12 +652,38 @@ export async function ensureWhopContext(
     console.log(`   Role: ${targetRole}`);
     console.log(`   Community: ${communityId}`);
 
+    // 🆕 Fetch user's actual name from Whop API
+    let displayName = `User_${whopUserId.substring(5, 9)}`;
+    let avatarUrl: string | undefined;
+
+    try {
+      const { whopsdk } = await import('@/lib/whop-sdk');
+      const whopUser = await whopsdk.users.retrieve(whopUserId);
+
+      if (whopUser.name) {
+        displayName = whopUser.name;
+        console.log(`✅ Fetched display name from Whop: "${displayName}"`);
+      } else if (whopUser.username) {
+        displayName = whopUser.username;
+        console.log(`✅ Using Whop username: "${displayName}"`);
+      }
+
+      if (whopUser.profile_picture?.url) {
+        avatarUrl = whopUser.profile_picture.url;
+        console.log(`✅ Fetched profile picture from Whop`);
+      }
+    } catch (fetchError: any) {
+      console.warn(`⚠️ Could not fetch Whop user details: ${fetchError.message}`);
+      console.warn(`   Using fallback username: ${displayName}`);
+    }
+
     const { error: createError } = await supabaseAdmin
       .from('profiles')
       .insert({
         whop_user_id: whopUserId,
         community_id: communityId,
-        username: `User_${whopUserId.substring(5, 9)}`,
+        username: displayName,
+        avatar_url: avatarUrl,
         role: targetRole,
         xp: 0,
         streak: 0,
@@ -670,6 +696,7 @@ export async function ensureWhopContext(
     }
     console.log(`✅ Profile created as ${targetRole} in community ${communityId}`);
   }
+
 
   console.log(`✅ ensureWhopContext completed successfully`);
   return true;

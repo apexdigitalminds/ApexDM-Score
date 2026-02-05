@@ -95,7 +95,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+        <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col font-sans">
             {/* 🆕 Free tier upgrade banners - only show for Free users */}
             <FreeTierTopBanner />
             <FreeTierGradientBanner />
@@ -107,7 +107,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Trial expiration modal */}
             <TrialExpiredModal />
 
-            <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
+            <header className="bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
+
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
 

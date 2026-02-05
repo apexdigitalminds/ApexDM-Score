@@ -44,11 +44,20 @@ Members earn XP for community actions:
 ### 🔥 Streaks
 - Log in on consecutive days to build your streak
 - Miss a day? Your streak resets to 0
-- **Streak Freezes** protect your streak (available in store)
+- **Streak Shields** protect your streak (available in store)
 - Earn milestone badges at 3, 7, 30, and 100 days
 
+**Streak Tiers:**
+| Tier | Days | Status |
+|------|------|--------|
+| Inactive | 0 | No activity |
+| Active | 1-6 | Building momentum |
+| Rising | 7-29 | Consistent engagement |
+| Epic | 30-89 | Dedicated member |
+| Legendary | 90+ | Elite status |
+
 ### 🏆 Badges
-Badges are earned automatically when you hit milestones:
+8 pre-built badges are included, earned automatically when you hit milestones:
 
 **XP Badges:**
 - XP Novice (100 XP)
@@ -62,19 +71,25 @@ Badges are earned automatically when you hit milestones:
 - 30 Day Streak
 - Century Club (100 days)
 
+*Admins can create custom badges with different trigger types: XP threshold, streak days, action count, or manual award.*
+
 ### 📋 Quests
-Quests are challenges that reward bonus XP:
-- **Getting Started** - Complete first actions
-- **Content Explorer** - Engage with lessons
-- **Weekly Warrior** - Stay consistent
+3 pre-built quests are included to get you started:
+- **Getting Started** (50 XP) - Log in 3 times
+- **Content Explorer** (100 XP) - Complete 3 lessons
+- **Weekly Warrior** (200 XP) - Log in 7 days + Complete 5 lessons
 
-*Admins can create custom quests in Admin Panel*
+*Admins can create unlimited custom quests in Admin Panel (Pro tier and above)*
 
-### 🛒 Store
-Spend your XP on:
-- **XP Boost** - 1.5x XP for 24 hours
-- **Streak Shield** - Protect streak for 48 hours
-- **Cosmetics** - Frames, titles, effects
+### 🛒 XP Store
+5 pre-built items are included (Elite tier):
+- **XP Boost** (150 XP) - 1.5x XP for 24 hours
+- **Streak Shield** (300 XP) - Protect streak for 48 hours
+- **Golden Frame** (500 XP) - Prestigious profile frame
+- **VIP Title** (750 XP) - Display "VIP" on your profile
+- **Diamond Badge** (1000 XP) - Sparkling avatar effect
+
+*Admins can create custom items including boosters, cosmetics, and consumables.*
 
 ### 📊 Leaderboard
 Compete with other members! Leaderboard ranks by total XP.
@@ -131,15 +146,20 @@ CommunityXP automatically syncs your Whop activity:
 
 ## Subscription Tiers
 
-| Feature | Free | Core | Pro | Elite |
-|---------|------|------|-----|-------|
-| Members | 50 | 500 | 2,000 | Unlimited |
-| Quests | 3 | 10 | 25 | Unlimited |
-| Badges | 5 | 15 | 50 | Unlimited |
-| XP Sync | ❌ | ✅ | ✅ | ✅ |
-| Custom Store | ❌ | ✅ | ✅ | ✅ |
-| White-Label | ❌ | ❌ | ❌ | ✅ |
-| Analytics | Basic | Full | Full | Full |
+| Feature | Starter (Free) | Pro | Elite |
+|---------|----------------|-----|-------|
+| Members | Unlimited | Unlimited | Unlimited |
+| XP & Leveling | ✅ | ✅ | ✅ |
+| Leaderboards | ✅ | ✅ | ✅ |
+| Pre-Built Badges | 8 | 8 | 8 |
+| Custom Quests | ❌ | ✅ | ✅ |
+| Pre-Built Quests | ❌ | 3 | 3 |
+| Analytics Dashboard | ❌ | ✅ | ✅ |
+| XP Store | ❌ | ❌ | ✅ |
+| Pre-Built Items | ❌ | ❌ | 5 |
+| White-Label | ❌ | ❌ | ✅ |
+
+**14-Day Elite Trial** - Try all Elite features free before committing!
 
 ---
 
@@ -147,7 +167,7 @@ CommunityXP automatically syncs your Whop activity:
 
 ### "My streak reset unexpectedly"
 - Streaks reset if you miss a calendar day (UTC timezone)
-- Check your last_action_date in your profile
+- Day resets at midnight UTC (00:00 UTC)
 - Purchase Streak Shield to protect future streaks
 
 ### "My XP didn't update"
@@ -167,7 +187,7 @@ CommunityXP automatically syncs your Whop activity:
 A: Yes! You have separate profiles, XP, and progress in each community.
 
 **Q: What timezone are streaks based on?**
-A: UTC (Coordinated Universal Time)
+A: UTC (Coordinated Universal Time). Day resets at midnight UTC.
 
 **Q: Can admins give XP manually?**
 A: Yes, admins can edit member XP in Admin Panel → Members

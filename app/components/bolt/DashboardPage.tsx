@@ -260,19 +260,19 @@ const DashboardPage: React.FC = () => {
                             ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
                             : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
                             }`}
-                        title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Sync your Whop activity'}
+                        title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Scans your past Whop activity and awards XP for completed courses, lessons, and forum posts'}
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                         {isSyncing
                             ? 'Syncing...'
                             : syncCooldownMins
                                 ? `Available in ${syncCooldownMins}m`
-                                : 'Sync Progress'}
+                                : 'Sync Past Activity'}
                     </button>
                     <p className="text-xs text-slate-500">
                         {syncCooldownMins
                             ? '⏳ Syncs available once per hour'
-                            : '💡 Collects XP from chat, forum & courses'}
+                            : '💡 Awards XP for your past courses, lessons & posts'}
                     </p>
                 </div>
             </div>
