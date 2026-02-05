@@ -147,6 +147,7 @@ export interface Profile {
   communityId: string;
   joinedAt?: string;
   last_action_date: string | null;
+  last_sync_at?: string | null;  // 🆕 Track last sync timestamp
   avatarUrl?: string;
   bannedUntil?: string;
   badges?: Badge[];

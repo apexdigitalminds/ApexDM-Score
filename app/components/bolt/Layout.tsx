@@ -40,8 +40,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, [pathname]);
 
     const navLinkClasses = "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors font-medium";
-    const activeClass = "bg-slate-700 text-white";
-    const inactiveClass = "text-slate-400 hover:bg-slate-800 hover:text-white";
+    const activeClass = "bg-blue-100 text-blue-700 dark:bg-slate-700 dark:text-white";
+    const inactiveClass = "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white";
 
     const pulseColor = selectedUser?.metadata?.avatarPulseColor;
     const isBoosted = !!pulseColor;
@@ -192,11 +192,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 {/* MOBILE MENU DRAWER */}
                 {isMobileMenuOpen && selectedUser && (
-                    <div className="lg:hidden border-t border-slate-700 bg-slate-800 absolute w-full left-0 z-50 shadow-2xl">
+                    <div className="lg:hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 absolute w-full left-0 z-50 shadow-2xl">
                         <div className="p-4 space-y-4">
                             <Link
                                 href={`/profile/${selectedUser.id}`}
-                                className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl"
+                                className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-700/50 rounded-xl"
                             >
                                 <div
                                     className="relative rounded-full p-0.5"
@@ -237,7 +237,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* 🆕 Footer - shows custom text when white-label is on, or ApexDM branding when off */}
             {!isLoading && (
-                <footer className="py-8 text-center border-t border-slate-800/50 mt-8">
+                <footer className="py-8 text-center border-t border-slate-200 dark:border-slate-800/50 mt-8">
                     {isWhiteLabelActive ? (
                         // 🆕 White-label mode: show custom footer text if provided
                         community?.customFooterText ? (
@@ -247,7 +247,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         // Default ApexDM branding (no URL since no website)
                         <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
                             Powered by
-                            <span className="flex items-center gap-1.5 font-semibold text-slate-400">
+                            <span className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
                                 <LogoIcon className="w-4 h-4 text-purple-500" />
                                 <span>CommunityXP</span>
                             </span>

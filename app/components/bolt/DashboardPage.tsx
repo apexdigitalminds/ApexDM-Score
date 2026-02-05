@@ -248,8 +248,8 @@ const DashboardPage: React.FC = () => {
             {/* Header Row */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-                    <p className="text-slate-400">Your hub for stats and inventory.</p>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                    <p className="text-slate-600 dark:text-slate-400">Your hub for stats and inventory.</p>
                 </div>
 
                 <div className="flex flex-col items-end gap-1">
@@ -260,19 +260,21 @@ const DashboardPage: React.FC = () => {
                             ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
                             : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
                             }`}
-                        title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Scans your past Whop activity and awards XP for completed courses, lessons, and forum posts'}
+                        title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Collects XP for new courses, lessons, and posts since your last sync'}
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                         {isSyncing
                             ? 'Syncing...'
                             : syncCooldownMins
                                 ? `Available in ${syncCooldownMins}m`
-                                : 'Sync Past Activity'}
+                                : 'Sync New Activity'}
                     </button>
                     <p className="text-xs text-slate-500">
                         {syncCooldownMins
                             ? '⏳ Syncs available once per hour'
-                            : '💡 Awards XP for your past courses, lessons & posts'}
+                            : currentUser.last_sync_at
+                                ? `📅 Last synced: ${new Date(currentUser.last_sync_at).toLocaleDateString()} at ${new Date(currentUser.last_sync_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                : '🆕 First sync will collect all your past activity'}
                     </p>
                 </div>
             </div>
