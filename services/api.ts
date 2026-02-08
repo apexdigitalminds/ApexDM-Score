@@ -69,6 +69,7 @@ const profileFromSupabase = (data: any): User => {
         badges,
         level: Math.floor((data.xp ?? 0) / 100),
         metadata: data.metadata || {},
+        last_sync_at: data.last_sync_at || null,
     };
 };
 
@@ -197,7 +198,7 @@ export const setApiContext = (communityId: string) => {
 };
 
 
-const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata';
+const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata, last_sync_at';
 
 // Helper to manually fetch badges
 const fetchBadgesForUser = async (userId: string): Promise<Badge[]> => {
