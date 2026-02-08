@@ -88,7 +88,7 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
     const availableSteps = SETUP_STEPS.filter(step => tierAtLeast(currentTier, step.requiredTier));
 
     return (
-        <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-2xl border border-purple-500/30 overflow-hidden mb-6">
+        <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl border border-purple-300 dark:border-purple-500/30 overflow-hidden mb-6">
             {/* Header - Always visible */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -99,12 +99,12 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
                         <span className="text-xl">🚀</span>
                     </div>
                     <div className="text-left">
-                        <h3 className="text-lg font-bold text-white">Getting Started</h3>
-                        <p className="text-slate-400 text-sm">Set up your community in a few easy steps</p>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Getting Started</h3>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm">Set up your community in a few easy steps</p>
                     </div>
                 </div>
                 <svg
-                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 text-slate-600 dark:text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -121,17 +121,17 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
                             <button
                                 key={step.id}
                                 onClick={() => onNavigateToTab(step.tab)}
-                                className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl p-4 text-left transition-all duration-200 group"
+                                className="bg-white/80 hover:bg-white dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-300 hover:border-slate-400 dark:border-slate-700 dark:hover:border-slate-600 rounded-xl p-4 text-left transition-all duration-200 group shadow-sm"
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-700/50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700/50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
                                         {step.icon}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-white font-semibold text-sm mb-1 group-hover:text-purple-400 transition-colors">
+                                        <h4 className="text-slate-900 dark:text-white font-semibold text-sm mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                                             {step.title}
                                         </h4>
-                                        <p className="text-slate-400 text-xs">
+                                        <p className="text-slate-600 dark:text-slate-400 text-xs">
                                             {step.description}
                                         </p>
                                     </div>
@@ -142,7 +142,7 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
 
                     {/* Tier upgrade hint if not Elite */}
                     {!tierAtLeast(currentTier, 'elite') && (
-                        <p className="text-center text-slate-500 text-xs mt-4">
+                        <p className="text-center text-slate-600 dark:text-slate-500 text-xs mt-4">
                             💡 Upgrade your plan to unlock more features
                         </p>
                     )}

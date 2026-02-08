@@ -954,7 +954,12 @@ export async function equipCosmeticAction(item: StoreItem) {
   const session = await verifyUser();
   if (!session || !session.userId) throw new Error("User not found");
 
-  const { data: ownership } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', session.userId).eq('item_id', item.id).single();
+  const { data: ownership, error: ownershipError } = await supabaseAdmin.from('user_inventory').select('id').eq('user_id', session.userId).eq('item_id', item.id).single();
+
+  console.log(`[equip] userId=${session.userId}, itemId=${item.id}, itemType=${item.itemType}`);
+  if (ownershipError) console.log(`[equip] Query error: ${ownershipError.message}`);
+  console.log(`[equip] Ownership: ${ownership ? 'found' : 'not found'}`);
+
   if (!ownership) return { success: false, message: "You do not own this item." };
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', session.userId).single();
