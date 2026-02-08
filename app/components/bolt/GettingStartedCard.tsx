@@ -88,14 +88,14 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
     const availableSteps = SETUP_STEPS.filter(step => tierAtLeast(currentTier, step.requiredTier));
 
     return (
-        <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-2xl border border-purple-300 dark:border-purple-500/30 overflow-hidden mb-6">
+        <div className="bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-300 dark:border-slate-700 border-l-4 border-l-purple-500 overflow-hidden mb-6">
             {/* Header - Always visible */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                         <span className="text-xl">🚀</span>
                     </div>
                     <div className="text-left">
