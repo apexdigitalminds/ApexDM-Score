@@ -84,14 +84,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // 🟢 UPDATED: Home link (logo click) - everyone goes to their dashboard
     const homeHref = dashboardPath;
 
-    // 🟢 Navigation items - Dashboard visible to all, Admin Panel only for admins
+    // 🟢 Navigation items - Dashboard/Collection visible to all
+    // 🔒 Tier-locked items (Quests, XP Store, Analytics) only visible to admins per Whop App Store requirements
+    const isAdmin = selectedUser?.role === 'admin';
     const navItems = [
         { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
-        { href: '/quests', label: 'Quests', icon: TargetIcon, show: true, locked: !showQuests },
-        { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: true, locked: !showStore },
-        { href: '/analytics', label: 'Analytics', icon: ChartPieIcon, show: selectedUser?.role === 'admin', locked: !showAnalytics },
-        { href: '/admin', label: 'Admin Panel', icon: UserGroupIcon, show: selectedUser?.role === 'admin' },
+        { href: '/quests', label: 'Quests', icon: TargetIcon, show: isAdmin, locked: !showQuests },
+        { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: isAdmin, locked: !showStore },
+        { href: '/analytics', label: 'Analytics', icon: ChartPieIcon, show: isAdmin, locked: !showAnalytics },
+        { href: '/admin', label: 'Admin Panel', icon: UserGroupIcon, show: isAdmin },
     ];
 
     return (
