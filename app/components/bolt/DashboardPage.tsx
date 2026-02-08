@@ -274,7 +274,7 @@ const DashboardPage: React.FC = () => {
                             ? '⏳ Syncs available once per hour'
                             : currentUser.last_sync_at
                                 ? `📅 Last synced: ${new Date(currentUser.last_sync_at).toLocaleDateString()} at ${new Date(currentUser.last_sync_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                : '🆕 First sync will collect all your past activity'}
+                                : '🆕 First sync collects activity from the last 24 hours'}
                     </p>
                 </div>
             </div>

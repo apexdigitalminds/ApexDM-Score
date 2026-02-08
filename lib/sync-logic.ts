@@ -68,7 +68,9 @@ export async function performSync(
         }
 
         const profileCreatedAt = new Date('2020-01-01');
-        const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : new Date('2020-01-01');
+        // For first sync, only look back 24 hours to avoid overwhelming data loads
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const sinceSyncDate = profile.last_sync_at ? new Date(profile.last_sync_at) : twentyFourHoursAgo;
 
         console.log('🔄 Sync with IDs:', { companyId, communityExperienceId, profileId: profile.id });
 
