@@ -33,8 +33,7 @@ import {
     syncUserAction,
     awardBadgeAction,
     syncCommunityBrandingAction,
-    updateCommunityBrandingAction,
-    validateSessionContext  // 🔒 Security: Always verify session server-side
+    updateCommunityBrandingAction  // 🆕 White-label branding
 } from '@/app/actions';
 
 import type {
@@ -160,20 +159,43 @@ const activeEffectFromSupabase = (data: any): ActiveEffect => ({
     expiresAt: data.expires_at,
 });
 
-// 🔒 SECURITY FIX: No module-level caching - prevents cross-session identity bleed
-// Each request now gets fresh, server-verified community context
-const getCommunityId = async (): Promise<string> => {
-    // Always delegate to server action that verifies the JWT on every request
-    const result = await validateSessionContext();
-    if (!result.success || !result.communityId) {
-        console.error("❌ getCommunityId: No valid session context");
-        throw new Error("No community context - please install the app");
+// 🟢 NEW: Context-Aware Community Resolution
+let COMMUNITY_ID: string | null = null;
+
+const getCommunityId = async () => {
+    // 1. Return cached ID if available
+    if (COMMUNITY_ID) return COMMUNITY_ID;
+
+    // 2. Try to get context from the currently authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+        // Fetch THIS user's specific community_id linkage
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('community_id')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.community_id) {
+            COMMUNITY_ID = profile.community_id;
+            // console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
+            return COMMUNITY_ID;
+        }
     }
-    return result.communityId;
+
+    // 3. Fallback logic removed to prevent data leaks.
+    // If no user context, we must throw error or force login.
+    console.warn("⚠️ No user context found for community resolution.");
+    throw new Error("No community context could be resolved. Please install the app.");
 };
 
-// 🔒 REMOVED: setApiContext was causing cross-session contamination
-// Context is now derived from server-verified JWT on each request
+// 🟢 NEW: Function to manually set the community context
+// This is called by AppProvider when we know the companyId from the URL or Whop
+export const setApiContext = (communityId: string) => {
+    COMMUNITY_ID = communityId;
+    console.log("✅ API Context set to community:", communityId);
+};
 
 
 const PROFILE_COLUMNS = 'id, community_id, username, avatar_url, xp, streak, streak_freezes, last_action_date, role, whop_user_id, banned_until, metadata, last_sync_at';
@@ -210,13 +232,8 @@ export const api = {
         return profileFromSupabase(profile);
     },
 
-    // 🔒 SECURITY FIX: Now requires communityId to prevent cross-session identity bleed
-    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member", communityId?: string): Promise<User | null> => {
-        if (!communityId) {
-            console.error("❌ getUserByWhopId called without communityId - security risk, aborting");
-            return null;
-        }
-        const userData = await syncUserAction(whopId, whopRole, communityId);
+    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
+        const userData = await syncUserAction(whopId, whopRole);
         if (userData) {
             // Manual Fetch Badges
             const badges = await fetchBadgesForUser(userData.id);
