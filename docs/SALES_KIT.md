@@ -101,7 +101,7 @@ If engagement is on your radar this quarter, happy to do a 5-min walkthrough.
 | Activity sync | ✅ Automatic | ❌ Manual |
 | Multi-community | ✅ Separate profiles | ❌ Shared data |
 | White-label | ✅ Elite tier | 💰 Extra cost |
-| Pricing | Free tier | $50-200/mo |
+| Pricing | Free tier | $49-99/mo |
 
 ---
 

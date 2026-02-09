@@ -80,7 +80,7 @@ const plans: Plan[] = [
     name: 'Pro',
     priceMonthly: '$49',
     priceAnnually: '$42',
-    annualTotal: '$499',
+    annualTotal: '$500',
     description: 'Automate and expand your engagement strategies.',
     features: [
       'Everything in Starter, plus:',
@@ -95,7 +95,7 @@ const plans: Plan[] = [
     name: 'Elite',
     priceMonthly: '$99',
     priceAnnually: '$84',
-    annualTotal: '$1008',
+    annualTotal: '$1010',
     description: 'The ultimate toolkit for maximum retention.',
     features: [
       'Everything in Pro, plus:',
