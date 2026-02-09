@@ -232,9 +232,8 @@ export const api = {
         return profileFromSupabase(profile);
     },
 
-    // 🔒 SECURITY: Optional communityId scopes lookup to prevent identity bleed
-    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member", communityId?: string): Promise<User | null> => {
-        const userData = await syncUserAction(whopId, whopRole, communityId);
+    getUserByWhopId: async (whopId: string, whopRole: "admin" | "member" = "member"): Promise<User | null> => {
+        const userData = await syncUserAction(whopId, whopRole);
         if (userData) {
             // Manual Fetch Badges
             const badges = await fetchBadgesForUser(userData.id);

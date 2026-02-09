@@ -828,20 +828,8 @@ export async function updateCommunityBrandingAction(data: {
 // All your existing functions below remain exactly the same.
 // I'm including them for completeness, but they don't need any modifications.
 
-// 🔒 SECURITY: Optional communityId scopes lookup to prevent identity bleed
-export async function syncUserAction(
-  whopId: string,
-  whopRole: "admin" | "member",
-  communityId?: string  // Optional: scopes lookup to specific community
-): Promise<Profile | null> {
-  let query = supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId);
-
-  // If communityId provided, scope the lookup (prevents identity bleed)
-  if (communityId) {
-    query = query.eq('community_id', communityId);
-  }
-
-  const { data: existingUser } = await query.maybeSingle();
+export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
+  const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
   if (existingUser) return existingUser;
   return null;
 }

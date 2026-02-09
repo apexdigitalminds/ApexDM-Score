@@ -3,29 +3,19 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  
-  // 1. Capture Token from URL (Whop passes this in the iframe src)
+
+  // Capture Token from URL (Whop passes this in the iframe src)
   const tokenQuery = url.searchParams.get('token');
-  
-  // 2. Capture Token from Cookies (If we saved it previously)
-  const tokenCookie = request.cookies.get('whop_user_token')?.value;
-  
+
   const response = NextResponse.next();
 
-  // 3. If Token is in URL, save it to Cookies and Headers
+  // 🔒 SECURITY FIX: Only use fresh token from URL, never cache in cookies
+  // This prevents identity bleed when users switch accounts
+  // Previously: Cookie persisted and could return wrong user on warm serverless instances
   if (tokenQuery) {
-    response.cookies.set('whop_user_token', tokenQuery, { 
-      httpOnly: true, 
-      secure: true, 
-      sameSite: 'none', // Required for iframes
-      path: '/' 
-    });
     response.headers.set('x-whop-user-token', tokenQuery);
-  } 
-  // 4. If Token is in Cookies, ensure it's in Headers for the SDK
-  else if (tokenCookie) {
-    response.headers.set('x-whop-user-token', tokenCookie);
   }
+  // If no token in URL, Whop SDK will handle gracefully (user sees landing page)
 
   return response;
 }
