@@ -446,7 +446,8 @@ export const AppProvider = ({
             // 🟢 STEP 2: Authenticate user
             let user = null;
             if (verifiedUserId && verifiedUserId !== "GUEST") {
-                user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
+                // 🔒 SECURITY: Pass communityId to scope profile lookup (prevents identity bleed)
+                user = await api.getUserByWhopId(verifiedUserId, verifiedRole, resolvedCompanyId || undefined);
                 // Fallback: if experience resolution failed, try to get company from user profile
                 if (!resolvedCompanyId && user?.communityId) {
                     console.log(`✅ Using company ID from user profile: ${user.communityId}`);
