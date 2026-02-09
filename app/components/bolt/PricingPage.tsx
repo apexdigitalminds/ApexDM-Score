@@ -23,8 +23,8 @@ const planIds: Record<string, { monthly: string; annual: string }> = {
     annual: 'plan_RXAfXSbUVzWgl'
   },
   'Trial': {
-    monthly: 'plan_bLWPt2euy79O9',
-    annual: 'plan_pfJBV6w6WwyIW'
+    monthly: 'plan_amn9G18ulcdQb',
+    annual: 'plan_5uqY7T2CaPTi3'
   }
 };
 
@@ -78,9 +78,9 @@ const plans: Plan[] = [
   },
   {
     name: 'Pro',
-    priceMonthly: '$79',
-    priceAnnually: '$67',
-    annualTotal: '$805',
+    priceMonthly: '$49',
+    priceAnnually: '$42',
+    annualTotal: '$499',
     description: 'Automate and expand your engagement strategies.',
     features: [
       'Everything in Starter, plus:',
@@ -93,9 +93,9 @@ const plans: Plan[] = [
   },
   {
     name: 'Elite',
-    priceMonthly: '$149',
-    priceAnnually: '$126',
-    annualTotal: '$1515',
+    priceMonthly: '$99',
+    priceAnnually: '$84',
+    annualTotal: '$1008',
     description: 'The ultimate toolkit for maximum retention.',
     features: [
       'Everything in Pro, plus:',
