@@ -828,8 +828,26 @@ export async function updateCommunityBrandingAction(data: {
 // All your existing functions below remain exactly the same.
 // I'm including them for completeness, but they don't need any modifications.
 
-export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
-  const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
+// 🔒 SECURITY FIX: Now requires communityId to prevent cross-session identity bleed
+export async function syncUserAction(
+  whopId: string,
+  whopRole: "admin" | "member",
+  communityId: string  // 🆕 Required: Scopes profile lookup to specific community
+): Promise<Profile | null> {
+  if (!communityId) {
+    console.error("❌ syncUserAction: communityId is required for security");
+    return null;
+  }
+
+  // 🔒 CRITICAL: Filter by BOTH whop_user_id AND community_id
+  // This ensures users get the correct profile for each community they belong to
+  const { data: existingUser } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('whop_user_id', whopId)
+    .eq('community_id', communityId)
+    .maybeSingle();
+
   if (existingUser) return existingUser;
   return null;
 }

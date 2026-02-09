@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Reward, Badge, Quest, StoreItem, Profile, Action, Community, AnalyticsData, UserQuestProgress, ActiveEffect, UserInventoryItem, BadgeConfig, ActionType } from "@/types";
-import { api, setApiContext } from "@/services/api"; // 🟢 FIX: Import setApiContext
-import { getCompanyIdFromExperience } from "@/lib/whop-helpers"; // 🟢 FIX: Import Whop helper
+import { api } from "@/services/api"; // 🔒 SECURITY: Removed setApiContext - no longer needed
+import { getCompanyIdFromExperience } from "@/lib/whop-helpers";
+
 
 export interface AppContextValue {
     selectedUser: Profile | null;
@@ -121,7 +122,7 @@ export const AppProvider = ({
         const commData = await api.getCommunityInfo();
         if (commData) {
             setCommunity(commData);
-            setApiContext(commData.id); // 🟢 FIX: Set API context for multi-tenancy
+            // 🔒 SECURITY: Removed setApiContext - context is now derived from server-verified JWT
         }
     };
     const fetchRewards = async () => { const config = await api.getRewardsConfig(); setRewardsConfig(config as any); };
@@ -430,28 +431,26 @@ export const AppProvider = ({
 
     useEffect(() => {
         const initAuth = async () => {
-            // 🟢 STEP 1: Resolve company ID from Whop experience
+            // 🔒 STEP 1: Resolve company ID from Whop experience
             let resolvedCompanyId: string | null = null;
 
             if (experienceId && experienceId !== "no_experience") {
                 resolvedCompanyId = await getCompanyIdFromExperience(experienceId);
                 if (resolvedCompanyId) {
                     console.log(`✅ Resolved company from experience: ${resolvedCompanyId}`);
-                    setApiContext(resolvedCompanyId);
+                    // 🔒 SECURITY: Removed setApiContext - pass directly to API calls instead
                 } else {
                     console.error(`❌ Failed to resolve company from experience: ${experienceId}`);
                 }
             }
 
-            // 🟢 STEP 2: Authenticate user
+            // 🔒 STEP 2: Authenticate user with community-scoped lookup
             let user = null;
-            if (verifiedUserId && verifiedUserId !== "GUEST") {
-                user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
-                // Fallback: if experience resolution failed, try to get company from user profile
-                if (!resolvedCompanyId && user?.communityId) {
-                    console.log(`✅ Using company ID from user profile: ${user.communityId}`);
-                    setApiContext(user.communityId);
-                }
+            if (verifiedUserId && verifiedUserId !== "GUEST" && resolvedCompanyId) {
+                // 🔒 SECURITY: Now pass communityId to prevent cross-session identity bleed
+                user = await api.getUserByWhopId(verifiedUserId, verifiedRole, resolvedCompanyId);
+            } else if (verifiedUserId && verifiedUserId !== "GUEST") {
+                console.warn(`⚠️ No company context - cannot authenticate user securely`);
             }
 
             setSelectedUser(user);
