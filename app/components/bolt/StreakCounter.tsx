@@ -40,7 +40,7 @@ const StreakCounter: React.FC<StreakCounterProps> = ({ streak }) => {
       };
     }
     return {
-      bg: 'bg-slate-700',
+      bg: 'bg-slate-200 dark:bg-slate-700',
       ping: null,
       iconFill: 'currentColor',
       iconClass: 'text-slate-500',
@@ -50,13 +50,13 @@ const StreakCounter: React.FC<StreakCounterProps> = ({ streak }) => {
   const streakStyles = getStreakStyles(streak);
 
   return (
-    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center h-full">
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-center h-full">
       <div className={`relative w-20 h-20 flex items-center justify-center rounded-full ${streakStyles.bg}`}>
         {streakStyles.ping && <div className={`absolute inset-0 ${streakStyles.ping} rounded-full animate-ping`}></div>}
         <CometIcon className={`w-10 h-10 ${streakStyles.iconClass}`} fill={streakStyles.iconFill} />
       </div>
-      <p className="mt-4 text-3xl font-bold text-white">{streak}</p>
-      <p className="text-sm text-slate-400">Day Streak</p>
+      <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{streak}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">Day Streak</p>
     </div>
   );
 };

@@ -23,12 +23,12 @@ const XpNotification: React.FC<{ amount: number }> = ({ amount }) => {
 };
 
 const StreakFreezeIndicator: React.FC<{ count: number }> = ({ count }) => (
-    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center h-full">
-        <div className="relative w-20 h-20 flex items-center justify-center rounded-full bg-cyan-500/10">
-            <SnowflakeIcon className="w-10 h-10 text-cyan-400" />
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-center h-full">
+        <div className="relative w-20 h-20 flex items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-500/10">
+            <SnowflakeIcon className="w-10 h-10 text-cyan-500 dark:text-cyan-400" />
         </div>
-        <p className="mt-4 text-3xl font-bold text-white">{count}</p>
-        <p className="text-sm text-slate-400">Streak Freezes</p>
+        <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{count}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Streak Freezes</p>
     </div>
 );
 
@@ -237,7 +237,7 @@ const DashboardPage: React.FC = () => {
     }, [selectedUser]);
 
     if (isLoading || !selectedUser) {
-        return <div className="text-center p-8 text-slate-400">Loading user data...</div>;
+        return <div className="text-center p-8 text-slate-500 dark:text-slate-400">Loading user data...</div>;
     }
 
     const currentUser = selectedUser!;
@@ -257,8 +257,8 @@ const DashboardPage: React.FC = () => {
                         onClick={handleSync}
                         disabled={isSyncing || !!syncCooldownMins}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-md border ${syncCooldownMins
-                            ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed'
-                            : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 disabled:opacity-50'
+                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border-slate-300 dark:border-slate-700 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 disabled:opacity-50'
                             }`}
                         title={syncCooldownMins ? `Available in ${syncCooldownMins} minute${syncCooldownMins !== 1 ? 's' : ''}` : 'Collects XP for new courses, lessons, and posts since your last sync'}
                     >
@@ -281,7 +281,7 @@ const DashboardPage: React.FC = () => {
 
             {xpGained && <XpNotification amount={xpGained} />}
             {notification && (
-                <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-pulse">
+                <div className="fixed top-20 right-8 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-pulse">
                     {notification}
                 </div>
             )}
@@ -327,10 +327,10 @@ const DashboardPage: React.FC = () => {
             </div>
 
             {currentUser.role === 'admin' && isDev && (
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-dashed border-slate-600">
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-dashed border-slate-300 dark:border-slate-600">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-white">🛠️ Dev Tools (Admin Only)</h3>
-                        <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">Hidden in Prod</span>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">🛠️ Dev Tools (Admin Only)</h3>
+                        <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-600 dark:text-slate-300">Hidden in Prod</span>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {Object.keys(rewardsConfig).map(actionType => (
@@ -346,31 +346,31 @@ const DashboardPage: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="text-lg font-bold text-white mb-2">How to Earn XP</h3>
-                    <p className="text-sm text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">How to Earn XP</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Performing any of these actions daily will maintain your streak.</p>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2 text-sm custom-scrollbar">
                         {Object.entries(rewardsConfig).map(([action, config]) => (
-                            <div key={action} className="flex justify-between items-center p-2 bg-slate-700/50 rounded-md hover:bg-slate-700 transition-colors">
-                                <span className="text-slate-300 capitalize">{action.replace(/_/g, ' ')}</span>
-                                <span className="font-bold text-blue-400">+{(config as any).xpGained ?? (config as any).xp} XP</span>
+                            <div key={action} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-700/50 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <span className="text-slate-700 dark:text-slate-300 capitalize">{action.replace(/_/g, ' ')}</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">+{(config as any).xpGained ?? (config as any).xp} XP</span>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="text-lg font-bold text-white mb-4">Recent Actions</h3>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Recent Actions</h3>
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                         {userActions.length > 0 ? userActions.slice(0, 5).map(action => (
-                            <div key={action.id} className="flex justify-between items-center text-sm p-2 bg-slate-700/30 rounded-md">
-                                <p className="text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
-                                <span className={`font-bold ${action.xpGained >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <div key={action.id} className="flex justify-between items-center text-sm p-2 bg-slate-50 dark:bg-slate-700/30 rounded-md">
+                                <p className="text-slate-700 dark:text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
+                                <span className={`font-bold ${action.xpGained >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {action.xpGained > 0 ? '+' : ''}{action.xpGained} XP
                                 </span>
                             </div>
                         )) : (
-                            <p className="text-slate-500 text-center py-4">No actions yet.</p>
+                            <p className="text-slate-400 dark:text-slate-500 text-center py-4">No actions yet.</p>
                         )}
                     </div>
                 </div>

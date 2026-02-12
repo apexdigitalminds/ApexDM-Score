@@ -54,17 +54,17 @@ export default function TrialExpiredModal() {
 
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-slate-800 rounded-xl max-w-lg w-full p-8 text-center border border-slate-700 shadow-2xl">
+            <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-8 text-center border border-slate-200 dark:border-slate-700 shadow-2xl">
                 <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                     Your Elite Trial Has Ended
                 </h2>
-                <p className="text-slate-300 mb-4">
+                <p className="text-slate-600 dark:text-slate-300 mb-4">
                     Thanks for trying out our Elite features! You can continue with the <strong className="text-green-400">Starter Plan</strong> which includes:
                 </p>
 
                 {/* Starter features list */}
-                <ul className="text-left text-sm text-slate-300 mb-6 space-y-2 bg-slate-700/50 rounded-lg p-4">
+                <ul className="text-left text-sm text-slate-600 dark:text-slate-300 mb-6 space-y-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
                     <li className="flex items-center gap-2">
                         <span className="text-green-400">✓</span> XP & Leveling System
                     </li>

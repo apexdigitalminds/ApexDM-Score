@@ -84,14 +84,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // 🟢 UPDATED: Home link (logo click) - everyone goes to their dashboard
     const homeHref = dashboardPath;
 
-    // 🟢 Navigation items - Dashboard/Collection visible to all
-    // 🔒 Tier-locked items (Quests, XP Store, Analytics) only visible to admins per Whop App Store requirements
+    // 🔒 Navigation visibility rules:
+    // - Admin: sees ALL features, plan-locked items show 🔒 lock icon
+    // - Member: only sees features their community plan unlocks
+    // - Admin Panel: always admin-only regardless of plan
     const isAdmin = selectedUser?.role === 'admin';
     const navItems = [
         { href: dashboardPath, label: 'Dashboard', icon: ChartBarIcon, show: true },
         { href: '/collection', label: 'Collection', icon: SparklesIcon, show: true },
-        { href: '/quests', label: 'Quests', icon: TargetIcon, show: isAdmin, locked: !showQuests },
-        { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: isAdmin, locked: !showStore },
+        { href: '/quests', label: 'Quests', icon: TargetIcon, show: isAdmin || showQuests, locked: !showQuests },
+        { href: '/store', label: 'XP Store', icon: ShoppingCartIcon, show: isAdmin || showStore, locked: !showStore },
         { href: '/analytics', label: 'Analytics', icon: ChartPieIcon, show: isAdmin, locked: !showAnalytics },
         { href: '/admin', label: 'Admin Panel', icon: UserGroupIcon, show: isAdmin },
     ];
@@ -126,7 +128,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             <LogoIcon className="h-8 w-8" />
                                         )}
                                         {/* 🆕 Show custom app name if set, otherwise community name */}
-                                        <span className="text-white hidden sm:block">{community?.customAppName || community?.name || 'My Community'}</span>
+                                        <span className="text-slate-900 dark:text-white hidden sm:block">{community?.customAppName || community?.name || 'My Community'}</span>
                                     </>
                                 ) : (
                                     <>

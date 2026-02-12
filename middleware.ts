@@ -6,16 +6,28 @@ export function middleware(request: NextRequest) {
 
   // Capture Token from URL (Whop passes this in the iframe src)
   const tokenQuery = url.searchParams.get('token');
+  const existingToken = request.cookies.get('whop_user_token')?.value;
 
   const response = NextResponse.next();
 
-  // 🔒 SECURITY FIX: Only use fresh token from URL, never cache in cookies
-  // This prevents identity bleed when users switch accounts
-  // Previously: Cookie persisted and could return wrong user on warm serverless instances
+  // 🔒 SECURITY: Priority order — fresh URL token > existing cookie
+  // Fresh URL tokens ALWAYS override cookies (prevents identity bleed on account switch)
+  // Cookie is used as fallback for page refreshes within the iframe session
   if (tokenQuery) {
     response.headers.set('x-whop-user-token', tokenQuery);
+    // Persist for subsequent navigations/refreshes within the iframe
+    response.cookies.set('whop_user_token', tokenQuery, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',   // Required for Whop iframe context
+      maxAge: 3600,        // 1 hour max, refreshed on each new URL token
+      path: '/',
+    });
+  } else if (existingToken) {
+    // Fallback: use persisted cookie for page refreshes
+    response.headers.set('x-whop-user-token', existingToken);
   }
-  // If no token in URL, Whop SDK will handle gracefully (user sees landing page)
+  // If neither token nor cookie exists, Whop SDK handles gracefully
 
   return response;
 }

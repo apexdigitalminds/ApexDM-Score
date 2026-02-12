@@ -178,8 +178,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             )}
 
             {/* COL 1: Active Effects */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                     <SparklesIcon className="w-5 h-5 text-yellow-400" /> Active & Equipped
                 </h3>
 
@@ -189,8 +189,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         <div>
                             <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Boosts</h4>
                             {activeEffects.map(effect => (
-                                <div key={effect.id} className="flex justify-between items-center bg-green-900/20 border border-green-500/30 p-3 rounded-lg mb-2">
-                                    <span className="text-sm font-bold text-green-100">{effect.modifier}x XP Boost</span>
+                                <div key={effect.id} className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 p-3 rounded-lg mb-2">
+                                    <span className="text-sm font-bold text-green-700 dark:text-green-100">{effect.modifier}x XP Boost</span>
                                     <span className="text-xs text-green-300">
                                         Expires: {effect.expiresAt ? new Date(effect.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown'}
                                     </span>
@@ -203,10 +203,10 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Cosmetics</h4>
                         {/* 🟢 Muted Unequip Button Style */}
                         {localMetadata?.nameColor && (
-                            <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
+                            <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: localMetadata.nameColor }}></div>
-                                    <span className="text-sm text-slate-300">Name Color</span>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">Name Color</span>
                                 </div>
                                 <button onClick={() => handleUnequip('NAME_COLOR')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'NAME_COLOR' ? '...' : 'Unequip'}
@@ -214,10 +214,10 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </div>
                         )}
                         {localMetadata?.title && (
-                            <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
+                            <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">TITLE</span>
-                                    <span className="text-sm text-white font-bold">{localMetadata.title}</span>
+                                    <span className="text-sm text-slate-900 dark:text-white font-bold">{localMetadata.title}</span>
                                 </div>
                                 <button onClick={() => handleUnequip('TITLE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'TITLE' ? '...' : 'Unequip'}
@@ -225,10 +225,10 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </div>
                         )}
                         {localMetadata?.avatarPulseColor && (
-                            <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
+                            <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
-                                    <span className="text-sm text-slate-300">Avatar Pulse</span>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">Avatar Pulse</span>
                                 </div>
                                 <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'AVATAR_PULSE' ? '...' : 'Unequip'}
@@ -236,10 +236,10 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </div>
                         )}
                         {localMetadata?.bannerUrl && (
-                            <div className="bg-slate-700/30 border border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
+                            <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <img src={localMetadata.bannerUrl} alt="Banner" className="w-8 h-5 object-cover rounded border border-slate-500" />
-                                    <span className="text-sm text-slate-300">Banner</span>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">Banner</span>
                                 </div>
                                 <button onClick={() => handleUnequip('BANNER')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'BANNER' ? '...' : 'Unequip'}
@@ -254,7 +254,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                 </div>
 
                 {history.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-700">
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3" /> Recent Usage</h4>
                         <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
                             {history.map((log: any) => (
@@ -269,13 +269,13 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             </div>
 
             {/* COL 2: Consumables (Grouped) */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                     <BeakerIcon className="w-5 h-5 text-blue-400" /> Consumables
                 </h3>
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                     {groupedConsumables.length > 0 ? groupedConsumables.map(({ item, count }) => (
-                        <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center relative">
+                        <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center relative">
                             {/* 🟢 Counter Badge */}
                             {count > 1 && (
                                 <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-800 shadow-sm z-10">
@@ -283,7 +283,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                                 </div>
                             )}
                             <div>
-                                <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
+                                <p className="font-bold text-sm text-slate-900 dark:text-white">{item.itemDetails?.name}</p>
                                 <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
                             </div>
                             <button
@@ -298,15 +298,15 @@ const InventorySection: React.FC<InventorySectionProps> = ({
             </div>
 
             {/* COL 3: Wearables */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                     <ChestIcon className="w-5 h-5 text-amber-400" /> Wearables
                 </h3>
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                     {wearables.length > 0 ? wearables.map(item => (
-                        <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center">
+                        <div key={item.id} className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center">
                             <div>
-                                <p className="font-bold text-sm text-white">{item.itemDetails?.name}</p>
+                                <p className="font-bold text-sm text-slate-900 dark:text-white">{item.itemDetails?.name}</p>
                                 <p className="text-[10px] text-slate-400">{item.itemDetails?.description}</p>
                             </div>
                             <button

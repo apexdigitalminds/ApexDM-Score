@@ -74,18 +74,18 @@ const TrialBanner = () => {
             {/* Downgrade Confirmation Modal */}
             {showConfirm && (
                 <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-slate-800 rounded-xl max-w-md w-full p-6 border border-slate-700 shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-3">Switch to Starter Plan?</h3>
-                        <p className="text-slate-300 text-sm mb-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 shadow-2xl">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Switch to Starter Plan?</h3>
+                        <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">
                             You'll lose access to Elite features like:
                         </p>
-                        <ul className="text-sm text-slate-400 mb-4 space-y-1">
+                        <ul className="text-sm text-slate-500 dark:text-slate-400 mb-4 space-y-1">
                             <li>• XP Store & Item Inventory</li>
                             <li>• Advanced Analytics</li>
                             <li>• Quests & Challenges</li>
                             <li>• White-label Branding</li>
                         </ul>
-                        <p className="text-slate-300 text-sm mb-4">
+                        <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">
                             You'll keep basic features: XP, Streaks, Badges, and Leaderboards.
                         </p>
                         <div className="bg-amber-900/30 border border-amber-600/50 rounded-lg p-3 mb-6">
@@ -98,7 +98,7 @@ const TrialBanner = () => {
                             <button
                                 onClick={() => setShowConfirm(false)}
                                 disabled={isDowngrading}
-                                className="flex-1 py-2 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+                                className="flex-1 py-2 px-4 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg font-medium transition-colors"
                             >
                                 Keep Trial
                             </button>

@@ -7,7 +7,7 @@ interface XPProgressProps {
 }
 
 const XPProgress: React.FC<XPProgressProps> = ({ xp }) => {
-    
+
     // 🟢 UPDATED: Badge Tiers to match AppContext & Admin Settings
     const TIERS = [
         { name: 'Rookie', threshold: 0 },       // 0 - 99
@@ -21,7 +21,7 @@ const XPProgress: React.FC<XPProgressProps> = ({ xp }) => {
     // We reverse finding the first tier that is <= current XP
     const currentTierIndex = [...TIERS].reverse().findIndex(t => xp >= t.threshold);
     const actualTierIndex = currentTierIndex >= 0 ? TIERS.length - 1 - currentTierIndex : 0;
-    
+
     const currentTier = TIERS[actualTierIndex];
     const nextTier = TIERS[actualTierIndex + 1];
 
@@ -34,7 +34,7 @@ const XPProgress: React.FC<XPProgressProps> = ({ xp }) => {
         const tierEnd = nextTier.threshold;
         const tierRange = tierEnd - tierStart;
         const xpInTier = xp - tierStart;
-        
+
         progressPercent = Math.min((xpInTier / tierRange) * 100, 100);
         xpToNext = tierEnd - xp;
     } else {
@@ -44,17 +44,17 @@ const XPProgress: React.FC<XPProgressProps> = ({ xp }) => {
     }
 
     return (
-        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg w-full h-full flex flex-col justify-center">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 w-full h-full flex flex-col justify-center">
             <div className="flex justify-between items-center mb-4">
                 {/* 🟢 FIX: Updated classes to match 'Earned Badges' header size/color */}
-                <span className="text-lg font-bold text-white">
+                <span className="text-lg font-bold text-slate-900 dark:text-white">
                     {currentTier.name} (Level {actualTierIndex + 1})
                 </span>
-                
-                <span className="text-lg font-bold text-white">{xp.toLocaleString()} XP</span>
+
+                <span className="text-lg font-bold text-slate-900 dark:text-white">{xp.toLocaleString()} XP</span>
             </div>
-            
-            <div className="w-full bg-slate-700 rounded-full h-4 relative overflow-hidden">
+
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4 relative overflow-hidden">
                 <div
                     className="bg-gradient-to-r from-blue-500 to-purple-500 h-4 rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${Math.max(progressPercent, 5)}%` }} // Min 5% for visibility
@@ -63,8 +63,8 @@ const XPProgress: React.FC<XPProgressProps> = ({ xp }) => {
                 {/* Pulse overlay */}
                 <div className="absolute inset-0 bg-purple-500/30 rounded-full animate-pulse"></div>
             </div>
-            
-            <div className="text-right text-sm text-slate-400 mt-2">
+
+            <div className="text-right text-sm text-slate-500 dark:text-slate-400 mt-2">
                 {!nextTier ? 'Max Rank Achieved!' : `${xpToNext.toLocaleString()} XP to next level`}
             </div>
         </div>

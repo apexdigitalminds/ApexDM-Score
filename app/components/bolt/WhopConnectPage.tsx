@@ -28,31 +28,31 @@ const WhopConnectPage: React.FC = () => {
 
   if (isLoading && !community) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
         <p>Loading community information...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-      <div className="max-w-md w-full bg-slate-800 rounded-2xl shadow-lg p-8 border border-slate-700 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-white p-4">
+      <div className="max-w-md w-full bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-lg p-8 border border-slate-200 dark:border-slate-700 text-center">
         <div className="flex justify-center items-center gap-4 mb-6">
           {community?.logoUrl && (
-             <img
-                src={community.logoUrl}
-                alt={community.name}
-                className="w-16 h-16 rounded-lg object-cover"
-             />
+            <img
+              src={community.logoUrl}
+              alt={community.name}
+              className="w-16 h-16 rounded-lg object-cover"
+            />
           )}
           <LogoIcon className="h-16 w-16" />
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-2">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Connect to Whop
         </h1>
-        <p className="text-slate-400 mb-6">
-          Authentication is handled automatically via Whop. 
+        <p className="text-slate-500 dark:text-slate-400 mb-6">
+          Authentication is handled automatically via Whop.
           Click below to enter your dashboard.
         </p>
 
