@@ -65,7 +65,7 @@ const ProfilePage: React.FC = () => {
                 onClose={() => setIsAvatarModalOpen(false)}
             />
 
-            <div className={`relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden ${bannerUrl ? 'pt-32' : 'p-6'}`}>
+            <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden border border-slate-200 dark:border-slate-700 ${bannerUrl ? 'pt-32' : 'p-6'}`}>
                 {bannerUrl && (
                     <div
                         className="absolute inset-0 h-32 bg-cover bg-center"
@@ -83,7 +83,7 @@ const ProfilePage: React.FC = () => {
                             <Avatar
                                 src={profile.avatarUrl}
                                 alt={profile.username}
-                                className="w-32 h-32 rounded-full border-4 border-slate-700 object-cover bg-slate-800"
+                                className="w-32 h-32 rounded-full border-4 border-slate-200 dark:border-slate-700 object-cover bg-slate-100 dark:bg-slate-800"
                                 frameColor={frameColor}
                             />
                         </div>
@@ -111,7 +111,7 @@ const ProfilePage: React.FC = () => {
                             )}
                         </h1>
 
-                        {registrationDate && <p className="text-slate-400">Member since {registrationDate}</p>}
+                        {registrationDate && <p className="text-slate-500 dark:text-slate-400">Member since {registrationDate}</p>}
 
                         <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
                             {profile.role === 'admin' && (
@@ -146,13 +146,13 @@ const ProfilePage: React.FC = () => {
                 <div className="lg:col-span-2 h-full">
                     <BadgeDisplay badges={profile.badges ?? []} />
                 </div>
-                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-full flex flex-col">
-                    <h3 className="text-lg font-bold text-white mb-4">Recent Activity</h3>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-full flex flex-col border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Recent Activity</h3>
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 flex-grow">
                         {actions.slice(0, 10).map(action => (
                             <div key={action.id} className="flex justify-between items-center text-sm">
                                 <div>
-                                    <p className="text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
+                                    <p className="text-slate-600 dark:text-slate-300 capitalize">{action.actionType.replace(/_/g, ' ')}</p>
                                     <p className="text-xs text-slate-500">
                                         {action.createdAt ? new Date(action.createdAt).toLocaleDateString() : 'Date unknown'}
                                     </p>

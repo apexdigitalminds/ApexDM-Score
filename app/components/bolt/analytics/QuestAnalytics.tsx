@@ -14,23 +14,23 @@ interface QuestAnalyticsProps {
 
 const QuestAnalytics: React.FC<QuestAnalyticsProps> = ({ data }) => {
     return (
-        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-full">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-full border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-4">
                 <TargetIcon className="w-6 h-6 text-green-400" />
-                <h3 className="text-lg font-bold text-white">Quest Funnel Analytics</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Quest Funnel Analytics</h3>
             </div>
             {data.length > 0 ? (
                 <div className="space-y-4">
                     {data.map(quest => (
-                        <div key={quest.questId} className="bg-slate-700/50 p-4 rounded-lg">
-                            <p className="font-semibold text-white truncate">{quest.title}</p>
+                        <div key={quest.questId} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                            <p className="font-semibold text-slate-900 dark:text-white truncate">{quest.title}</p>
                             <div className="flex justify-between items-center mt-2 text-sm">
                                 <span className="text-slate-400">Participation Rate:</span>
-                                <span className="font-bold text-white">{quest.participationRate.toFixed(1)}%</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{quest.participationRate.toFixed(1)}%</span>
                             </div>
-                             <div className="flex justify-between items-center text-sm">
+                            <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-400">Completion Rate:</span>
-                                <span className="font-bold text-white">{quest.completionRate.toFixed(1)}%</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{quest.completionRate.toFixed(1)}%</span>
                             </div>
                         </div>
                     ))}

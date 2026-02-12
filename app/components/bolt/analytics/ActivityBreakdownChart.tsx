@@ -25,13 +25,13 @@ const COLORS = [
 const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({ data }) => {
   // 1. Calculate Totals
   const total = data.reduce((acc, item) => acc + item.count, 0);
-  
+
   // 2. Prepare Data with Angles/Colors
   let currentAngle = 0;
   const processedData = data.map((item, index) => {
     const percentage = total > 0 ? item.count / total : 0;
     const angle = percentage * 360;
-    
+
     const startAngle = currentAngle;
     currentAngle += angle;
 
@@ -63,13 +63,13 @@ const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({ data })
             stroke="#334155" // slate-700
             strokeWidth="12"
           />
-          
+
           {/* Data Segments */}
           {processedData.map((item, i) => {
             // Calculate stroke-dasharray: [length of segment, length of gap]
             const strokeLength = item.percentage * circumference;
             const spaceLength = circumference - strokeLength;
-            
+
             // Calculate rotation based on cumulative start angle
             // We must rotate the specific circle element to align it
             return (
@@ -92,7 +92,7 @@ const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({ data })
 
         {/* Center Text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-extrabold text-white">{total}</span>
+          <span className="text-3xl font-extrabold text-slate-900 dark:text-white">{total}</span>
           <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Total Actions</span>
         </div>
       </div>
@@ -103,20 +103,20 @@ const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({ data })
           <div key={item.actionType} className="flex items-center justify-between text-sm group">
             <div className="flex items-center gap-3">
               {/* Color Indicator */}
-              <div 
-                className="w-3 h-3 rounded-full shadow-sm ring-1 ring-white/10" 
+              <div
+                className="w-3 h-3 rounded-full shadow-sm ring-1 ring-white/10"
                 style={{ backgroundColor: item.color }}
               ></div>
-              
+
               {/* Label */}
-              <span className="text-slate-300 capitalize group-hover:text-white transition-colors">
+              <span className="text-slate-600 dark:text-slate-300 capitalize group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                 {item.actionType.replace(/_/g, ' ')}
               </span>
             </div>
 
             {/* Value & Percentage */}
             <div className="font-mono">
-              <span className="font-bold text-white mr-2">{item.count}</span>
+              <span className="font-bold text-slate-900 dark:text-white mr-2">{item.count}</span>
               <span className="text-slate-500 text-xs">
                 ({(item.percentage * 100).toFixed(1)}%)
               </span>
@@ -125,9 +125,9 @@ const ActivityBreakdownChart: React.FC<ActivityBreakdownChartProps> = ({ data })
         ))}
 
         {processedData.length === 0 && (
-            <div className="text-center text-slate-500 py-4 text-sm">
-                No activity data recorded yet.
-            </div>
+          <div className="text-center text-slate-500 py-4 text-sm">
+            No activity data recorded yet.
+          </div>
         )}
       </div>
     </div>

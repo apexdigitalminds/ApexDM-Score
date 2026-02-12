@@ -17,7 +17,7 @@ const FeatureLock: React.FC<FeatureLockProps> = ({ title, description, requiredT
     const isAdmin = selectedUser?.role === 'admin';
 
     return (
-        <div className="relative bg-slate-800 rounded-2xl shadow-lg overflow-hidden h-full flex flex-col border border-slate-700">
+        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-lg overflow-hidden h-full flex flex-col border border-slate-200 dark:border-slate-700">
             {/* 1. Plan Badge (Top Right) - Only show tier info for admins */}
             {isAdmin && (
                 <div className="absolute top-4 right-4 z-30">
@@ -28,15 +28,15 @@ const FeatureLock: React.FC<FeatureLockProps> = ({ title, description, requiredT
             )}
 
             {/* 2. Lock Overlay - Different content for admins vs members */}
-            <div className={`absolute inset-0 ${isAdmin ? 'bg-slate-900/40' : 'bg-slate-900/50'} backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-20`}>
+            <div className={`absolute inset-0 ${isAdmin ? 'bg-white/60 dark:bg-slate-900/40' : 'bg-white/70 dark:bg-slate-900/50'} backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-6 z-20`}>
                 {isAdmin ? (
                     /* Admin View: Upgrade CTA */
                     <>
                         <div className="bg-slate-800 p-3 rounded-full mb-4 shadow-xl ring-1 ring-white/10">
                             <LockClosedIcon className="w-8 h-8 text-yellow-400" />
                         </div>
-                        <p className="text-xl font-bold text-white mb-2">Upgrade to Unlock</p>
-                        <p className="text-sm text-slate-300 max-w-xs mb-6">
+                        <p className="text-xl font-bold text-slate-900 dark:text-white mb-2">Upgrade to Unlock</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xs mb-6">
                             {description}
                         </p>
                         <Link

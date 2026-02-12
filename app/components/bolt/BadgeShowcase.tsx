@@ -22,10 +22,10 @@ const BadgeShowcase: React.FC = () => {
     return (
         <div className="space-y-8">
             {/* BADGES SECTION */}
-            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                <h3 className="text-lg font-bold text-white mb-4 text-center">Badge Collection</h3>
-                <p className="text-slate-400 text-sm text-center mb-6">Collect unique badges by completing quests and engaging with the community.</p>
-                
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 text-center">Badge Collection</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm text-center mb-6">Collect unique badges by completing quests and engaging with the community.</p>
+
                 {allBadges.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-6 justify-items-center">
                         {allBadges.map((badge) => {
@@ -36,8 +36,8 @@ const BadgeShowcase: React.FC = () => {
                             return (
                                 <div key={badge.id} className="flex flex-col items-center group relative w-24">
                                     {/* Badge Visual */}
-                                    <div 
-                                        className="w-20 h-20 rounded-2xl flex items-center justify-center border-2 bg-slate-900/50 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl group-hover:border-opacity-100 border-opacity-70"
+                                    <div
+                                        className="w-20 h-20 rounded-2xl flex items-center justify-center border-2 bg-slate-100 dark:bg-slate-900/50 shadow-md transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl group-hover:border-opacity-100 border-opacity-70"
                                         style={{ borderColor: badge.color }}
                                     >
                                         {isPreset && IconComponent ? (
@@ -49,12 +49,12 @@ const BadgeShowcase: React.FC = () => {
                                             </span>
                                         )}
                                     </div>
-                                    
+
                                     {/* Name Label */}
                                     <div className="mt-3 text-center w-full">
-                                        <p className="text-xs font-bold text-slate-300 truncate px-1 group-hover:text-white transition-colors">{badge.name}</p>
+                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate px-1 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{badge.name}</p>
                                     </div>
-                                    
+
                                     {/* Description Tooltip (Hover) */}
                                     <div className="absolute bottom-full mb-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 bg-slate-900/95 text-slate-200 text-[10px] p-3 rounded-lg shadow-2xl pointer-events-none w-40 text-center z-20 border border-slate-700 backdrop-blur-sm">
                                         {badge.description}
@@ -65,7 +65,7 @@ const BadgeShowcase: React.FC = () => {
                         })}
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-slate-700/30 rounded-xl border border-dashed border-slate-600">
+                    <div className="text-center py-12 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-600">
                         <p className="text-slate-500">No badges configured yet.</p>
                     </div>
                 )}

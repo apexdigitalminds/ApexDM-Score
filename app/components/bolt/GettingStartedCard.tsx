@@ -88,19 +88,19 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
     const availableSteps = SETUP_STEPS.filter(step => tierAtLeast(currentTier, step.requiredTier));
 
     return (
-        <div className="bg-slate-800 rounded-2xl border border-purple-500/20 border-l-4 border-l-purple-500 overflow-hidden mb-6 shadow-lg">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-purple-500/20 border-l-4 border-l-purple-500 overflow-hidden mb-6 shadow-lg">
             {/* Header - Always visible */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
                         <span className="text-xl">🚀</span>
                     </div>
                     <div className="text-left">
-                        <h3 className="text-lg font-bold text-white">Getting Started</h3>
-                        <p className="text-slate-400 text-sm">Set up your community in a few easy steps</p>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Getting Started</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">Set up your community in a few easy steps</p>
                     </div>
                 </div>
                 <svg
@@ -121,17 +121,17 @@ export default function GettingStartedCard({ onNavigateToTab }: GettingStartedCa
                             <button
                                 key={step.id}
                                 onClick={() => onNavigateToTab(step.tab)}
-                                className="bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 rounded-xl p-4 text-left transition-all duration-200 group shadow-sm"
+                                className="bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl p-4 text-left transition-all duration-200 group shadow-sm"
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
                                         {step.icon}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="text-white font-semibold text-sm mb-1 group-hover:text-purple-400 transition-colors">
+                                        <h4 className="text-slate-900 dark:text-white font-semibold text-sm mb-1 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors">
                                             {step.title}
                                         </h4>
-                                        <p className="text-slate-400 text-xs">
+                                        <p className="text-slate-500 dark:text-slate-400 text-xs">
                                             {step.description}
                                         </p>
                                     </div>

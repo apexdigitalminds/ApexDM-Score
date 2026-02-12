@@ -99,17 +99,17 @@ export default function WhiteLabelSettings() {
     }
 
     return (
-        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+        <div className="bg-white/80 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-6">
                 <span className="text-2xl">🎨</span>
-                <h3 className="text-lg font-bold text-white">White-Label Branding</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">White-Label Branding</h3>
             </div>
 
             {/* Enable Toggle */}
-            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-700">
+            <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
                 <div>
-                    <p className="text-white font-medium">Enable White-Label Mode</p>
-                    <p className="text-slate-400 text-sm">Replace CommunityXP branding with your own</p>
+                    <p className="text-slate-900 dark:text-white font-medium">Enable White-Label Mode</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Replace CommunityXP branding with your own</p>
                 </div>
                 <ToggleSwitch checked={whiteLabelEnabled} onChange={setWhiteLabelEnabled} />
             </div>
@@ -119,7 +119,7 @@ export default function WhiteLabelSettings() {
 
                 {/* Custom App Name */}
                 <div>
-                    <label className="block text-white text-sm font-medium mb-2">Custom App Name</label>
+                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2">Custom App Name</label>
                     <input
                         type="text"
                         value={customAppName}
@@ -132,7 +132,7 @@ export default function WhiteLabelSettings() {
 
                 {/* Logo URL */}
                 <div>
-                    <label className="block text-white text-sm font-medium mb-2">Community Logo URL</label>
+                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2">Community Logo URL</label>
                     <input
                         type="url"
                         value={logoUrl}
@@ -145,7 +145,7 @@ export default function WhiteLabelSettings() {
 
                 {/* Theme Color - UNDER CONSTRUCTION */}
                 <div className="opacity-50 pointer-events-none">
-                    <label className="block text-white text-sm font-medium mb-2 flex items-center gap-2">
+                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2 flex items-center gap-2">
                         Theme Color
                         <span className="bg-yellow-600/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-semibold">
                             🚧 Under Construction
@@ -178,7 +178,7 @@ export default function WhiteLabelSettings() {
 
                 {/* Favicon URL */}
                 <div>
-                    <label className="block text-white text-sm font-medium mb-2">Custom Favicon URL <span className="text-slate-500 font-normal">(optional)</span></label>
+                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2">Custom Favicon URL <span className="text-slate-500 font-normal">(optional)</span></label>
                     <input
                         type="url"
                         value={faviconUrl}
@@ -191,7 +191,7 @@ export default function WhiteLabelSettings() {
 
                 {/* Custom Footer Text */}
                 <div>
-                    <label className="block text-white text-sm font-medium mb-2">Custom Footer Text <span className="text-slate-500 font-normal">(optional)</span></label>
+                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2">Custom Footer Text <span className="text-slate-500 font-normal">(optional)</span></label>
                     <input
                         type="text"
                         value={customFooterText}

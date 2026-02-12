@@ -68,7 +68,7 @@ const TabButton: React.FC<{
         onClick={onClick}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${active
             ? "bg-purple-600 text-white shadow-lg"
-            : "text-slate-400 hover:text-white hover:bg-slate-800"
+            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
     >
         {icon}
@@ -362,28 +362,28 @@ export default function AdminPage() {
             <ConfirmationModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={closeModal} isDestructive={modalConfig.isDestructive} />
             {/* 🆕 First-visit onboarding popup */}
             <OnboardingModal onNavigateToSetup={() => setActiveTab('subscription')} />
-            {notification && <div className="fixed top-20 right-8 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-600 animate-bounce">{notification}</div>}
+            {notification && <div className="fixed top-20 right-8 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-bounce">{notification}</div>}
             {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-700 pb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 dark:border-slate-700 pb-8">
                 <div className="flex items-center gap-5">
                     {community?.logoUrl ? (
-                        <img src={community.logoUrl} alt={community.name} className="w-16 h-16 rounded-xl shadow-lg object-cover border border-slate-600" />
+                        <img src={community.logoUrl} alt={community.name} className="w-16 h-16 rounded-xl shadow-lg object-cover border border-slate-200 dark:border-slate-600" />
                     ) : (
                         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg border border-white/10">
                             <LogoIcon className="w-8 h-8 text-white" />
                         </div>
                     )}
                     <div>
-                        <h1 className="text-3xl font-extrabold text-white tracking-tight mb-2">{community?.name || "Admin Dashboard"}</h1>
-                        <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-300 shadow-sm">
+                        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">{community?.name || "Admin Dashboard"}</h1>
+                        <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-300 shadow-sm">
                             <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600">|</span><span className="text-slate-200 font-semibold">{allUsers.length} Users</span><span className="text-slate-600">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-b border-slate-700 pb-1">
+            <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700 pb-1">
                 <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5" />} />
                 <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5" />} />
                 <TabButton active={activeTab === 'quests'} onClick={() => setActiveTab('quests')} label="Quests" icon={<ClockIcon className="w-5 h-5" />} locked={!isFeatureEnabled('quests')} />
@@ -395,22 +395,22 @@ export default function AdminPage() {
             {activeTab === 'users' && (
                 <div className="space-y-6">
                     {/* Tab Description Banner */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                        <h2 className="text-lg font-bold text-white mb-1">👥 User Management</h2>
-                        <p className="text-slate-400 text-sm">View and manage your community members, their XP totals, badges, and activity. Select a user to view their detailed action history or manually award XP and badges.</p>
+                    <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">👥 User Management</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">View and manage your community members, their XP totals, badges, and activity. Select a user to view their detailed action history or manually award XP and badges.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         <div className="lg:col-span-2 space-y-6">
-                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                                <h3 className="text-lg font-bold text-white mb-4">Select User</h3>
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Select User</h3>
                                 <select id="user-select" value={targetUserId || ''} onChange={(e) => setTargetUserId(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
                                     {allUsers.map((u: Profile) => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
                             {targetUser && (
-                                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-700">
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
                                     <div className="flex justify-between items-start mb-6">
-                                        <div><h3 className="text-xl font-bold text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-600 text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
+                                        <div><h3 className="text-xl font-bold text-slate-900 dark:text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
                                         {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
                                     </div>
                                     <div className="space-y-4">
@@ -467,9 +467,9 @@ export default function AdminPage() {
                     <GettingStartedCard onNavigateToTab={(tab) => setActiveTab(tab as 'users' | 'engagement' | 'quests' | 'store' | 'settings')} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20 flex flex-col">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-purple-500/20 flex flex-col">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-white">Current Plan</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Current Plan</h3>
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wide
                           ${community?.tier === 'Elite' ? 'bg-purple-600 text-white' :
                                         community?.tier === 'Pro' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-slate-300'}`}>
@@ -478,7 +478,7 @@ export default function AdminPage() {
                             </div>
 
                             <div className="space-y-4 flex-1">
-                                <p className="text-slate-400 text-sm">
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">
                                     Your community is currently on the <strong>{community?.tier}</strong> tier.
                                     {community?.trialEndsAt && ` Trial ends on ${new Date(community.trialEndsAt).toLocaleDateString()}.`}
                                 </p>
@@ -512,13 +512,13 @@ export default function AdminPage() {
                             </Link>
                         </div>
 
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg flex flex-col border border-slate-200 dark:border-slate-700">
                             <div className="flex-1 flex flex-col justify-center text-center">
                                 <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <ChatBubbleLeftIcon className="w-8 h-8 text-blue-400" />
                                 </div>
-                                <h3 className="text-lg font-bold text-white mb-2">Need Help?</h3>
-                                <p className="text-slate-400 text-sm">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Need Help?</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">
                                     Have a feature request or found a bug? Email our support team directly.
                                 </p>
                             </div>
@@ -534,14 +534,14 @@ export default function AdminPage() {
             {activeTab === 'engagement' && (
                 <div className="space-y-6">
                     {/* Tab Description Banner */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                        <h2 className="text-lg font-bold text-white mb-1">🏆 Engagement</h2>
-                        <p className="text-slate-400 text-sm">Configure how members earn recognition in your community. Set up XP reward actions to incentivize participation and create achievement badges for milestones.</p>
+                    <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🏆 Engagement</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">Configure how members earn recognition in your community. Set up XP reward actions to incentivize participation and create achievement badges for milestones.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col border border-slate-200 dark:border-slate-700">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-white">Manage XP Reward Actions</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage XP Reward Actions</h3>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-slate-400">Show Archived</span>
                                     <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
@@ -578,9 +578,9 @@ export default function AdminPage() {
                         </div>
 
                         {/* BADGES */}
-                        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col border border-slate-200 dark:border-slate-700">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-white">Manage Badges</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Badges</h3>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-slate-400">Show Archived</span>
                                     <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
@@ -653,13 +653,13 @@ export default function AdminPage() {
             {activeTab === 'quests' && (
                 <div className="space-y-6">
                     {/* Tab Description Banner */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                        <h2 className="text-lg font-bold text-white mb-1">🎯 Quests</h2>
-                        <p className="text-slate-400 text-sm">Create multi-step challenges that guide members through structured activities. Quests combine multiple XP actions into engaging journeys.</p>
+                    <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🎯 Quests</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">Create multi-step challenges that guide members through structured activities. Quests combine multiple XP actions into engaging journeys.</p>
                     </div>
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-white">Manage Quests</h3>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Quests</h3>
                             {isFeatureEnabled('quests') ? (
                                 <label className="flex items-center cursor-pointer text-xs"><input type="checkbox" checked={showArchivedQuests} onChange={() => setShowArchivedQuests(!showArchivedQuests)} className="sr-only peer" /><span className="text-slate-400 mr-2">Show Archived</span><div className="w-7 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500 relative"></div></label>
                             ) : <span className=""></span>}
@@ -717,13 +717,13 @@ export default function AdminPage() {
             {activeTab === 'store' && (
                 <div className="space-y-6">
                     {/* Tab Description Banner */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                        <h2 className="text-lg font-bold text-white mb-1">🛒 XP Store</h2>
-                        <p className="text-slate-400 text-sm">Let members spend their hard-earned XP on rewards you define. Create store items like XP boosters, streak freezes, or cosmetic rewards.</p>
+                    <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🛒 XP Store</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">Let members spend their hard-earned XP on rewards you define. Create store items like XP boosters, streak freezes, or cosmetic rewards.</p>
                     </div>
-                    <div className="bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-white">XP Store Management</h3>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">XP Store Management</h3>
                             {isFeatureEnabled('store') ? (
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-slate-400">Show Archived</span>
@@ -934,14 +934,14 @@ export default function AdminPage() {
                 activeTab === 'settings' && (
                     <div className="space-y-6">
                         {/* Tab Description Banner */}
-                        <div className="bg-gradient-to-r from-slate-800 to-slate-800/50 rounded-xl p-4 border border-slate-700">
-                            <h2 className="text-lg font-bold text-white mb-1">⚙️ Settings</h2>
-                            <p className="text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
+                        <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">⚙️ Settings</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-                                <h3 className="text-lg font-bold text-white mb-4">Webhook Integration</h3>
-                                <p className="text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Webhook Integration</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
                                 <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700 mb-4">
                                     <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
                                     <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
@@ -992,8 +992,8 @@ export default function AdminPage() {
                             <WhiteLabelSettings />
 
                             {isDev && (
-                                <div className="bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
-                                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-yellow-600/30 lg:col-span-2">
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2"><span>🧪</span> Simulation Mode (Dev)</h3>
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>

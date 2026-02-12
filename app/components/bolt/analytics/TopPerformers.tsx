@@ -28,7 +28,7 @@ const UserPerformanceChart: React.FC<UserPerformanceChartProps> = ({ title, icon
         <div>
             <div className="flex items-center gap-3 mb-4">
                 {icon}
-                <h3 className="text-lg font-bold text-white">{title}</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
             </div>
             <div className="space-y-3">
                 {users.map((user, index) => {
@@ -41,18 +41,18 @@ const UserPerformanceChart: React.FC<UserPerformanceChartProps> = ({ title, icon
                                 <Link href={`/profile/${user.id}`}> {/* FIX: Use 'href' prop */}
                                     <Avatar src={user.avatarUrl} alt={user.username} className="w-8 h-8 rounded-full flex-shrink-0" />
                                 </Link>
-                                <Link href={`/profile/${user.id}`} className="text-white hover:underline truncate"> {/* FIX: Use 'href' prop */}
+                                <Link href={`/profile/${user.id}`} className="text-slate-900 dark:text-white hover:underline truncate"> {/* FIX: Use 'href' prop */}
                                     {user.username}
                                 </Link>
                             </div>
                             <div className="col-span-7 flex items-center gap-2">
-                                <div className="w-full bg-slate-700 rounded-full h-4">
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4">
                                     <div
                                         className="bg-gradient-to-r from-blue-500 to-purple-500 h-4 rounded-full transition-all duration-500"
                                         style={{ width: `${barWidth}%` }}
                                     ></div>
                                 </div>
-                                <div className="font-bold text-white w-24 text-right">
+                                <div className="font-bold text-slate-900 dark:text-white w-24 text-right">
                                     {value.toLocaleString()} {metricLabel}
                                 </div>
                             </div>
@@ -72,8 +72,8 @@ interface TopPerformersProps {
 
 const TopPerformers: React.FC<TopPerformersProps> = ({ usersByXp, usersByStreak }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-            <UserPerformanceChart 
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+            <UserPerformanceChart
                 title="Top 10 by Total XP"
                 icon={<TrophyIcon className="w-6 h-6 text-yellow-400" />}
                 users={usersByXp}
@@ -81,8 +81,8 @@ const TopPerformers: React.FC<TopPerformersProps> = ({ usersByXp, usersByStreak 
                 valueAccessor={(user) => user.xp}
             />
         </div>
-        <div className="bg-slate-800 p-6 rounded-2xl shadow-lg">
-            <UserPerformanceChart 
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+            <UserPerformanceChart
                 title="Top 10 by Longest Streak"
                 icon={<FireIcon className="w-6 h-6 text-orange-400" />}
                 users={usersByStreak}
