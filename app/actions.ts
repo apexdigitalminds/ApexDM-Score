@@ -87,11 +87,35 @@ export async function verifyUser(routeCompanyId?: string) {
       console.log(`✅ User found in DB: ${existingProfile.username} (${existingProfile.id})`);
       console.log(`   Profile community: ${communityData?.name} (${existingProfile.community_id})`);
       console.log(`   Target community: ${targetCommunityId || 'N/A'}`);
+      console.log(`   Route company: ${routeCompanyId || 'N/A'}`);
       console.log(`   Role: ${existingProfile.role}`);
 
-      // 🔑 FIX: If user is accessing a DIFFERENT community, update their profile
-      const effectiveCommunityId = targetCommunityId || existingProfile.community_id;
+      let effectiveCommunityId = targetCommunityId || existingProfile.community_id;
 
+      // 🔑 FIX: If company exists but has no community row yet, create it now
+      if (routeCompanyId && !targetCommunityId) {
+        console.log(`⚠️ Company ${routeCompanyId} has no community — creating one now`);
+        const provisioned = await ensureWhopContext(routeCompanyId, whopUserId, roles);
+
+        if (provisioned) {
+          // Re-lookup the newly created community
+          const { data: newCommunity } = await supabaseAdmin
+            .from('communities')
+            .select('id')
+            .eq('whop_store_id', routeCompanyId)
+            .maybeSingle();
+
+          if (newCommunity) {
+            targetCommunityId = newCommunity.id;
+            effectiveCommunityId = newCommunity.id;
+            console.log(`✅ Community created: ${newCommunity.id}`);
+          }
+        } else {
+          console.warn(`⚠️ Could not create community for ${routeCompanyId} — using existing`);
+        }
+      }
+
+      // If target community is now known and different, switch the profile
       if (targetCommunityId && existingProfile.community_id !== targetCommunityId) {
         console.log(`🔄 Switching user to community: ${targetCommunityId}`);
         const { error: switchError } = await supabaseAdmin
@@ -101,7 +125,6 @@ export async function verifyUser(routeCompanyId?: string) {
 
         if (switchError) {
           console.error("❌ Failed to switch community:", switchError);
-          // Still return session with old community rather than failing entirely
         } else {
           console.log(`✅ Profile community updated to: ${targetCommunityId}`);
         }
@@ -262,14 +285,16 @@ export async function ensureWhopContext(
     console.log(`   Trial expires: ${trialEndsAt}`);
   }
 
-  // 🚨 CRITICAL FIX: Handle seller company webhooks specially
-  // When webhook comes from seller company (Apex Digital Minds), we should NOT
-  // move the user to that community. Instead, find their EXISTING community 
-  // and update its tier.
+  // 🚨 CRITICAL FIX: Handle seller company specially ONLY for webhooks.
+  // When a webhook comes from the seller company (tier upgrade), update the user's
+  // existing community tier — don't create a new community for the seller.
+  // But when called from direct access (verifyUser), treat it like any other company
+  // so the seller's own community gets created.
   const SELLER_COMPANY_ID = 'biz_l6rgQaulWP7D2E';
+  const isFromWebhook = !!(productTitle || planId); // Webhooks pass these, verifyUser doesn't
 
-  if (whopStoreId === SELLER_COMPANY_ID) {
-    console.log(`⚠️ SELLER COMPANY DETECTED in ensureWhopContext`);
+  if (whopStoreId === SELLER_COMPANY_ID && isFromWebhook) {
+    console.log(`⚠️ SELLER COMPANY DETECTED in ensureWhopContext (webhook)`);
     console.log(`   This is a tier upgrade webhook, not a new community`);
     console.log(`   Looking up user's existing community to update tier...`);
 
