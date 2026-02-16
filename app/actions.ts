@@ -61,34 +61,20 @@ export async function verifyUser(routeCompanyId?: string) {
       console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
     }
 
-    // 🔧 FIX: Look up profile by BOTH whop_user_id AND community_id
-    // This ensures users get the correct profile for each community they belong to
+    // Look up profile by whop_user_id only.
+    // DB has UNIQUE(whop_user_id), so each user has exactly one global profile.
+    // The profile's community_id gets updated when they access a different community.
     let existingProfile = null;
     let profileError = null;
 
-    if (targetCommunityId) {
-      // Look for profile in THIS specific community
-      const result = await supabaseAdmin
-        .from('profiles')
-        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
-        .eq('whop_user_id', whopUserId)
-        .eq('community_id', targetCommunityId)
-        .maybeSingle();
+    const result = await supabaseAdmin
+      .from('profiles')
+      .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+      .eq('whop_user_id', whopUserId)
+      .maybeSingle();
 
-      existingProfile = result.data;
-      profileError = result.error;
-    } else {
-      // No target community yet (community doesn't exist) - check if user has ANY profile
-      // This is for the case where the community hasn't been created yet
-      const result = await supabaseAdmin
-        .from('profiles')
-        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
-        .eq('whop_user_id', whopUserId)
-        .maybeSingle();
-
-      existingProfile = result.data;
-      profileError = result.error;
-    }
+    existingProfile = result.data;
+    profileError = result.error;
 
     if (profileError) {
       console.error("❌ Database error checking profile:", profileError);
@@ -602,13 +588,13 @@ export async function ensureWhopContext(
     return false;
   }
 
-  // 🔧 FIX: Look up profile by BOTH whop_user_id AND community_id
-  // Users should have separate profiles for each community they belong to
+  // 🔧 FIX: Look up profile by whop_user_id ONLY.
+  // DB has UNIQUE(whop_user_id), so each user has one global profile.
+  // If they switch communities, we update the existing profile rather than creating a new one.
   const { data: existingProfile, error: profileFindError } = await supabaseAdmin
     .from('profiles')
     .select('id, community_id, role, username, whop_user_id')
     .eq('whop_user_id', whopUserId)
-    .eq('community_id', communityId)  // 🆕 Added community filter
     .maybeSingle();
 
   if (profileFindError) {
@@ -624,35 +610,52 @@ export async function ensureWhopContext(
   const targetRole = (isNewCommunity || isWhopAdmin) ? 'admin' : 'member';
 
   if (existingProfile) {
-    console.log(`👤 User profile found for this community: ${existingProfile.username} (${existingProfile.id})`);
-    console.log(`   Community: ${existingProfile.community_id}`);
+    console.log(`👤 User profile found: ${existingProfile.username} (${existingProfile.id})`);
+    console.log(`   Current community: ${existingProfile.community_id}`);
+    console.log(`   Target community: ${communityId}`);
     console.log(`   Role: ${existingProfile.role}`);
 
-    // Only update role if needed (no more moving between communities)
+    // Build update payload
+    const updatePayload: any = {};
+    let needsUpdate = false;
+
+    // Update community_id if user is switching communities
+    if (existingProfile.community_id !== communityId) {
+      console.log(`🔄 Switching user to community: ${communityId}`);
+      updatePayload.community_id = communityId;
+      needsUpdate = true;
+    }
+
+    // Update role if needed
     if (targetRole === 'admin' && existingProfile.role !== 'admin') {
       console.log(`⬆️ Upgrading user role: ${existingProfile.role} → admin`);
+      updatePayload.role = 'admin';
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
-        .update({ role: 'admin' })
+        .update(updatePayload)
         .eq('id', existingProfile.id);
 
       if (updateError) {
         console.error("❌ Failed to update profile:", updateError);
         return false;
       }
-      console.log(`✅ Profile role updated to admin`);
+      console.log(`✅ Profile updated successfully`);
     } else {
       console.log(`✅ Profile already correct - no updates needed`);
     }
 
   } else {
-    // 🆕 Create NEW profile for this community (user may have profiles in other communities)
-    console.log(`👤 Creating NEW profile for this community`);
+    // Create NEW profile (first time this Whop user has accessed any community)
+    console.log(`👤 Creating NEW profile`);
     console.log(`   User: ${whopUserId}`);
     console.log(`   Role: ${targetRole}`);
     console.log(`   Community: ${communityId}`);
 
-    // 🆕 Fetch user's actual name from Whop API
+    // Fetch user's actual name from Whop API
     let displayName = `User_${whopUserId.substring(5, 9)}`;
     let avatarUrl: string | undefined;
 
