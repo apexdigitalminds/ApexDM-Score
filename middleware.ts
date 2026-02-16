@@ -5,21 +5,33 @@ export function middleware(request: NextRequest) {
   const url = request.nextUrl;
   const tokenQuery = url.searchParams.get('token');
   const existingToken = request.cookies.get('whop_user_token')?.value;
-  const response = NextResponse.next();
 
-  // 🚫 ANTI-CACHE: Prevent browser and Vercel edge from caching authenticated pages.
-  // Without this, stale server renders can serve the wrong user's data on account switch.
+  // Determine the active token: URL param > cookie > native Whop header
+  const activeToken = tokenQuery || existingToken;
+
+  // 🔑 CRITICAL: Modify REQUEST headers, not response headers.
+  // Server components read headers via `headers()` from `next/headers`,
+  // which only sees request headers. `response.headers.set()` sets
+  // response headers that server components CANNOT see.
+  const requestHeaders = new Headers(request.headers);
+  if (activeToken) {
+    requestHeaders.set('x-whop-user-token', activeToken);
+  }
+
+  // Pass modified request headers to server components
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  // 🚫 ANTI-CACHE: Prevent browser/CDN from caching auth-dependent pages
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');
 
-  // Whop injects x-whop-user-token header on iframe requests,
-  // but we also maintain a SESSION cookie for fast auth on page refreshes.
-  // Key difference from before: NO maxAge — cookie dies when browser closes,
-  // preventing the 1-hour stale identity issue on account switches.
+  // Persist token as session cookie for subsequent page loads
   if (tokenQuery) {
-    // Fresh URL token from Whop iframe load — ALWAYS takes priority
-    response.headers.set('x-whop-user-token', tokenQuery);
     response.cookies.set('whop_user_token', tokenQuery, {
       httpOnly: true,
       secure: true,
@@ -27,9 +39,6 @@ export function middleware(request: NextRequest) {
       // No maxAge = session cookie — expires when browser closes
       path: '/',
     });
-  } else if (existingToken) {
-    // Fallback: use session cookie for page refreshes within the iframe
-    response.headers.set('x-whop-user-token', existingToken);
   }
 
   return response;
