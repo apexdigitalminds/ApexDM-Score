@@ -82,18 +82,36 @@ export async function verifyUser(routeCompanyId?: string) {
     }
 
     if (existingProfile) {
-      // ✅ User exists in database FOR THIS COMMUNITY
       const communityData = existingProfile.communities as any;
 
-      console.log(`✅ User found in DB for this community: ${existingProfile.username} (${existingProfile.id})`);
-      console.log(`   Community: ${communityData?.name} (${existingProfile.community_id})`);
+      console.log(`✅ User found in DB: ${existingProfile.username} (${existingProfile.id})`);
+      console.log(`   Profile community: ${communityData?.name} (${existingProfile.community_id})`);
+      console.log(`   Target community: ${targetCommunityId || 'N/A'}`);
       console.log(`   Role: ${existingProfile.role}`);
+
+      // 🔑 FIX: If user is accessing a DIFFERENT community, update their profile
+      const effectiveCommunityId = targetCommunityId || existingProfile.community_id;
+
+      if (targetCommunityId && existingProfile.community_id !== targetCommunityId) {
+        console.log(`🔄 Switching user to community: ${targetCommunityId}`);
+        const { error: switchError } = await supabaseAdmin
+          .from('profiles')
+          .update({ community_id: targetCommunityId })
+          .eq('id', existingProfile.id);
+
+        if (switchError) {
+          console.error("❌ Failed to switch community:", switchError);
+          // Still return session with old community rather than failing entirely
+        } else {
+          console.log(`✅ Profile community updated to: ${targetCommunityId}`);
+        }
+      }
 
       return {
         userId: existingProfile.id,
         whopUserId,
         isAdmin: existingProfile.role === 'admin',
-        communityId: existingProfile.community_id,
+        communityId: effectiveCommunityId,
         role: existingProfile.role
       };
     }
