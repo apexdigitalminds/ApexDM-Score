@@ -7,6 +7,12 @@ export function middleware(request: NextRequest) {
   const existingToken = request.cookies.get('whop_user_token')?.value;
   const response = NextResponse.next();
 
+  // 🚫 ANTI-CACHE: Prevent browser and Vercel edge from caching authenticated pages.
+  // Without this, stale server renders can serve the wrong user's data on account switch.
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
   // Whop injects x-whop-user-token header on iframe requests,
   // but we also maintain a SESSION cookie for fast auth on page refreshes.
   // Key difference from before: NO maxAge — cookie dies when browser closes,

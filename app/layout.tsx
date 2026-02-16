@@ -6,6 +6,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from 'next/headers';
 import { whopsdk } from "@/lib/whop-sdk";
 
+// 🚫 Prevent Next.js from caching this layout — auth must be fresh on every request
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "CommunityXP",
   description: "Admin and Member Dashboard",

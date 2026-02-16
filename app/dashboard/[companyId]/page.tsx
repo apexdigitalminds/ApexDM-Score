@@ -5,6 +5,9 @@ import { api } from "@/services/api";
 import { verifyUser } from "@/app/actions";
 import DashboardClient from "@/app/components/DashboardClient";
 
+// 🚫 Prevent caching — auth must be fresh on every request
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage({
   params,
 }: {

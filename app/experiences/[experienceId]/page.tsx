@@ -6,6 +6,9 @@ import { verifyUser } from "@/app/actions";
 import { getCompanyIdFromExperience } from "@/lib/whop-helpers";
 import DashboardClient from "@/app/components/DashboardClient";
 
+// 🚫 Prevent caching — auth must be fresh on every request
+export const dynamic = 'force-dynamic';
+
 export default async function ExperiencePage({
   params,
 }: {
