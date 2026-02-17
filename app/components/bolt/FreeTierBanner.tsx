@@ -13,12 +13,12 @@ import { ClockIcon } from './icons';
 export function FreeTierTopBanner() {
     const { community, selectedUser } = useApp();
 
-    // Only show for admin users on Starter tier (free tier)
+    // Only show for admin users on Free tier
     // Members can't upgrade the community, so don't show them upgrade prompts
     if (selectedUser?.role !== 'admin') return null;
 
-    // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
-    const currentTier = (community?.tier || 'starter').toLowerCase();
+    // Note: Database may store 'Core' or 'Starter' for legacy, UI shows as 'Free'
+    const currentTier = (community?.tier || 'free').toLowerCase();
     if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
 
 
@@ -27,7 +27,7 @@ export function FreeTierTopBanner() {
             <div className="container mx-auto flex items-center justify-center gap-2">
                 <ClockIcon className="w-4 h-4 text-slate-400" />
                 <span>
-                    You're on the <strong>Starter Plan</strong>
+                    You're on the <strong>Free Plan</strong>
                 </span>
                 <Link
                     href="/pricing"
@@ -43,12 +43,12 @@ export function FreeTierTopBanner() {
 export function FreeTierGradientBanner() {
     const { community, selectedUser } = useApp();
 
-    // Only show for admin users on Starter tier (free tier)
+    // Only show for admin users on Free tier
     // Members can't upgrade the community, so don't show them upgrade prompts
     if (selectedUser?.role !== 'admin') return null;
 
-    // Note: Database uses 'Core' for Starter, UI shows as 'Starter'
-    const currentTier = (community?.tier || 'starter').toLowerCase();
+    // Note: Database may store 'Core' or 'Starter' for legacy, UI shows as 'Free'
+    const currentTier = (community?.tier || 'free').toLowerCase();
     if (currentTier !== 'starter' && currentTier !== 'free' && currentTier !== 'core') return null;
 
 
