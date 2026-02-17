@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Decode JWT payload WITHOUT verification (for logging only)
+// Decode JWT payload WITHOUT verification (for comparison only)
 function decodeJwtPayload(jwt: string): Record<string, any> | null {
   try {
     const parts = jwt.split('.');
@@ -16,75 +16,6 @@ function decodeJwtPayload(jwt: string): Record<string, any> | null {
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
 
-  // ============================================================
-  // 🔍 DIAGNOSTIC LOGGING — DEEP TOKEN ANALYSIS
-  // ============================================================
-  const whopHeader = request.headers.get('x-whop-user-token');
-  const tokenParam = url.searchParams.get('token');
-  const whopCoreUidToken = request.cookies.get('whop-core.uid-token')?.value;
-  const whopCoreUserId = request.cookies.get('whop-core.user-id')?.value;
-  const ourCookie = request.cookies.get('whop_user_token')?.value;
-
-  console.log(`🔬 ==================== MIDDLEWARE DEBUG ====================`);
-  console.log(`🔬 URL: ${url.pathname}${url.search}`);
-  console.log(`🔬 ?token= param: ${!!tokenParam}`);
-  console.log(`🔬 x-whop-user-token header: ${!!whopHeader}`);
-  console.log(`🔬 whop-core.uid-token cookie: ${!!whopCoreUidToken}`);
-  console.log(`🔬 whop-core.user-id cookie: ${whopCoreUserId || 'none'}`);
-  console.log(`🔬 our whop_user_token cookie: ${!!ourCookie}`);
-
-  // Decode the HEADER token
-  if (whopHeader) {
-    const headerClaims = decodeJwtPayload(whopHeader);
-    console.log(`🔬 HEADER JWT claims:`, JSON.stringify({
-      userId: headerClaims?.userId || headerClaims?.sub,
-      iat: headerClaims?.iat,
-      exp: headerClaims?.exp,
-      iatDate: headerClaims?.iat ? new Date(headerClaims.iat * 1000).toISOString() : 'N/A',
-      expDate: headerClaims?.exp ? new Date(headerClaims.exp * 1000).toISOString() : 'N/A',
-      roles: headerClaims?.roles,
-      experienceId: headerClaims?.experienceId,
-    }));
-  }
-
-  // Decode the whop-core.uid-token cookie
-  if (whopCoreUidToken) {
-    const cookieClaims = decodeJwtPayload(whopCoreUidToken);
-    if (cookieClaims) {
-      console.log(`🔬 COOKIE (whop-core.uid-token) JWT claims:`, JSON.stringify({
-        userId: cookieClaims?.userId || cookieClaims?.sub,
-        iat: cookieClaims?.iat,
-        exp: cookieClaims?.exp,
-      }));
-    } else {
-      console.log(`🔬 COOKIE (whop-core.uid-token) is NOT a JWT (value: ${whopCoreUidToken.substring(0, 20)}...)`);
-    }
-  }
-
-  // Decode our legacy cookie
-  if (ourCookie) {
-    const ourClaims = decodeJwtPayload(ourCookie);
-    if (ourClaims) {
-      console.log(`🔬 OUR COOKIE JWT claims:`, JSON.stringify({
-        userId: ourClaims?.userId || ourClaims?.sub,
-        iatDate: ourClaims?.iat ? new Date(ourClaims.iat * 1000).toISOString() : 'N/A',
-      }));
-    }
-  }
-
-  // Compare: are the header and cookie the SAME user?
-  if (whopHeader && whopCoreUidToken) {
-    const h = decodeJwtPayload(whopHeader);
-    const c = decodeJwtPayload(whopCoreUidToken);
-    if (h && c) {
-      const headerUser = h.userId || h.sub;
-      const cookieUser = c.userId || c.sub;
-      console.log(`🔬 MATCH CHECK: header=${headerUser} vs cookie=${cookieUser} → ${headerUser === cookieUser ? 'SAME' : '⚠️ DIFFERENT!'}`);
-    }
-  }
-  console.log(`🔬 ==========================================================`);
-  // ============================================================
-
   // Strip stale ?token= via redirect
   if (url.searchParams.has('token')) {
     const cleanUrl = new URL(url);
@@ -95,6 +26,44 @@ export function middleware(request: NextRequest) {
   }
 
   const requestHeaders = new Headers(request.headers);
+
+  // ============================================================
+  // 🔑 IDENTITY BLEED FIX
+  //
+  // ROOT CAUSE: Whop's proxy reads our stale `whop_user_token` cookie
+  // and uses it as the x-whop-user-token header. Even after account
+  // switch, the proxy sends the OLD user's JWT.
+  //
+  // FIX: Compare the header's userId with Whop's own `whop-core.uid-token`
+  // cookie (which IS updated correctly). If they differ, override the
+  // header with the correct cookie token.
+  // ============================================================
+  const headerToken = request.headers.get('x-whop-user-token');
+  const whopCoreToken = request.cookies.get('whop-core.uid-token')?.value;
+
+  if (headerToken && whopCoreToken) {
+    const headerClaims = decodeJwtPayload(headerToken);
+    const cookieClaims = decodeJwtPayload(whopCoreToken);
+
+    if (headerClaims && cookieClaims) {
+      const headerUser = headerClaims.userId || headerClaims.sub;
+      const cookieUser = cookieClaims.userId || cookieClaims.sub;
+
+      if (headerUser !== cookieUser) {
+        console.log(`🔑 IDENTITY MISMATCH DETECTED!`);
+        console.log(`   Header says: ${headerUser} (STALE — from proxy)`);
+        console.log(`   Cookie says: ${cookieUser} (CORRECT — from Whop session)`);
+        console.log(`   Overriding header with correct cookie token`);
+
+        // Replace the stale header token with Whop's correct cookie token
+        requestHeaders.set('x-whop-user-token', whopCoreToken);
+      }
+    }
+  } else if (!headerToken && whopCoreToken) {
+    // No header but cookie exists — use the cookie
+    console.log(`🔑 No header token, using whop-core.uid-token cookie`);
+    requestHeaders.set('x-whop-user-token', whopCoreToken);
+  }
 
   const response = NextResponse.next({
     request: {
@@ -108,9 +77,15 @@ export function middleware(request: NextRequest) {
   response.headers.set('Expires', '0');
   response.headers.set('Surrogate-Control', 'no-store');
 
-  // Clean up our legacy cookie
+  // Aggressively delete our stale cookie — THIS is what the proxy was reading
   if (request.cookies.has('whop_user_token')) {
-    response.cookies.delete('whop_user_token');
+    response.cookies.set('whop_user_token', '', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 0, // Expire immediately
+    });
   }
 
   return response;
