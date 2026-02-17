@@ -51,7 +51,7 @@ const ProfilePage: React.FC = () => {
         : null;
 
     // COSMETIC LOGIC
-    const nameColor = profile.metadata?.nameColor || '#FFFFFF';
+    const nameColor = profile.metadata?.nameColor || null;
     const title = profile.metadata?.title;
     const titlePos = profile.metadata?.titlePosition || 'prefix';
     const bannerUrl = profile.metadata?.bannerUrl;

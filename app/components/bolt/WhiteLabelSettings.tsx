@@ -9,7 +9,7 @@ const ToggleSwitch = ({ checked, onChange, disabled }: { checked: boolean; onCha
     <button
         onClick={() => !disabled && onChange(!checked)}
         disabled={disabled}
-        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${checked ? 'bg-green-500' : 'bg-slate-600'
+        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ${checked ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
         <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${checked ? 'translate-x-6' : 'translate-x-0'
@@ -125,7 +125,7 @@ export default function WhiteLabelSettings() {
                         value={customAppName}
                         onChange={(e) => setCustomAppName(e.target.value)}
                         placeholder="Daily Score"
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">Replace "CommunityXP" with your custom name (e.g. "Daily Score")</p>
                 </div>
@@ -138,7 +138,7 @@ export default function WhiteLabelSettings() {
                         value={logoUrl}
                         onChange={(e) => setLogoUrl(e.target.value)}
                         placeholder="https://example.com/logo.png"
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">Used in sidebar header and as default favicon</p>
                 </div>
@@ -163,7 +163,7 @@ export default function WhiteLabelSettings() {
                             value={themeColor}
                             disabled
                             placeholder="#7c3aed"
-                            className="flex-1 bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 outline-none font-mono cursor-not-allowed"
+                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none font-mono cursor-not-allowed"
                         />
                         {/* Preview */}
                         <div
@@ -184,7 +184,7 @@ export default function WhiteLabelSettings() {
                         value={faviconUrl}
                         onChange={(e) => setFaviconUrl(e.target.value)}
                         placeholder="https://example.com/favicon.ico"
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">If empty, logo URL will be used as favicon</p>
                 </div>
@@ -197,7 +197,7 @@ export default function WhiteLabelSettings() {
                         value={customFooterText}
                         onChange={(e) => setCustomFooterText(e.target.value)}
                         placeholder="Powered by Your Company"
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">If empty, footer text will be hidden</p>
                 </div>
