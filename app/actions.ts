@@ -36,12 +36,23 @@ export async function verifyUser(routeCompanyId?: string) {
     }
 
     const token = payload as any || {};
-    const whopUserId = token.userId || token.sub;
+    let whopUserId = token.userId || token.sub;
     const roles = token.roles || [];
 
     if (!whopUserId) {
       console.error("❌ No whopUserId in token");
       return null;
+    }
+
+    // 🔑 IDENTITY BLEED FIX: Check middleware-injected header for correct userId.
+    // When the proxy sends a stale token (wrong user), the middleware detects the
+    // mismatch via whop-core.user-id cookie and injects the correct userId here.
+    // This header is ALWAYS controlled by middleware — client cannot spoof it.
+    const correctUserId = rawHeaders.get('x-whop-correct-user-id');
+    if (correctUserId && correctUserId !== whopUserId) {
+      console.log(`🔑 IDENTITY OVERRIDE: SDK says ${whopUserId}, but Whop session says ${correctUserId}`);
+      console.log(`   Using correct userId: ${correctUserId}`);
+      whopUserId = correctUserId;
     }
 
     console.log(`🔐 Verifying user: ${whopUserId}${routeCompanyId ? ` for company: ${routeCompanyId}` : ''}`);

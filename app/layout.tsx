@@ -28,12 +28,19 @@ export default async function RootLayout({
   let experienceId = "";
 
   try {
-    const payload = await whopsdk.verifyUserToken(await headers());
+    const hdrs = await headers();
+    const payload = await whopsdk.verifyUserToken(hdrs);
     const token = payload as any;
-    verifiedUserId = token.userId || token.user_id; // Check snake_case too just in case
-    experienceId = token.experienceId || token.experience_id || ""; // 🟢 FIX: Check both casings
+    verifiedUserId = token.userId || token.user_id;
+    experienceId = token.experienceId || token.experience_id || "";
 
-    // We do NOT write to the DB here. actions.ts handles that.
+    // 🔑 IDENTITY BLEED FIX: Override stale userId from proxy with correct one
+    const correctUserId = hdrs.get('x-whop-correct-user-id');
+    if (correctUserId && correctUserId !== verifiedUserId) {
+      console.log(`🔑 Layout IDENTITY OVERRIDE: SDK=${verifiedUserId}, Whop=${correctUserId}`);
+      verifiedUserId = correctUserId;
+    }
+
     const roles = token.roles || [];
     verifiedRole = roles.some((r: string) =>
       ['owner', 'admin', 'staff', 'moderator'].includes(r)
