@@ -99,15 +99,15 @@ const ProfilePage: React.FC = () => {
                     </div>
 
                     <div className="text-center sm:text-left">
-                        <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={{ color: nameColor }}>
+                        <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={nameColor ? { color: nameColor } : undefined}>
                             {title && titlePos === 'prefix' && (
-                                <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
+                                <span className="text-xl opacity-70 font-normal text-slate-500 dark:text-slate-300">[{title}]</span>
                             )}
 
                             {profile.username}
 
                             {title && titlePos === 'suffix' && (
-                                <span className="text-xl opacity-70 font-normal text-slate-300">[{title}]</span>
+                                <span className="text-xl opacity-70 font-normal text-slate-500 dark:text-slate-300">[{title}]</span>
                             )}
                         </h1>
 
@@ -115,17 +115,17 @@ const ProfilePage: React.FC = () => {
 
                         <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
                             {profile.role === 'admin' && (
-                                <span className="text-xs font-bold bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
+                                <span className="text-xs font-bold bg-purple-500/20 text-purple-600 dark:text-purple-300 px-2 py-0.5 rounded-full">
                                     Admin
                                 </span>
                             )}
-                            <span className="text-xs font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full">
                                 Level {profile.level}
                             </span>
                         </div>
 
                         {profile.bannedUntil && new Date(profile.bannedUntil) > new Date() && (
-                            <div className="mt-2 text-sm bg-red-500/20 text-red-300 p-2 rounded-lg">
+                            <div className="mt-2 text-sm bg-red-500/20 text-red-600 dark:text-red-300 p-2 rounded-lg">
                                 <b>Banned until:</b> {new Date(profile.bannedUntil).toLocaleString()}
                             </div>
                         )}

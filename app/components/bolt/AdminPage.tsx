@@ -377,7 +377,7 @@ export default function AdminPage() {
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">{community?.name || "Admin Dashboard"}</h1>
                         <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-300 shadow-sm">
-                            <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600">|</span><span className="text-slate-200 font-semibold">{allUsers.length} Users</span><span className="text-slate-600">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
+                            <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600">|</span><span className="text-slate-700 dark:text-slate-200 font-semibold">{allUsers.length} Users</span><span className="text-slate-600">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
                         </div>
                     </div>
                 </div>
@@ -403,47 +403,47 @@ export default function AdminPage() {
                         <div className="lg:col-span-2 space-y-6">
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Select User</h3>
-                                <select id="user-select" value={targetUserId || ''} onChange={(e) => setTargetUserId(e.target.value)} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
+                                <select id="user-select" value={targetUserId || ''} onChange={(e) => setTargetUserId(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
                                     {allUsers.map((u: Profile) => <option key={u.id} value={u.id}>{u.username}</option>)}
                                 </select>
                             </div>
                             {targetUser && (
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
                                     <div className="flex justify-between items-start mb-6">
-                                        <div><h3 className="text-xl font-bold text-slate-900 dark:text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
+                                        <div><h3 className="text-xl font-bold text-slate-900 dark:text-white">{targetUser.username}</h3><span className={`text-xs px-2 py-0.5 rounded-full ${targetUser.role === 'admin' ? 'bg-purple-500/20 text-purple-600 dark:text-purple-300' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>{targetUser.role.toUpperCase()}</span></div>
                                         {targetUser.bannedUntil && new Date(targetUser.bannedUntil) > new Date() && <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm animate-pulse">BANNED</span>}
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
-                                            <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase">Manual Awards</label>
+                                        <div className="p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
+                                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase">Manual Awards</label>
                                             <div className="flex gap-2 mb-3 items-end">
-                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
+                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
                                                 <button onClick={handleAwardXp} disabled={!targetUser} className="bg-green-600 text-white px-2 rounded hover:bg-green-700 text-sm font-bold h-[38px] w-32">+XP</button>
                                             </div>
                                             <div className="flex gap-2 items-end">
-                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-700 text-white rounded p-2 text-sm border border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
                                                 <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-center">
-                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
-                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
-                                            <div className="bg-slate-900 p-2 rounded"><div className="text-xs text-slate-400">Freezes</div><input type="number" value={editFreezes} onChange={e => setEditFreezes(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-white focus:outline-none border-b border-slate-700 focus:border-purple-500" /></div>
+                                            <div className="bg-slate-100 dark:bg-slate-900 p-2 rounded"><div className="text-xs text-slate-500 dark:text-slate-400">XP</div><input type="number" value={editXp} onChange={e => setEditXp(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-slate-900 dark:text-white focus:outline-none border-b border-slate-300 dark:border-slate-700 focus:border-purple-500" /></div>
+                                            <div className="bg-slate-100 dark:bg-slate-900 p-2 rounded"><div className="text-xs text-slate-500 dark:text-slate-400">Streak</div><input type="number" value={editStreak} onChange={e => setEditStreak(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-slate-900 dark:text-white focus:outline-none border-b border-slate-300 dark:border-slate-700 focus:border-purple-500" /></div>
+                                            <div className="bg-slate-100 dark:bg-slate-900 p-2 rounded"><div className="text-xs text-slate-500 dark:text-slate-400">Freezes</div><input type="number" value={editFreezes} onChange={e => setEditFreezes(parseInt(e.target.value))} className="w-full bg-transparent text-center font-bold text-slate-900 dark:text-white focus:outline-none border-b border-slate-300 dark:border-slate-700 focus:border-purple-500" /></div>
                                         </div>
                                         <button onClick={handleAdminStatUpdate} className="w-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white py-2 rounded transition-colors text-sm font-semibold">Save Stats</button>
-                                        <div className="border-t border-slate-700 pt-4">
+                                        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                                             <div className="mb-4">
                                                 <h4 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-1"><ClockIcon className="w-3 h-3" /> Item History</h4>
                                                 <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                                     {targetUserItemLogs.length > 0 ? targetUserItemLogs.map((log: any) => (
-                                                        <div key={log.id} className="flex justify-between text-[10px] bg-slate-900/50 p-1.5 rounded">
-                                                            <span className="text-slate-300">{log.item_name}</span>
+                                                        <div key={log.id} className="flex justify-between text-[10px] bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded">
+                                                            <span className="text-slate-700 dark:text-slate-300">{log.item_name}</span>
                                                             <span className="text-slate-500">{new Date(log.used_at).toLocaleDateString()}</span>
                                                         </div>
                                                     )) : <p className="text-xs text-slate-600 italic">No items used.</p>}
                                                 </div>
                                             </div>
-                                            <button onClick={handleViewLogs} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded text-xs mb-2">View Action Logs</button>
+                                            <button onClick={handleViewLogs} className="w-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white py-2 rounded text-xs mb-2">View Action Logs</button>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button onClick={() => handleAdminBan(24)} disabled={isSelf} className="bg-red-900/30 text-red-400 hover:bg-red-900/50 py-2 rounded text-xs disabled:opacity-50">Ban 24h</button>
                                                 <button onClick={() => handleAdminBan(null)} disabled={isSelf} className="bg-red-600 text-white hover:bg-red-700 py-2 rounded text-xs disabled:opacity-50">Permaban</button>
@@ -547,29 +547,29 @@ export default function AdminPage() {
                                     <ToggleSwitch checked={showArchivedRewards} onChange={setShowArchivedRewards} />
                                 </div>
                             </div>
-                            <form onSubmit={handleRewardSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                            <form onSubmit={handleRewardSubmit} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
                                 <div className="flex gap-2 mb-2">
                                     {/* 🟢 FIXED: Removed disabled={!!editRewardAction} to allow editing */}
-                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action Type (e.g. daily_login)" required className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
-                                    <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Display Name (e.g. Daily Login)" className="bg-slate-800 border-slate-600 text-white rounded p-2 flex-1 text-sm" />
-                                    <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm" />
+                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action Type (e.g. daily_login)" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 flex-1 text-sm" />
+                                    <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Display Name (e.g. Daily Login)" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 flex-1 text-sm" />
+                                    <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-20 text-sm" />
                                 </div>
                                 <div className="flex gap-2">
                                     <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editRewardAction ? 'Update' : 'Add'}</button>
-                                    {editRewardAction && <button type="button" onClick={cancelEditReward} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                    {editRewardAction && <button type="button" onClick={cancelEditReward} className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-white px-4 py-1.5 rounded hover:bg-slate-400 dark:hover:bg-slate-500 text-sm">Cancel</button>}
                                 </div>
                             </form>
                             <div className="flex-grow overflow-y-auto pr-2 space-y-2">
                                 {filteredRewards.map(([key, value]) => {
                                     const r = value as Reward;
                                     return (
-                                        <div key={key} className={`flex justify-between items-center p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                            <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-white'}`}>{r.displayName || key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-slate-500">{key}</span><span className="text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                        <div key={key} className={`flex justify-between items-center p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
+                                            <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{r.displayName || key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-slate-500">{key}</span><span className="text-yellow-500 dark:text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
                                             <div className="flex gap-2 items-center">
                                                 {!r.isArchived && (
                                                     <ToggleSwitch checked={r.isActive} onChange={(val) => handleToggleRewardActive(key, val)} />
                                                 )}
-                                                {r.isArchived ? <button onClick={() => handleRestoreRewardClick(key)} className="text-green-400 hover:text-green-300 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditRewardClick(key, r)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteRewardClick(key)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                                {r.isArchived ? <button onClick={() => handleRestoreRewardClick(key)} className="text-green-400 hover:text-green-300 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditRewardClick(key, r)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteRewardClick(key)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
                                         </div>
                                     );
@@ -586,36 +586,36 @@ export default function AdminPage() {
                                     <ToggleSwitch checked={showArchivedBadges} onChange={setShowArchivedBadges} />
                                 </div>
                             </div>
-                            <form onSubmit={handleAddOrEditBadge} className="bg-slate-700/50 p-4 rounded-lg mb-4 space-y-3 border border-slate-600">
+                            <form onSubmit={handleAddOrEditBadge} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 space-y-3 border border-slate-200 dark:border-slate-600">
                                 {/* Row 1: Name + Description */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="col-span-1"><label className="text-xs text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
-                                    <div className="col-span-2"><label className="text-xs text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" /></div>
+                                    <div className="col-span-1"><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Name</label><input type="text" value={newBadgeName} onChange={e => setNewBadgeName(e.target.value)} placeholder="Badge Name" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm" /></div>
+                                    <div className="col-span-2"><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Description</label><input type="text" value={newBadgeDesc} onChange={e => setNewBadgeDesc(e.target.value)} placeholder="Description" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm" /></div>
                                 </div>
                                 {/* Row 2: Color/XP (under Name) + Auto-Trigger/Value/Action (under Description) */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                                     <div className="col-span-1 flex gap-3 items-end">
-                                        <div><label className="text-xs text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
-                                        <div><label className="text-xs text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>
+                                        <div><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Color</label><input type="color" value={newBadgeColor} onChange={e => setNewBadgeColor(e.target.value)} className="h-9 w-12 cursor-pointer bg-transparent border-0 p-0" /></div>
+                                        <div><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">XP Reward</label><input type="number" value={newBadgeXp} onChange={e => setNewBadgeXp(parseInt(e.target.value) || 0)} placeholder="0" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-20 text-sm h-9" /></div>
                                     </div>
                                     <div className="col-span-2 flex gap-3 items-end flex-wrap">
-                                        <div><label className="text-xs text-slate-400 mb-1 block">Auto-Trigger</label><select value={newBadgeTriggerType} onChange={e => setNewBadgeTriggerType(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36"><option value="none">None (Manual)</option><option value="xp_threshold">XP Threshold</option><option value="streak_days">Streak Days</option><option value="action_count">Action Count</option></select></div>
-                                        {newBadgeTriggerType !== 'none' && (<div><label className="text-xs text-slate-400 mb-1 block">{newBadgeTriggerType === 'xp_threshold' ? 'XP Amount' : newBadgeTriggerType === 'streak_days' ? 'Days' : 'Count'}</label><input type="number" value={newBadgeTriggerValue} onChange={e => setNewBadgeTriggerValue(parseInt(e.target.value) || 0)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-20 text-sm h-9" /></div>)}
-                                        {newBadgeTriggerType === 'action_count' && (<div><label className="text-xs text-slate-400 mb-1 block">Action Type</label><select value={newBadgeTriggerAction} onChange={e => setNewBadgeTriggerAction(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-36">{Object.keys(rewardsConfig).map(a => <option key={a} value={a}>{(rewardsConfig as any)[a]?.displayName || a}</option>)}</select></div>)}
+                                        <div><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Auto-Trigger</label><select value={newBadgeTriggerType} onChange={e => setNewBadgeTriggerType(e.target.value as any)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm h-9 w-36"><option value="none">None (Manual)</option><option value="xp_threshold">XP Threshold</option><option value="streak_days">Streak Days</option><option value="action_count">Action Count</option></select></div>
+                                        {newBadgeTriggerType !== 'none' && (<div><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">{newBadgeTriggerType === 'xp_threshold' ? 'XP Amount' : newBadgeTriggerType === 'streak_days' ? 'Days' : 'Count'}</label><input type="number" value={newBadgeTriggerValue} onChange={e => setNewBadgeTriggerValue(parseInt(e.target.value) || 0)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-20 text-sm h-9" /></div>)}
+                                        {newBadgeTriggerType === 'action_count' && (<div><label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Action Type</label><select value={newBadgeTriggerAction} onChange={e => setNewBadgeTriggerAction(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm h-9 w-36">{Object.keys(rewardsConfig).map(a => <option key={a} value={a}>{(rewardsConfig as any)[a]?.displayName || a}</option>)}</select></div>)}
                                     </div>
                                 </div>
                                 {/* Row 3: Icon + Submit */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                                     <div className="col-span-1">
-                                        <div className="flex justify-between items-center mb-1"><label className="text-xs text-slate-400 block">Icon Type</label><button type="button" onClick={() => { const newType = badgeIconType === 'PRESET' ? 'EMOJI' : 'PRESET'; setBadgeIconType(newType); setNewBadgeIcon(newType === 'PRESET' ? iconMapKeys[0] : '🏆'); }} className="text-[10px] uppercase font-bold bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">{badgeIconType} ⟳</button></div>
+                                        <div className="flex justify-between items-center mb-1"><label className="text-xs text-slate-500 dark:text-slate-400 block">Icon Type</label><button type="button" onClick={() => { const newType = badgeIconType === 'PRESET' ? 'EMOJI' : 'PRESET'; setBadgeIconType(newType); setNewBadgeIcon(newType === 'PRESET' ? iconMapKeys[0] : '🏆'); }} className="text-[10px] uppercase font-bold bg-slate-300 dark:bg-slate-600 px-2 py-0.5 rounded text-slate-700 dark:text-white hover:bg-slate-400 dark:hover:bg-slate-500">{badgeIconType} ⟳</button></div>
                                         <div className="flex gap-2 items-center">
-                                            <div className="w-9 h-9 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none overflow-hidden">{badgeIconType === 'PRESET' ? ((() => { const PreviewIcon = iconMap[newBadgeIcon] || iconMap['Snowflake']; return <PreviewIcon className="w-5 h-5" style={{ color: newBadgeColor }} />; })()) : (<span className="text-xl leading-none select-none">{newBadgeIcon}</span>)}</div>
-                                            {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
+                                            <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-600 flex items-center justify-center flex-none overflow-hidden">{badgeIconType === 'PRESET' ? ((() => { const PreviewIcon = iconMap[newBadgeIcon] || iconMap['Snowflake']; return <PreviewIcon className="w-5 h-5" style={{ color: newBadgeColor }} />; })()) : (<span className="text-xl leading-none select-none">{newBadgeIcon}</span>)}</div>
+                                            {badgeIconType === 'PRESET' ? (<select value={newBadgeIcon} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm h-9 w-full">{iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}</select>) : (<select value={popularEmojis.includes(newBadgeIcon) ? newBadgeIcon : popularEmojis[0]} onChange={e => setNewBadgeIcon(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm h-9 w-full font-emoji">{popularEmojis.map(emoji => (<option key={emoji} value={emoji}>{emoji}</option>))}</select>)}
                                         </div>
                                     </div>
                                     <div className="col-span-2 flex gap-2 items-end">
                                         <button type="submit" className="bg-blue-600 text-white px-6 h-9 rounded hover:bg-blue-700 font-bold text-sm">{editBadgeName ? 'Update Badge' : 'Add Badge'}</button>
-                                        {editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-600 text-white px-4 h-9 rounded hover:bg-slate-500 text-sm">Cancel</button>)}
+                                        {editBadgeName && (<button type="button" onClick={cancelEditBadge} className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-white px-4 h-9 rounded hover:bg-slate-400 dark:hover:bg-slate-500 text-sm">Cancel</button>)}
                                     </div>
                                 </div>
                             </form>
@@ -627,18 +627,18 @@ export default function AdminPage() {
                                     const isActive = b.isActive !== undefined ? b.isActive : true;
 
                                     return (
-                                        <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
+                                        <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-800 border border-slate-600">
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600">
                                                     {isPreset && BadgeIcon ? <BadgeIcon className="w-6 h-6" style={{ color: b.color }} /> : <span className="text-xl select-none">{b.icon}</span>}
                                                 </div>
-                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-white'}`}>{name}</p><p className="text-xs text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{b.xpReward > 0 && <span className="text-yellow-400 font-bold">{b.xpReward} XP</span>}{!b.isArchived && <span className={isActive ? "text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
+                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{b.xpReward > 0 && <span className="text-yellow-500 dark:text-yellow-400 font-bold">{b.xpReward} XP</span>}{!b.isArchived && <span className={isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
                                             </div>
                                             <div className="flex gap-2 items-center">
                                                 {!b.isArchived && (
                                                     <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                                 )}
-                                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                                {b.isArchived ? <button onClick={() => handleRestoreBadgeClick(name)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditBadgeClick(name, config as BadgeConfig)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteBadgeClick(name)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
                                         </div>
                                     )
@@ -666,25 +666,25 @@ export default function AdminPage() {
                         </div>
                         {isFeatureEnabled('quests') ? (
                             <>
-                                <form onSubmit={handleQuestSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                <form onSubmit={handleQuestSubmit} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                                        <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                        <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm" />
-                                        <select value={questBadgeReward || ''} onChange={e => setQuestBadgeReward(e.target.value || null)} className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm">
+                                        <input type="text" value={questTitle} onChange={e => setQuestTitle(e.target.value)} placeholder="Title" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm" />
+                                        <input type="number" value={questXpReward} onChange={e => setQuestXpReward(parseInt(e.target.value))} placeholder="XP" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm" />
+                                        <select value={questBadgeReward || ''} onChange={e => setQuestBadgeReward(e.target.value || null)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm">
                                             <option value="">No Badge Reward</option>
                                             {Object.entries(badgesConfig).filter(([_, b]) => !(b as any).isArchived).map(([name]) => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
                                         </select>
                                     </div>
-                                    <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-slate-800 border-slate-600 text-white rounded p-2 w-full text-sm mb-2" rows={1} />
+                                    <textarea value={questDescription} onChange={e => setQuestDescription(e.target.value)} placeholder="Description" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-full text-sm mb-2" rows={1} />
                                     <div className="space-y-1 max-h-20 overflow-y-auto mb-2">
                                         {questTasks.map((t, i) => (
                                             <div key={i} className="flex gap-1 mb-1">
                                                 <div className="flex-1 flex flex-col gap-1">
                                                     <div className="flex gap-1">
-                                                        <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
-                                                        <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-slate-800 text-white text-xs rounded p-1 border border-slate-600 w-12 text-center" />
+                                                        <select value={t.actionType} onChange={e => handleUpdateTask(i, 'actionType', e.target.value)} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs rounded p-1 border border-slate-300 dark:border-slate-600 flex-1">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k}</option>)}</select>
+                                                        <input type="number" value={t.targetCount} onChange={e => handleUpdateTask(i, 'targetCount', parseInt(e.target.value))} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs rounded p-1 border border-slate-300 dark:border-slate-600 w-12 text-center" />
                                                     </div>
                                                 </div>
                                                 <button type="button" onClick={() => handleRemoveTask(i)} className="text-red-400 px-1 self-start pt-1">×</button>
@@ -694,16 +694,16 @@ export default function AdminPage() {
                                     </div>
                                     <div className="flex gap-2">
                                         <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editingQuest ? 'Update' : 'Create'}</button>
-                                        {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-600 text-white px-4 py-1.5 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                        {editingQuest && <button type="button" onClick={resetQuestForm} className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-white px-4 py-1.5 rounded hover:bg-slate-400 dark:hover:bg-slate-500 text-sm">Cancel</button>}
                                     </div>
                                 </form>
                                 <div className="flex-grow overflow-y-auto space-y-2 pr-2">
                                     {filteredQuests.map(q => (
-                                        <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-700/30 border-slate-700 hover:border-slate-500'} transition-colors`}>
-                                            <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                        <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
+                                            <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-500 dark:text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
                                             <div className="flex gap-2 items-center">
                                                 {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
-                                                {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 text-xs font-bold">Delete</button></>}
+                                                {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-500 dark:text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
                                         </div>
                                     ))}
@@ -734,27 +734,27 @@ export default function AdminPage() {
 
                         {isFeatureEnabled('store') ? (
                             <>
-                                <form onSubmit={handleItemSubmit} className="bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-600">
+                                <form onSubmit={handleItemSubmit} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
                                     <div className="grid grid-cols-2 gap-4 mb-4">
                                         <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Item Name</label>
-                                            <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Name</label>
+                                            <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Cost (XP)</label>
-                                            <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} required className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Cost (XP)</label>
+                                            <input type="number" value={itemCost} onChange={e => setItemCost(parseInt(e.target.value))} required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
                                         </div>
                                     </div>
 
                                     <div className="mb-4">
-                                        <label className="block text-xs text-slate-400 mb-1">Description</label>
-                                        <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" rows={2} />
+                                        <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Description</label>
+                                        <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" rows={2} />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4 mb-4">
                                         <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Item Type</label>
-                                            <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full">
+                                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Type</label>
+                                            <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full">
                                                 <optgroup label="Consumables">
                                                     <option value="STREAK_FREEZE">Streak Freeze (+1 Freeze)</option>
                                                     <option value="XP_GIFT">XP Gift (Flat XP Bonus)</option>
@@ -773,62 +773,62 @@ export default function AdminPage() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Icon</label>
+                                            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Icon</label>
                                             <div className="flex gap-2 items-center">
-                                                <div className="w-10 h-10 bg-slate-800 rounded border border-slate-600 flex items-center justify-center flex-none">
+                                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-600 flex items-center justify-center flex-none">
                                                     {/* 🟢 FIXED: RenderIconPreview now correctly uses metaColor */}
                                                     <RenderIconPreview iconName={itemIcon} color={metaColor || '#a855f7'} />
                                                 </div>
-                                                <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full h-10">
+                                                <select value={itemIcon} onChange={e => setItemIcon(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full h-10">
                                                     {iconMapKeys.map(k => <option key={k} value={k}>{k}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-900/50 p-3 rounded border border-slate-700 mb-4">
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded border border-slate-200 dark:border-slate-700 mb-4">
                                         {itemType === 'TIMED_EFFECT' && (
                                             <div className="flex gap-2">
-                                                <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="Hours" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
-                                                <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm flex-1" />
+                                                <input type="number" value={itemDuration || ''} onChange={e => setItemDuration(parseInt(e.target.value))} placeholder="Hours" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm flex-1" />
+                                                <input type="number" value={itemModifier || ''} onChange={e => setItemModifier(parseFloat(e.target.value))} placeholder="Multiplier (e.g. 1.5)" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm flex-1" />
                                             </div>
                                         )}
                                         {itemType === 'XP_GIFT' && (
                                             <div>
-                                                <label className="block text-xs text-slate-400 mb-1">XP Amount to Award</label>
-                                                <input type="number" value={xpAmount} onChange={e => setXpAmount(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. 100" />
+                                                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">XP Amount to Award</label>
+                                                <input type="number" value={xpAmount} onChange={e => setXpAmount(parseInt(e.target.value))} min="1" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" placeholder="e.g. 100" />
                                             </div>
                                         )}
                                         {itemType === 'RANDOM_XP' && (
                                             <div className="flex gap-2">
                                                 <div className="flex-1">
-                                                    <label className="block text-xs text-slate-400 mb-1">Min XP</label>
-                                                    <input type="number" value={xpMin} onChange={e => setXpMin(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Min XP</label>
+                                                    <input type="number" value={xpMin} onChange={e => setXpMin(parseInt(e.target.value))} min="1" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <label className="block text-xs text-slate-400 mb-1">Max XP</label>
-                                                    <input type="number" value={xpMax} onChange={e => setXpMax(parseInt(e.target.value))} min="1" className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" />
+                                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Max XP</label>
+                                                    <input type="number" value={xpMax} onChange={e => setXpMax(parseInt(e.target.value))} min="1" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
                                                 </div>
                                             </div>
                                         )}
                                         {(itemType === 'NAME_COLOR' || itemType === 'AVATAR_PULSE' || itemType === 'FRAME') && (
                                             <div>
-                                                <label className="block text-xs text-slate-400 mb-1">{itemType === 'FRAME' ? 'Frame Color' : 'Select Color'}</label>
+                                                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{itemType === 'FRAME' ? 'Frame Color' : 'Select Color'}</label>
                                                 <div className="flex gap-2 items-center">
                                                     <input type="color" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="h-10 w-10 cursor-pointer border-none bg-transparent" />
-                                                    <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-24" />
+                                                    <input type="text" value={metaColor} onChange={e => setMetaColor(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-24" />
                                                 </div>
                                             </div>
                                         )}
                                         {itemType === 'TITLE' && (
                                             <div className="flex gap-2">
                                                 <div className="flex-grow">
-                                                    <label className="block text-xs text-slate-400 mb-1">Title Text</label>
-                                                    <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm w-full" placeholder="e.g. The Wizard" />
+                                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Title Text</label>
+                                                    <input type="text" value={metaText} onChange={e => setMetaText(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" placeholder="e.g. The Wizard" />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs text-slate-400 mb-1">Position</label>
-                                                    <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-slate-800 border-slate-600 text-white rounded p-2 text-sm">
+                                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Position</label>
+                                                    <select value={metaPosition} onChange={e => setMetaPosition(e.target.value as any)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm">
                                                         <option value="prefix">Prefix (Start)</option>
                                                         <option value="suffix">Suffix (End)</option>
                                                     </select>
@@ -837,10 +837,10 @@ export default function AdminPage() {
                                         )}
                                         {itemType === 'BANNER' && (
                                             <div>
-                                                <label className="block text-xs text-slate-400 mb-1">Banner Image</label>
+                                                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Banner Image</label>
                                                 {metaUrl && (
                                                     <div className="mb-2">
-                                                        <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-600" />
+                                                        <img src={metaUrl} alt="Preview" className="h-20 w-full object-cover rounded border border-slate-300 dark:border-slate-600" />
                                                         <button type="button" onClick={() => setMetaUrl('')} className="text-xs text-red-400 underline mt-1">Remove</button>
                                                     </div>
                                                 )}
@@ -863,7 +863,7 @@ export default function AdminPage() {
 
                                     <div className="flex gap-2">
                                         <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-bold text-sm w-full">{editingItem ? 'Update Item' : 'Create Item'}</button>
-                                        {editingItem && <button type="button" onClick={resetItemForm} className="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-500 text-sm">Cancel</button>}
+                                        {editingItem && <button type="button" onClick={resetItemForm} className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-white px-4 py-2 rounded hover:bg-slate-400 dark:hover:bg-slate-500 text-sm">Cancel</button>}
                                     </div>
                                 </form>
 
@@ -873,7 +873,7 @@ export default function AdminPage() {
                                         <span className="group-open:rotate-90 transition-transform">▶</span>
                                         📖 Item Type Reference Guide
                                     </summary>
-                                    <div className="absolute z-20 left-0 right-0 mt-2 space-y-3 text-sm text-slate-300 bg-slate-900 p-4 rounded-lg border border-slate-600 shadow-xl max-h-[250px] overflow-y-auto">
+                                    <div className="absolute z-20 left-0 right-0 mt-2 space-y-3 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-600 shadow-xl max-h-[250px] overflow-y-auto">
                                         <div>
                                             <h4 className="font-bold text-purple-400 mb-1">🔥 Consumables</h4>
                                             <ul className="space-y-1 ml-4 text-xs">
@@ -902,20 +902,20 @@ export default function AdminPage() {
 
                                 <div className="flex-grow overflow-y-auto pr-2 space-y-2">
                                     {filteredStore.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-700/30 border-slate-700">
+                                        <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 bg-slate-800 rounded flex items-center justify-center">
+                                                    <div className="w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
                                                         <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                                     </div>
-                                                    <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-600`}>{item.itemType}</span>
-                                                    <p className="font-bold text-sm text-white">{item.name}</p>
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600`}>{item.itemType}</span>
+                                                    <p className="font-bold text-sm text-slate-900 dark:text-white">{item.name}</p>
                                                 </div>
                                                 <p className="text-xs text-slate-400">{item.cost} XP</p>
                                             </div>
                                             <div className="flex gap-2 items-center">
                                                 {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
-                                                {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-400 hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
+                                                {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
                                         </div>
                                     ))}
@@ -942,9 +942,9 @@ export default function AdminPage() {
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Webhook Integration</h3>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">Paste this URL into your Whop Developer Dashboard to receive automatic updates for subscriptions and payments.</p>
-                                <div className="flex items-center gap-2 bg-slate-900 p-3 rounded border border-slate-700 mb-4">
+                                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-3 rounded border border-slate-300 dark:border-slate-700 mb-4">
                                     <code className="text-green-400 text-sm flex-1 truncate">{webhookUrl}</code>
-                                    <button onClick={handleCopyWebhook} className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded">Copy</button>
+                                    <button onClick={handleCopyWebhook} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-xs px-3 py-1.5 rounded">Copy</button>
                                 </div>
 
                                 {/* Collapsible Webhook Setup Guide */}
@@ -953,21 +953,21 @@ export default function AdminPage() {
                                         <span className="group-open:rotate-90 transition-transform">▶</span>
                                         Webhook Setup Guide
                                     </summary>
-                                    <div className="mt-4 space-y-4 text-sm text-slate-300 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                                    <div className="mt-4 space-y-4 text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
                                         <div>
-                                            <h4 className="font-bold text-white mb-2">Step 1: Access Your Whop Developer Dashboard</h4>
+                                            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Step 1: Access Your Whop Developer Dashboard</h4>
                                             <p>Navigate to <a href="https://dash.whop.com/developer" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">dash.whop.com/developer</a> and select your app.</p>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-2">Step 2: Open Webhook Settings</h4>
+                                            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Step 2: Open Webhook Settings</h4>
                                             <p>Click on the <strong>"Webhooks"</strong> tab in the left sidebar.</p>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-2">Step 3: Add the Webhook URL</h4>
+                                            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Step 3: Add the Webhook URL</h4>
                                             <p>Click <strong>"Create Webhook"</strong> and paste the URL from above into the endpoint field.</p>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-2">Step 4: Select Events</h4>
+                                            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Step 4: Select Events</h4>
                                             <p>Enable these webhook events:</p>
                                             <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-slate-400">
                                                 <li><code className="text-green-400">membership.went_valid</code> – New subscription</li>
@@ -976,7 +976,7 @@ export default function AdminPage() {
                                             </ul>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-2">Step 5: Save & Test</h4>
+                                            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Step 5: Save & Test</h4>
                                             <p>Click <strong>"Save"</strong>, then use the <strong>"Send Test"</strong> button to verify the connection.</p>
                                         </div>
                                         <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3 mt-4">
@@ -998,7 +998,7 @@ export default function AdminPage() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
-                                                <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-2 text-sm">
+                                                <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-2 text-sm">
                                                     <option value="starter">Starter (Free)</option>
                                                     <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
                                                 </select>
@@ -1008,28 +1008,28 @@ export default function AdminPage() {
                                         <div>
                                             <label className="block text-xs font-medium text-slate-400 mb-2">Trigger Events (For Quest Testing)</label>
                                             <div className="flex flex-wrap gap-2">
-                                                <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                <button onClick={() => handleSimulateRenewal(targetUserId || '')} disabled={!targetUserId} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white px-3 py-1.5 rounded text-xs border border-slate-300 dark:border-slate-600">
                                                     Simulate Renewal
                                                 </button>
                                                 <button onClick={async () => {
                                                     if (!targetUserId) return;
                                                     await handleRecordAction(targetUserId, 'post_chat_message', 'manual'); await withRefresh(async () => { });
                                                     showNotification("Simulated: Post Message");
-                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                }} disabled={!targetUserId} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white px-3 py-1.5 rounded text-xs border border-slate-300 dark:border-slate-600">
                                                     Simulate Message
                                                 </button>
                                                 <button onClick={async () => {
                                                     if (!targetUserId) return;
                                                     await handleRecordAction(targetUserId, 'complete_module', 'manual'); await withRefresh(async () => { });
                                                     showNotification("Simulated: Lesson Complete");
-                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                }} disabled={!targetUserId} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white px-3 py-1.5 rounded text-xs border border-slate-300 dark:border-slate-600">
                                                     Simulate Lesson
                                                 </button>
                                                 <button onClick={async () => {
                                                     if (!targetUserId) return;
                                                     await handleRecordAction(targetUserId, 'invite_friend', 'manual'); await withRefresh(async () => { });
                                                     showNotification("Simulated: Invite");
-                                                }} disabled={!targetUserId} className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs border border-slate-600">
+                                                }} disabled={!targetUserId} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white px-3 py-1.5 rounded text-xs border border-slate-300 dark:border-slate-600">
                                                     Simulate Invite
                                                 </button>
                                             </div>

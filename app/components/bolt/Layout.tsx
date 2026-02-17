@@ -187,7 +187,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                                     <button
                                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                        className="lg:hidden p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none"
+                                        className="lg:hidden p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none"
                                     >
                                         {isMobileMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
                                     </button>
@@ -217,8 +217,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     <Avatar src={selectedUser.avatarUrl} alt={selectedUser.username} className="w-10 h-10 rounded-full" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-white">{selectedUser.username}</p>
-                                    <p className="text-xs text-slate-400">{selectedUser.xp.toLocaleString()} XP</p>
+                                    <p className="font-bold text-slate-900 dark:text-white">{selectedUser.username}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{selectedUser.xp.toLocaleString()} XP</p>
                                 </div>
                             </Link>
 
@@ -227,7 +227,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className={`${navLinkClasses} ${pathname === item.href ? activeClass : 'text-slate-300 hover:bg-slate-700'}`}
+                                        className={`${navLinkClasses} ${pathname === item.href ? activeClass : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                     >
                                         <item.icon className="h-5 w-5" />
                                         <span className="flex-grow">{item.label}</span>

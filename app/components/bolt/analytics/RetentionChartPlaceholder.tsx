@@ -9,32 +9,32 @@ const RetentionChartPlaceholder: React.FC = () => {
         { date: 'Jul 1 - Jul 7', values: [100, 93] },
         { date: 'Jul 8 - Jul 14', values: [100] },
     ];
-    
+
     const getColor = (value: number) => {
         if (value > 85) return 'bg-teal-500';
         if (value > 70) return 'bg-teal-600';
         if (value > 55) return 'bg-teal-700';
         if (value > 0) return 'bg-teal-800';
-        return 'bg-slate-700';
+        return 'bg-slate-200 dark:bg-slate-700';
     };
 
     return (
-        <div className="mt-4 p-4 bg-slate-700/30 rounded-lg overflow-x-auto">
+        <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg overflow-x-auto">
             <table className="w-full text-sm text-left border-separate border-spacing-1">
                 <thead>
                     <tr>
-                        <th className="p-2 font-normal text-slate-400">Cohort</th>
+                        <th className="p-2 font-normal text-slate-500 dark:text-slate-400">Cohort</th>
                         {weeks.map(week => (
-                            <th key={week} className="p-2 font-normal text-slate-400 text-center w-1/6">{week}</th>
+                            <th key={week} className="p-2 font-normal text-slate-500 dark:text-slate-400 text-center w-1/6">{week}</th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
                     {cohorts.map(cohort => (
                         <tr key={cohort.date}>
-                            <td className="p-2 text-slate-300">{cohort.date}</td>
+                            <td className="p-2 text-slate-600 dark:text-slate-300">{cohort.date}</td>
                             {cohort.values.map((value, index) => (
-                                <td 
+                                <td
                                     key={index}
                                     className={`p-2 rounded text-white text-center font-semibold ${getColor(value)}`}
                                 >
