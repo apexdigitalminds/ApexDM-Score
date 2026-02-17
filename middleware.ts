@@ -2,17 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Whop's reverse proxy injects x-whop-user-token header on EVERY request.
-  // Trust the proxy — do NOT read ?token= from the URL or use cookies.
-  //
-  // WHY: The iframe URL's ?token= param is "sticky" — it persists from the
-  // previous user's session even after account switches. If we read it, we
-  // overwrite the proxy's fresh header with a stale token, causing identity bleed.
+  const url = request.nextUrl;
+
+  // 🔑 CRITICAL: Strip stale ?token= from the URL via redirect.
+  // The Whop Proxy prioritizes ?token= over the active session cookie.
+  // If the URL has a leftover token from a previous user, the proxy will
+  // inject THAT stale token into x-whop-user-token, ignoring the new user's
+  // session. Redirecting to a clean URL forces the proxy to use the active
+  // session cookie and generate a fresh token for the correct user.
+  if (url.searchParams.has('token')) {
+    const cleanUrl = new URL(url);
+    cleanUrl.searchParams.delete('token');
+    return NextResponse.redirect(cleanUrl);
+  }
 
   const requestHeaders = new Headers(request.headers);
-
-  // ❌ REMOVED: Do NOT read ?token= from URL — it can be stale.
-  // The Whop proxy has already put the correct token in x-whop-user-token.
 
   const response = NextResponse.next({
     request: {
@@ -24,8 +28,9 @@ export function middleware(request: NextRequest) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');
+  response.headers.set('Surrogate-Control', 'no-store');
 
-  // Clear any leftover cookie from previous code versions
+  // Clean up legacy cookies
   if (request.cookies.has('whop_user_token')) {
     response.cookies.delete('whop_user_token');
   }
@@ -33,7 +38,6 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
-// Run on all routes except static assets
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
