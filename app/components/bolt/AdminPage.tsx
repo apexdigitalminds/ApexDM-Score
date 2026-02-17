@@ -998,8 +998,8 @@ export default function AdminPage() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Simulate Tier</label>
-                                                <select value={community?.tier?.toLowerCase() || "starter"} onChange={handleTierChange} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-2 text-sm">
-                                                    <option value="starter">Starter (Free)</option>
+                                                <select value={community?.tier?.toLowerCase() || "free"} onChange={handleTierChange} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-lg p-2 text-sm">
+                                                    <option value="free">Free</option>
                                                     <option value="pro">Pro ($79)</option><option value="elite">Elite ($149)</option>
                                                 </select>
                                             </div>

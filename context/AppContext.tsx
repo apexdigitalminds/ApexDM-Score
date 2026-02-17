@@ -384,8 +384,8 @@ export const AppProvider = ({
             if (trialActive) {
                 return true; // Active trial = Elite access
             }
-            // 🔧 CRITICAL FIX: Trial expired = downgrade to Starter (not lock out)
-            // User keeps Starter features, sees upgrade prompts for paid features
+            // 🔧 CRITICAL FIX: Trial expired = downgrade to Free (not lock out)
+            // User keeps Free features, sees upgrade prompts for paid features
             return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard', 'streaks', 'xp', 'levels'].includes(f);
         }
 
@@ -405,8 +405,8 @@ export const AppProvider = ({
             return !['store', 'retention', 'inventory', 'white_label'].includes(f);
         }
 
-        // 🔧 RENAMED: core → starter, and 'free' maps to starter
-        // Starter = basic gamification features
+        // 🔧 RENAMED: Free tier (also handles legacy 'core'/'starter' values)
+        // Free = basic gamification features
         if (tierValue === 'starter' || tierValue === 'core' || tierValue === 'free') {
             return ['badges', 'leaderboard', 'manual_actions', 'engagement', 'dashboard', 'streaks', 'xp', 'levels'].includes(f);
         }

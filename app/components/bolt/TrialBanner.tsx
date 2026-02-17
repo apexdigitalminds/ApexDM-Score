@@ -23,11 +23,11 @@ const TrialBanner = () => {
     const currentTier = (community.tier || "starter").toLowerCase();
     if (currentTier !== 'trial') return null;
 
-    // Handle early downgrade to Starter
+    // Handle early downgrade to Free
     const handleDowngrade = async () => {
         setIsDowngrading(true);
         try {
-            const success = await adminUpdateCommunityTier('Core' as any);
+            const success = await adminUpdateCommunityTier('Free' as any);
             if (success) {
                 setShowConfirm(false);
                 const dashboardPath = experienceId ? `/dashboard/${experienceId}` : '/admin';
@@ -36,7 +36,7 @@ const TrialBanner = () => {
             }
         } catch (error) {
             console.error('Downgrade failed:', error);
-            alert('Failed to switch to Starter. Please try again.');
+            alert('Failed to switch to Free. Please try again.');
         } finally {
             setIsDowngrading(false);
         }
@@ -65,7 +65,7 @@ const TrialBanner = () => {
                             onClick={() => setShowConfirm(true)}
                             className="bg-transparent text-white/80 hover:text-white border border-white/30 hover:border-white px-3 py-1 rounded-full text-xs font-medium transition-colors"
                         >
-                            Switch to Starter
+                            Switch to Free
                         </button>
                     </div>
                 </div>
@@ -75,7 +75,7 @@ const TrialBanner = () => {
             {showConfirm && (
                 <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 shadow-2xl">
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Switch to Starter Plan?</h3>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Switch to Free Plan?</h3>
                         <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">
                             You'll lose access to Elite features like:
                         </p>
@@ -116,7 +116,7 @@ const TrialBanner = () => {
                                         Switching...
                                     </>
                                 ) : (
-                                    'Switch to Starter'
+                                    'Switch to Free'
                                 )}
                             </button>
                         </div>

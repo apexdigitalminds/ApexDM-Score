@@ -20,22 +20,23 @@ const SpinnerIcon = ({ className }: { className?: string }) => (
 );
 
 export default function TrialExpiredModal() {
-    const { community, getTrialStatus, adminUpdateCommunityTier, experienceId } = useApp();
+    const { community, selectedUser, getTrialStatus, adminUpdateCommunityTier, experienceId } = useApp();
     const { isActive } = getTrialStatus();
     const router = useRouter();
     const [isDowngrading, setIsDowngrading] = useState(false);
 
     // Show only if trial tier but expired
     const showModal = community?.tier === 'trial' && !isActive;
+    const isAdmin = selectedUser?.role === 'admin';
 
     if (!showModal) return null;
 
-    // Handle downgrade to Starter (free tier)
-    const handleContinueWithStarter = async () => {
+    // Handle downgrade to Free tier
+    const handleContinueWithFree = async () => {
         setIsDowngrading(true);
         try {
-            // Update tier to 'starter' (free tier)
-            const success = await adminUpdateCommunityTier('Core' as any); // DB uses 'Core', UI shows 'Starter'
+            // Update tier to 'Free'
+            const success = await adminUpdateCommunityTier('Free' as any);
             if (success) {
                 // Navigate to dashboard after tier update
                 const dashboardPath = experienceId ? `/dashboard/${experienceId}` : '/admin';
@@ -59,52 +60,67 @@ export default function TrialExpiredModal() {
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                     Your Elite Trial Has Ended
                 </h2>
-                <p className="text-slate-600 dark:text-slate-300 mb-4">
-                    Thanks for trying out our Elite features! You can continue with the <strong className="text-green-400">Starter Plan</strong> which includes:
-                </p>
 
-                {/* Starter features list */}
-                <ul className="text-left text-sm text-slate-600 dark:text-slate-300 mb-6 space-y-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
-                    <li className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> XP & Leveling System
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> Daily Streaks & Badges
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> Leaderboards
-                    </li>
-                    <li className="flex items-center gap-2">
-                        <span className="text-green-400">✓</span> Manual Action Tracking
-                    </li>
-                </ul>
+                {isAdmin ? (
+                    <>
+                        <p className="text-slate-600 dark:text-slate-300 mb-4">
+                            Thanks for trying out our Elite features! You can continue with the <strong className="text-green-500 dark:text-green-400">Free Plan</strong> which includes:
+                        </p>
 
-                <div className="flex flex-col gap-3">
-                    <button
-                        onClick={handleContinueWithStarter}
-                        disabled={isDowngrading}
-                        className="block w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-wait text-white font-bold py-3 px-6 rounded-lg transition shadow-lg flex items-center justify-center gap-2"
-                    >
-                        {isDowngrading ? (
-                            <>
-                                <SpinnerIcon className="w-5 h-5" />
-                                Switching to Starter...
-                            </>
-                        ) : (
-                            'Continue with Starter →'
-                        )}
-                    </button>
-                    <Link
-                        href="/pricing"
-                        className="block w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-700 transition shadow-lg text-center"
-                    >
-                        Upgrade for More Features
-                    </Link>
-                </div>
+                        {/* Free features list */}
+                        <ul className="text-left text-sm text-slate-600 dark:text-slate-300 mb-6 space-y-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4">
+                            <li className="flex items-center gap-2">
+                                <span className="text-green-400">✓</span> XP & Leveling System
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <span className="text-green-400">✓</span> Daily Streaks & Badges
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <span className="text-green-400">✓</span> Leaderboards
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <span className="text-green-400">✓</span> Manual Action Tracking
+                            </li>
+                        </ul>
 
-                <p className="text-xs text-slate-400 mt-4">
-                    <strong>Note:</strong> If you started a trial with payment details, remember to cancel in Whop to avoid being charged.
-                </p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={handleContinueWithFree}
+                                disabled={isDowngrading}
+                                className="block w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-wait text-white font-bold py-3 px-6 rounded-lg transition shadow-lg flex items-center justify-center gap-2"
+                            >
+                                {isDowngrading ? (
+                                    <>
+                                        <SpinnerIcon className="w-5 h-5" />
+                                        Switching to Free...
+                                    </>
+                                ) : (
+                                    'Continue with Free →'
+                                )}
+                            </button>
+                            <Link
+                                href="/pricing"
+                                className="block w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-600 hover:to-purple-700 transition shadow-lg text-center"
+                            >
+                                Upgrade for More Features
+                            </Link>
+                        </div>
+
+                        <p className="text-xs text-slate-400 mt-4">
+                            <strong>Note:</strong> If you started a trial with payment details, remember to cancel in Whop to avoid being charged.
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <p className="text-slate-600 dark:text-slate-300 mb-6">
+                            The Elite trial for this community has ended. Your community admin will need to select a plan to continue.
+                        </p>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                            You'll still have access to all basic features once your admin selects a plan.
+                        </p>
+                    </>
+                )}
+
                 <p className="text-xs text-slate-500 mt-2">
                     Need help? Contact apexdigitalminds@gmail.com
                 </p>
