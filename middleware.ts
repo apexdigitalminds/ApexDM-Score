@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Decode JWT payload WITHOUT verification (for comparison only)
+// Decode JWT payload WITHOUT verification (for user ID comparison only)
 function decodeJwtPayload(jwt: string): Record<string, any> | null {
   try {
     const parts = jwt.split('.');
@@ -25,45 +25,64 @@ export function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  const requestHeaders = new Headers(request.headers);
-
   // ============================================================
   // 🔑 IDENTITY BLEED FIX
   //
-  // ROOT CAUSE: Whop's proxy reads our stale `whop_user_token` cookie
-  // and uses it as the x-whop-user-token header. Even after account
-  // switch, the proxy sends the OLD user's JWT.
+  // ROOT CAUSE: The Whop proxy reads our stale `whop_user_token` cookie
+  // and uses it as the x-whop-user-token header. Even after an account
+  // switch, the proxy sends the OLD user's JWT in the header.
   //
-  // FIX: Compare the header's userId with Whop's own `whop-core.uid-token`
-  // cookie (which IS updated correctly). If they differ, override the
-  // header with the correct cookie token.
+  // Whop's OWN cookies (whop-core.user-id, whop-core.uid-token) update
+  // correctly on account switch.
+  //
+  // FIX: Detect the mismatch. If our stale cookie is present, delete it
+  // and redirect. The proxy's next request (without our stale cookie)
+  // will use Whop's correct session cookies to generate a fresh token.
   // ============================================================
   const headerToken = request.headers.get('x-whop-user-token');
-  const whopCoreToken = request.cookies.get('whop-core.uid-token')?.value;
+  const whopCoreUserId = request.cookies.get('whop-core.user-id')?.value;
+  const ourCookie = request.cookies.get('whop_user_token')?.value;
 
-  if (headerToken && whopCoreToken) {
+  if (headerToken && whopCoreUserId) {
     const headerClaims = decodeJwtPayload(headerToken);
-    const cookieClaims = decodeJwtPayload(whopCoreToken);
-
-    if (headerClaims && cookieClaims) {
+    if (headerClaims) {
       const headerUser = headerClaims.userId || headerClaims.sub;
-      const cookieUser = cookieClaims.userId || cookieClaims.sub;
 
-      if (headerUser !== cookieUser) {
+      if (headerUser && headerUser !== whopCoreUserId) {
         console.log(`🔑 IDENTITY MISMATCH DETECTED!`);
-        console.log(`   Header says: ${headerUser} (STALE — from proxy)`);
-        console.log(`   Cookie says: ${cookieUser} (CORRECT — from Whop session)`);
-        console.log(`   Overriding header with correct cookie token`);
+        console.log(`   Header (proxy): ${headerUser} (STALE)`);
+        console.log(`   Whop session:   ${whopCoreUserId} (CORRECT)`);
+        console.log(`   Our cookie present: ${!!ourCookie}`);
 
-        // Replace the stale header token with Whop's correct cookie token
-        requestHeaders.set('x-whop-user-token', whopCoreToken);
+        if (ourCookie) {
+          // Our stale cookie is the cause. Delete it and redirect.
+          // The proxy's next request will use Whop's session cookies.
+          console.log(`   → Deleting stale cookie and redirecting...`);
+          const redirectUrl = new URL(url);
+          const redirectResponse = NextResponse.redirect(redirectUrl);
+
+          // Aggressively delete the cookie with all possible attribute combos
+          redirectResponse.cookies.set('whop_user_token', '', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            path: '/',
+            maxAge: 0,
+          });
+
+          redirectResponse.headers.set('Cache-Control', 'no-store');
+          return redirectResponse;
+        } else {
+          // Cookie already deleted but proxy STILL sending stale token.
+          // This shouldn't happen, but if it does, log it for debugging.
+          console.warn(`   → Cookie already deleted but proxy still stale!`);
+          console.warn(`   → Cannot fix server-side — proxy issue.`);
+        }
       }
     }
-  } else if (!headerToken && whopCoreToken) {
-    // No header but cookie exists — use the cookie
-    console.log(`🔑 No header token, using whop-core.uid-token cookie`);
-    requestHeaders.set('x-whop-user-token', whopCoreToken);
   }
+
+  const requestHeaders = new Headers(request.headers);
 
   const response = NextResponse.next({
     request: {
@@ -77,14 +96,14 @@ export function middleware(request: NextRequest) {
   response.headers.set('Expires', '0');
   response.headers.set('Surrogate-Control', 'no-store');
 
-  // Aggressively delete our stale cookie — THIS is what the proxy was reading
+  // Always try to delete our legacy cookie on every response
   if (request.cookies.has('whop_user_token')) {
     response.cookies.set('whop_user_token', '', {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       path: '/',
-      maxAge: 0, // Expire immediately
+      maxAge: 0,
     });
   }
 
