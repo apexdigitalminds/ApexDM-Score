@@ -2,21 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Whop's reverse proxy injects x-whop-user-token header on EVERY request
-  // (including initial iframe navigation). No cookie needed.
+  // Whop's reverse proxy injects x-whop-user-token header on EVERY request.
+  // Trust the proxy — do NOT read ?token= from the URL or use cookies.
   //
-  // IMPORTANT: Do NOT persist the token in a cookie.
-  // Cookies cause identity bleed when users switch Whop accounts — the stale
-  // cookie overwrites the fresh token that Whop's proxy provides.
+  // WHY: The iframe URL's ?token= param is "sticky" — it persists from the
+  // previous user's session even after account switches. If we read it, we
+  // overwrite the proxy's fresh header with a stale token, causing identity bleed.
 
-  const url = request.nextUrl;
-  const tokenQuery = url.searchParams.get('token');
-
-  // Build request headers — only override if URL has explicit ?token= param
   const requestHeaders = new Headers(request.headers);
-  if (tokenQuery) {
-    requestHeaders.set('x-whop-user-token', tokenQuery);
-  }
+
+  // ❌ REMOVED: Do NOT read ?token= from URL — it can be stale.
+  // The Whop proxy has already put the correct token in x-whop-user-token.
 
   const response = NextResponse.next({
     request: {
