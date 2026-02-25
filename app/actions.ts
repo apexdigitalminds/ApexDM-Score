@@ -64,36 +64,48 @@ export async function verifyUser(routeCompanyId?: string) {
     if (routeCompanyId) {
       const { data: community } = await supabaseAdmin
         .from('communities')
-        .select('id, name')
+        .select('id, name, logo_url')
         .eq('whop_store_id', routeCompanyId)
         .maybeSingle();
 
       targetCommunityId = community?.id || null;
       console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
 
-      // 🆕 Auto-repair: fix generic name for existing communities
+      // 🆕 Auto-repair: fix generic name and/or missing logo for existing communities
       if (targetCommunityId && routeCompanyId) {
         const storedName = community?.name || '';
+        const storedLogo = community?.logo_url || '';
+
         const nameIsGeneric =
           !storedName ||
           storedName.startsWith('Community ') ||
           storedName === 'CommunityXP Community';
+        const logoIsMissing = !storedLogo;
 
-        if (nameIsGeneric) {
-          console.log(`🔄 Community name is generic ("${storedName}") — auto-repairing from Whop...`);
+        if (nameIsGeneric || logoIsMissing) {
+          console.log(`🔄 Auto-repair triggered — name generic: ${nameIsGeneric}, logo missing: ${logoIsMissing}`);
           try {
             const company = await whopsdk.companies.retrieve(routeCompanyId);
-            if (company?.title) {
-              const repairData: any = { name: company.title };
-              if (company?.logo?.url) repairData.logo_url = company.logo.url;
+            const repairData: any = {};
+
+            if (nameIsGeneric && company?.title) {
+              repairData.name = company.title;
+              console.log(`   Repairing name → "${company.title}"`);
+            }
+            if (logoIsMissing && company?.logo?.url) {
+              repairData.logo_url = company.logo.url;
+              console.log(`   Repairing logo_url`);
+            }
+
+            if (Object.keys(repairData).length > 0) {
               await supabaseAdmin
                 .from('communities')
                 .update(repairData)
                 .eq('id', targetCommunityId);
-              console.log(`✅ Auto-repaired community name: "${company.title}"`);
+              console.log(`✅ Auto-repair complete`);
             }
           } catch (e: any) {
-            console.warn(`⚠️ Could not auto-repair community name: ${e.message}`);
+            console.warn(`⚠️ Could not auto-repair community: ${e.message}`);
           }
         }
       }
