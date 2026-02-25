@@ -64,12 +64,39 @@ export async function verifyUser(routeCompanyId?: string) {
     if (routeCompanyId) {
       const { data: community } = await supabaseAdmin
         .from('communities')
-        .select('id')
+        .select('id, name')
         .eq('whop_store_id', routeCompanyId)
         .maybeSingle();
 
       targetCommunityId = community?.id || null;
       console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
+
+      // 🆕 Auto-repair: fix generic name for existing communities
+      if (targetCommunityId && routeCompanyId) {
+        const storedName = community?.name || '';
+        const nameIsGeneric =
+          !storedName ||
+          storedName.startsWith('Community ') ||
+          storedName === 'CommunityXP Community';
+
+        if (nameIsGeneric) {
+          console.log(`🔄 Community name is generic ("${storedName}") — auto-repairing from Whop...`);
+          try {
+            const company = await whopsdk.companies.retrieve(routeCompanyId);
+            if (company?.title) {
+              const repairData: any = { name: company.title };
+              if (company?.logo?.url) repairData.logo_url = company.logo.url;
+              await supabaseAdmin
+                .from('communities')
+                .update(repairData)
+                .eq('id', targetCommunityId);
+              console.log(`✅ Auto-repaired community name: "${company.title}"`);
+            }
+          } catch (e: any) {
+            console.warn(`⚠️ Could not auto-repair community name: ${e.message}`);
+          }
+        }
+      }
     }
 
     // Look up profile by whop_user_id only.
