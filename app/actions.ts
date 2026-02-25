@@ -384,6 +384,29 @@ export async function ensureWhopContext(
     console.log(`✅ Community found: "${existingComm.name}" (${communityId})`);
     console.log(`   Current tier: ${existingComm.subscription_tier}`);
 
+    // 🆕 Auto-repair: if name is missing or generic, re-fetch from Whop SDK
+    const nameIsGeneric =
+      !existingComm.name ||
+      existingComm.name.startsWith('Community ') ||
+      existingComm.name === 'CommunityXP Community';
+
+    if (nameIsGeneric) {
+      console.log(`🔄 Community name looks generic ("${existingComm.name}") — auto-repairing from Whop...`);
+      try {
+        const company = await whopsdk.companies.retrieve(whopStoreId);
+        const freshName = company?.title;
+        const freshLogo = company?.logo?.url;
+        if (freshName) {
+          const repairData: any = { name: freshName };
+          if (freshLogo) repairData.logo_url = freshLogo;
+          await supabaseAdmin.from('communities').update(repairData).eq('id', communityId);
+          console.log(`✅ Auto-repaired community name: "${freshName}"`);
+        }
+      } catch (e: any) {
+        console.warn(`⚠️ Could not auto-repair community name: ${e.message}`);
+      }
+    }
+
     // 🔄 Update tier if we have new tier information and it's different
     if (mappedTier && existingComm.subscription_tier !== mappedTier) {
       console.log(`🔄 Updating community tier: ${existingComm.subscription_tier} → ${mappedTier}`);
@@ -421,28 +444,22 @@ export async function ensureWhopContext(
     const initialTier = mappedTier;
     console.log(`   Initial tier: ${initialTier}${isTrial ? ' (TRIAL - 14 days)' : ''}`);
 
-    // 🆕 Fetch actual company name from Whop API
+    // 🆕 Fetch actual company name from Whop SDK (same SDK used for user lookup)
     let companyName = `Community ${whopStoreId.substring(0, 8)}`;
     let logoUrl = '';
 
-    if (process.env.WHOP_API_KEY) {
-      try {
-        const response = await fetch(`https://api.whop.com/api/v2/companies/${whopStoreId}`, {
-          headers: {
-            'Authorization': `Bearer ${process.env.WHOP_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          companyName = data.title || data.name || companyName;
-          logoUrl = data.image_url || data.logo_url || '';
-          console.log(`   Fetched company name: ${companyName}`);
-        }
-      } catch (e) {
-        console.warn(`   Could not fetch company name, using default`);
+    try {
+      const company = await whopsdk.companies.retrieve(whopStoreId);
+      if (company?.title) {
+        companyName = company.title;
+        console.log(`   Fetched company name via SDK: ${companyName}`);
       }
+      if (company?.logo?.url) {
+        logoUrl = company.logo.url;
+      }
+    } catch (e: any) {
+      console.warn(`   Could not fetch company name via SDK: ${e.message}`);
+      console.warn(`   Using fallback name: ${companyName}`);
     }
 
     const insertData: any = {
