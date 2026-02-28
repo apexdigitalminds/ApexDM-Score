@@ -157,7 +157,6 @@ export async function verifyUser(routeCompanyId?: string) {
         .from('profiles')
         .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
         .eq('whop_user_id', whopUserId)
-        .order('created_at', { ascending: true }) // Use oldest/primary profile
         .limit(1)
         .maybeSingle();
       existingProfile = result.data;
