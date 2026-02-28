@@ -11,7 +11,6 @@ import TopXpActionsChart from './analytics/TopXpActionsChart';
 import TopBadgesChart from './analytics/TopBadgesChart';
 import QuestAnalytics from './analytics/QuestAnalytics';
 import StoreAnalytics from './analytics/StoreAnalytics';
-import RetentionChartPlaceholder from './analytics/RetentionChartPlaceholder';
 import { UserGroupIcon, ArrowTrendingUpIcon, ChartPieIcon, UserPlusIcon, TrendingDownIcon, FireIcon } from './icons';
 import { api } from '@/services/api';
 import LockedPageMockup from './LockedPageMockup';
@@ -50,12 +49,15 @@ const AnalyticsPage: React.FC = () => {
         fetchData();
     }, [dateRange]);
 
-    // 🟢 SAFE MATH: Prevent NaN/Infinity if activeMembers is 0
+    // Dynamically pick values and labels based on selected range
+    const activeMembers = dateRange === '7d' ? data?.engagement.activeMembers7d : data?.engagement.activeMembers30d;
+    const newMembers = dateRange === '7d' ? data?.growth.newMembers7d : data?.growth.newMembers30d;
+    const rangeLabel = dateRange === '7d' ? '7 Days' : '30 Days';
+
     const churnRate = data && data.engagement.activeMembers30d > 0
         ? ((data.growth.churnedMembers14d / data.engagement.activeMembers30d) * 100).toFixed(1)
         : "0.0";
 
-    // 🟢 FIX: Use semantic 'retention' flag instead of 'store'
     const showRetention = isFeatureEnabled('retention');
 
     const activityChartData = data
@@ -94,8 +96,7 @@ const AnalyticsPage: React.FC = () => {
                         <button
                             key={range}
                             onClick={() => setDateRange(range)}
-                            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${dateRange === range ? 'bg-purple-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                }`}
+                            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${dateRange === range ? 'bg-purple-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                             Last {range === '7d' ? '7 Days' : '30 Days'}
                         </button>
@@ -109,30 +110,31 @@ const AnalyticsPage: React.FC = () => {
                 <div className="text-center p-8">Could not load analytics data.</div>
             ) : (
                 <>
+                    {/* Top Metrics — respond to selected date range */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard
                             icon={<UserGroupIcon className="w-7 h-7 text-blue-400" />}
-                            value={data.engagement.activeMembers7d}
-                            label="Active Users"
-                            description="Users active in the last 7 days."
+                            value={activeMembers ?? 0}
+                            label="Active Members"
+                            description={`Members active in the last ${rangeLabel}.`}
                         />
                         <MetricCard
                             icon={<ArrowTrendingUpIcon className="w-7 h-7 text-green-400" />}
                             value={`+${data.engagement.xpEarnedToday.toLocaleString()}`}
                             label="XP Earned Today"
-                            description="Total XP awarded across all users today."
+                            description="Total XP awarded across all members today."
                         />
                         <MetricCard
                             icon={<UserPlusIcon className="w-7 h-7 text-purple-400" />}
-                            value={data.growth.newMembers7d}
-                            label="New Users"
-                            description="Users who joined in the last 7 days."
+                            value={newMembers ?? 0}
+                            label="New Members"
+                            description={`Members who joined in the last ${rangeLabel}.`}
                         />
                         <MetricCard
                             icon={<TrendingDownIcon className="w-7 h-7 text-red-400" />}
                             value={`${churnRate}%`}
                             label="Dormant Rate"
-                            description="Percentage of users inactive for >14 days."
+                            description="Percentage of members inactive for >14 days."
                         />
                     </div>
 
@@ -175,22 +177,45 @@ const AnalyticsPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <QuestAnalytics data={questAnalyticsData} />
-                        {showRetention ? <StoreAnalytics data={storeAnalyticsData} /> : <FeatureLock title="XP Store Analytics" description="Track which items are most popular in your XP store and see how much XP is being spent." requiredTier="Elite" />}
+                        {showRetention
+                            ? <StoreAnalytics data={storeAnalyticsData} />
+                            : <FeatureLock title="XP Store Analytics" description="Track which items are most popular in your XP store and see how much XP is being spent." requiredTier="Elite" />}
                     </div>
 
+                    {/* Member Retention — real computed data, no placeholder */}
                     {showRetention ? (
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Member Retention (Elite Plan)</h3>
-                            <RetentionChartPlaceholder />
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Member Retention</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                                Percentage of your total members who were active in each time window.
+                            </p>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="text-center bg-slate-50 dark:bg-slate-700/40 rounded-xl p-6">
+                                    <p className="text-5xl font-extrabold bg-gradient-to-r from-teal-400 to-blue-500 text-transparent bg-clip-text">
+                                        {data.growth.retentionRate7d}%
+                                    </p>
+                                    <p className="text-slate-600 dark:text-slate-300 mt-2 font-medium">Active in Last 7 Days</p>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                                        {data.engagement.activeMembers7d} members
+                                    </p>
+                                </div>
+                                <div className="text-center bg-slate-50 dark:bg-slate-700/40 rounded-xl p-6">
+                                    <p className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 to-pink-500 text-transparent bg-clip-text">
+                                        {data.growth.retentionRate30d}%
+                                    </p>
+                                    <p className="text-slate-600 dark:text-slate-300 mt-2 font-medium">Active in Last 30 Days</p>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                                        {data.engagement.activeMembers30d} members
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <FeatureLock
-                            title="Member Retention Over Time"
-                            description="Visualize how member cohorts stay active over weeks and months to identify patterns and improve long-term retention."
+                            title="Member Retention"
+                            description="See what percentage of your members stay active week over week and month over month."
                             requiredTier="Elite"
-                        >
-                            <RetentionChartPlaceholder />
-                        </FeatureLock>
+                        />
                     )}
                 </>
             )}

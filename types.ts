@@ -248,7 +248,10 @@ export interface AnalyticsData {
   };
   growth: {
     newMembers7d: number;
+    newMembers30d: number;
     churnedMembers14d: number;
+    retentionRate7d: number;  // % of total users active in last 7 days
+    retentionRate30d: number; // % of total users active in last 30 days
   };
   streakHealth: {
     percentWithActiveStreak: number;

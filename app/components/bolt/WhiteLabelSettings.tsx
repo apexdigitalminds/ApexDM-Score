@@ -25,7 +25,6 @@ export default function WhiteLabelSettings() {
     const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(false);
     const [customAppName, setCustomAppName] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
-    const [themeColor, setThemeColor] = useState('#7c3aed');
     const [faviconUrl, setFaviconUrl] = useState('');
     const [customFooterText, setCustomFooterText] = useState('');
     const [hideMemberCount, setHideMemberCount] = useState(false);
@@ -40,7 +39,6 @@ export default function WhiteLabelSettings() {
             setWhiteLabelEnabled(community.whiteLabelEnabled ?? false);
             setCustomAppName(community.customAppName ?? '');
             setLogoUrl(community.logoUrl ?? '');
-            setThemeColor(community.themeColor ?? '#7c3aed');
             setFaviconUrl(community.faviconUrl ?? '');
             setCustomFooterText(community.customFooterText ?? '');
             setHideMemberCount(community.hideMemberCount ?? false);
@@ -56,7 +54,6 @@ export default function WhiteLabelSettings() {
                 whiteLabelEnabled,
                 customAppName: customAppName.trim() || undefined,
                 logoUrl: logoUrl.trim() || undefined,
-                themeColor: themeColor || undefined,
                 faviconUrl: faviconUrl.trim() || undefined,
                 customFooterText: customFooterText.trim() || undefined,
                 hideMemberCount,
@@ -141,39 +138,6 @@ export default function WhiteLabelSettings() {
                         className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">Used in sidebar header and as default favicon</p>
-                </div>
-
-                {/* Theme Color - UNDER CONSTRUCTION */}
-                <div className="opacity-50 pointer-events-none">
-                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2 flex items-center gap-2">
-                        Theme Color
-                        <span className="bg-yellow-600/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-semibold">
-                            🚧 Under Construction
-                        </span>
-                    </label>
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="color"
-                            value={themeColor}
-                            disabled
-                            className="w-12 h-10 rounded border-0 cursor-not-allowed bg-transparent"
-                        />
-                        <input
-                            type="text"
-                            value={themeColor}
-                            disabled
-                            placeholder="#7c3aed"
-                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none font-mono cursor-not-allowed"
-                        />
-                        {/* Preview */}
-                        <div
-                            className="px-4 py-2 rounded-lg text-white font-medium text-sm"
-                            style={{ backgroundColor: themeColor }}
-                        >
-                            Preview
-                        </div>
-                    </div>
-                    <p className="text-slate-500 text-xs mt-1">Coming soon - customize accent colors across the UI</p>
                 </div>
 
                 {/* Favicon URL */}

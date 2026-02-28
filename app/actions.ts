@@ -1827,7 +1827,8 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
       userPurchasesResult,
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*').eq('community_id', communityId),
-      supabaseAdmin.from('actions_log').select('*').eq('community_id', communityId).gte('created_at', dateLimit30d),
+      supabaseAdmin.from('actions_log').select('*').eq('community_id', communityId)
+        .gte('created_at', dateRange === '7d' ? dateLimit7d : dateLimit30d),
       supabaseAdmin.from('user_badges').select('badges!inner(name, icon, color)').eq('community_id', communityId),
       supabaseAdmin.from('quests').select('*').eq('community_id', communityId),
       supabaseAdmin.from('user_quest_progress').select('*'),
@@ -1850,7 +1851,12 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
     const xpEarnedToday = actionsToday.reduce((sum: number, a: any) => sum + (a.xp_gained || 0), 0);
 
     const newMembers7d = allProfiles.filter((p: any) => p.created_at && new Date(p.created_at).toISOString() >= dateLimit7d).length;
+    const newMembers30d = allProfiles.filter((p: any) => p.created_at && new Date(p.created_at).toISOString() >= dateLimit30d).length;
     const churnedMembers14d = allProfiles.filter((p: any) => !p.last_action_date || new Date(p.last_action_date).toISOString() < dateLimit14d).length;
+
+    const retentionRate7d = totalUsers > 0 ? Math.round((activeMembers7d / totalUsers) * 100) : 0;
+    const retentionRate30d = totalUsers > 0 ? Math.round((activeMembers30d / totalUsers) * 100) : 0;
+
 
     const mapUser = (p: any): Profile => ({
       id: p.id, username: p.username, avatarUrl: p.avatar_url, xp: p.xp, streak: p.streak,
@@ -1928,7 +1934,7 @@ export async function getAnalyticsDataServer(dateRange: '7d' | '30d'): Promise<A
         avgDailyActions: actionsToday.length,
         xpEarnedToday
       },
-      growth: { newMembers7d, churnedMembers14d },
+      growth: { newMembers7d, newMembers30d, churnedMembers14d, retentionRate7d, retentionRate30d },
       topPerformers, activityBreakdown, streakHealth, topXpActions, topBadges, questAnalytics,
       storeAnalytics: { totalItems, xpSpent, mostPopularItem, totalSpent: xpSpent, items: Object.entries(itemsCounter).map(([name, count]) => ({ name, count })) },
     };
