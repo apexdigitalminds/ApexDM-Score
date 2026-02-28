@@ -440,6 +440,9 @@ export const AppProvider = ({
                     setApiContext(resolvedCompanyId);
                 } else {
                     console.error(`❌ Failed to resolve company from experience: ${experienceId}`);
+                    // ⚠️ DO NOT fall back to user.communityId here — that is a Supabase UUID,
+                    // not a Whop biz_ ID. Passing it to setApiContext would cause ensureWhopContext
+                    // to create bogus community rows with a UUID as the whop_store_id.
                 }
             }
 
@@ -447,11 +450,8 @@ export const AppProvider = ({
             let user = null;
             if (verifiedUserId && verifiedUserId !== "GUEST") {
                 user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
-                // Fallback: if experience resolution failed, try to get company from user profile
-                if (!resolvedCompanyId && user?.communityId) {
-                    console.log(`✅ Using company ID from user profile: ${user.communityId}`);
-                    setApiContext(user.communityId);
-                }
+                // NOTE: We intentionally do NOT call setApiContext(user.communityId) here.
+                // user.communityId is a Supabase UUID — setApiContext must only receive Whop biz_ IDs.
             }
 
             setSelectedUser(user);
