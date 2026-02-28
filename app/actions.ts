@@ -940,7 +940,14 @@ export async function updateCommunityBrandingAction(data: {
 // I'm including them for completeness, but they don't need any modifications.
 
 export async function syncUserAction(whopId: string, whopRole: "admin" | "member"): Promise<Profile | null> {
-  const { data: existingUser } = await supabaseAdmin.from('profiles').select('*').eq('whop_user_id', whopId).maybeSingle();
+  // Use limit(1) for safety — with UNIQUE(whop_user_id, community_id) a user may have
+  // multiple profile rows (one per community). maybeSingle() would error on >1 result.
+  const { data: existingUser } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('whop_user_id', whopId)
+    .limit(1)
+    .maybeSingle();
   if (existingUser) return existingUser;
   return null;
 }

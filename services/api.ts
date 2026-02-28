@@ -164,7 +164,18 @@ let COMMUNITY_ID: string | null = null;
 
 const getCommunityId = async () => {
     // 1. Return cached ID if available
-    if (COMMUNITY_ID) return COMMUNITY_ID;
+    if (COMMUNITY_ID) {
+        // If this is a Whop store ID (biz_xxx), resolve it to the Supabase community UUID.
+        // setApiContext is initially called with the Whop store ID from the experience URL.
+        // DB queries need the Supabase UUID, not the Whop ID.
+        if (COMMUNITY_ID.startsWith('biz_') || COMMUNITY_ID.startsWith('app_')) {
+            const { data: comm } = await supabase.from('communities').select('id').eq('whop_store_id', COMMUNITY_ID).maybeSingle();
+            if (comm?.id) {
+                COMMUNITY_ID = comm.id; // Update cache to Supabase UUID
+            }
+        }
+        return COMMUNITY_ID;
+    }
 
     // 2. Try to get context from the currently authenticated user
     const { data: { user } } = await supabase.auth.getUser();
@@ -179,13 +190,11 @@ const getCommunityId = async () => {
 
         if (profile?.community_id) {
             COMMUNITY_ID = profile.community_id;
-            // console.log("✅ Resolved Community ID from User Context:", COMMUNITY_ID);
             return COMMUNITY_ID;
         }
     }
 
-    // 3. Fallback logic removed to prevent data leaks.
-    // If no user context, we must throw error or force login.
+    // 3. No context available.
     console.warn("⚠️ No user context found for community resolution.");
     throw new Error("No community context could be resolved. Please install the app.");
 };
