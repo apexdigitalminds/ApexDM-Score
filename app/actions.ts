@@ -111,45 +111,58 @@ export async function verifyUser(routeCompanyId?: string) {
       }
     }
 
-    // 🆕 MULTI-COMMUNITY FIX: Look up profile scoped to THIS community.
-    // Each user now has a separate profile per community (UNIQUE(whop_user_id, community_id)).
-    // If they have no profile in this community yet, we provision a fresh one.
+    // MULTI-COMMUNITY: Profile lookup strategy depends on whether we have community context.
+    //
+    // WITH routeCompanyId (layout/page context): scope lookup to UNIQUE(whop_user_id, community_id)
+    //   → ensures correct isolated profile per community
+    //
+    // WITHOUT routeCompanyId (server actions: equip, buy, unequip, etc.): fall back to
+    //   whop_user_id-only lookup. These actions only touch the calling user's own data
+    //   and don't need community discrimination for auth — just a valid profile ID.
     let existingProfile = null;
     let profileError = null;
 
-    // If we have no community context at all, we cannot identify which profile to load.
-    if (!targetCommunityId && !routeCompanyId) {
-      console.error("❌ Cannot verify user: no community context (no routeCompanyId, no targetCommunityId)");
-      return null;
-    }
-
-    // If the community row doesn't exist yet for this routeCompanyId, provision it first
-    if (routeCompanyId && !targetCommunityId) {
-      console.log(`⚠️ Company ${routeCompanyId} has no community row yet — provisioning now`);
-      await ensureWhopContext(routeCompanyId, whopUserId, roles);
-      const { data: newCommunity } = await supabaseAdmin
-        .from('communities')
-        .select('id')
-        .eq('whop_store_id', routeCompanyId)
-        .maybeSingle();
-      targetCommunityId = newCommunity?.id || null;
-      if (!targetCommunityId) {
-        console.error("❌ Could not create or find community after provisioning");
-        return null;
+    if (targetCommunityId || routeCompanyId) {
+      // If the community row doesn't exist yet for this routeCompanyId, provision it first
+      if (routeCompanyId && !targetCommunityId) {
+        console.log(`⚠️ Company ${routeCompanyId} has no community row yet — provisioning now`);
+        await ensureWhopContext(routeCompanyId, whopUserId, roles);
+        const { data: newCommunity } = await supabaseAdmin
+          .from('communities')
+          .select('id')
+          .eq('whop_store_id', routeCompanyId)
+          .maybeSingle();
+        targetCommunityId = newCommunity?.id || null;
+        if (!targetCommunityId) {
+          console.error("❌ Could not create or find community after provisioning");
+          return null;
+        }
+        console.log(`✅ Community provisioned: ${targetCommunityId}`);
       }
-      console.log(`✅ Community provisioned: ${targetCommunityId}`);
+
+      // Community-scoped lookup: UNIQUE(whop_user_id, community_id)
+      const result = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+        .eq('whop_user_id', whopUserId)
+        .eq('community_id', targetCommunityId!)
+        .maybeSingle();
+      existingProfile = result.data;
+      profileError = result.error;
+    } else {
+      // No community context (server actions) — fall back to whop_user_id lookup.
+      // Safe: these actions only operate on the calling user's own profile row.
+      console.log(`ℹ️ No community context — using whop_user_id fallback lookup (server action)`);
+      const result = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+        .eq('whop_user_id', whopUserId)
+        .order('created_at', { ascending: true }) // Use oldest/primary profile
+        .limit(1)
+        .maybeSingle();
+      existingProfile = result.data;
+      profileError = result.error;
     }
-
-    // Look up the profile scoped to this specific community
-    const result = await supabaseAdmin
-      .from('profiles')
-      .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
-      .eq('whop_user_id', whopUserId)
-      .eq('community_id', targetCommunityId!) // 🆕 Community-scoped lookup
-      .maybeSingle();
-
-    existingProfile = result.data;
-    profileError = result.error;
 
     if (profileError) {
       console.error("❌ Database error checking profile:", profileError);
