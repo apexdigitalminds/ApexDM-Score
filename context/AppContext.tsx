@@ -440,9 +440,6 @@ export const AppProvider = ({
                     setApiContext(resolvedCompanyId);
                 } else {
                     console.error(`❌ Failed to resolve company from experience: ${experienceId}`);
-                    // ⚠️ DO NOT fall back to user.communityId here — that is a Supabase UUID,
-                    // not a Whop biz_ ID. Passing it to setApiContext would cause ensureWhopContext
-                    // to create bogus community rows with a UUID as the whop_store_id.
                 }
             }
 
@@ -450,8 +447,12 @@ export const AppProvider = ({
             let user = null;
             if (verifiedUserId && verifiedUserId !== "GUEST") {
                 user = await api.getUserByWhopId(verifiedUserId, verifiedRole);
-                // NOTE: We intentionally do NOT call setApiContext(user.communityId) here.
-                // user.communityId is a Supabase UUID — setApiContext must only receive Whop biz_ IDs.
+                // Set the community context to the Supabase UUID from the user's profile.
+                // This is the correct UUID for all DB queries. getCommunityId() in api.ts
+                // can auto-resolve the biz_ ID too, but this is the primary mechanism.
+                if (user?.communityId) {
+                    setApiContext(user.communityId);
+                }
             }
 
             setSelectedUser(user);
