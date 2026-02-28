@@ -71,7 +71,14 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         if (type === 'NAME_COLOR') newMeta.nameColor = item.itemDetails.metadata?.color;
         if (type === 'TITLE') newMeta.title = item.itemDetails.metadata?.text;
         if (type === 'BANNER') newMeta.bannerUrl = item.itemDetails.metadata?.imageUrl;
-        if (type === 'AVATAR_PULSE') newMeta.avatarPulseColor = item.itemDetails.metadata?.color;
+        if (type === 'FRAME') {
+            newMeta.frameColor = item.itemDetails.metadata?.color;
+            newMeta.frameName = item.itemDetails.name; // 🆕 optimistic name
+        }
+        if (type === 'AVATAR_PULSE') {
+            newMeta.avatarPulseColor = item.itemDetails.metadata?.color;
+            newMeta.avatarPulseName = item.itemDetails.name; // 🆕 optimistic name
+        }
 
         setLocalMetadata(newMeta);
 
@@ -101,7 +108,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         if (type === 'NAME_COLOR') delete newMeta.nameColor;
         if (type === 'TITLE') delete newMeta.title;
         if (type === 'BANNER') delete newMeta.bannerUrl;
-        if (type === 'AVATAR_PULSE') delete newMeta.avatarPulseColor;
+        if (type === 'FRAME') { delete newMeta.frameColor; delete newMeta.frameName; } // 🆕
+        if (type === 'AVATAR_PULSE') { delete newMeta.avatarPulseColor; delete newMeta.avatarPulseName; } // 🆕
 
         setLocalMetadata(newMeta);
 
@@ -164,6 +172,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         if (type === 'NAME_COLOR' && meta.nameColor === itemMeta.color) return false;
         if (type === 'TITLE' && meta.title === itemMeta.text) return false;
         if (type === 'BANNER' && meta.bannerUrl === itemMeta.imageUrl) return false;
+        if (type === 'FRAME' && meta.frameColor === itemMeta.color) return false; // 🆕
         if (type === 'AVATAR_PULSE' && meta.avatarPulseColor === itemMeta.color) return false;
 
         return true;
@@ -228,10 +237,21 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: localMetadata.avatarPulseColor, boxShadow: `0 0 5px ${localMetadata.avatarPulseColor}` }}></div>
-                                    <span className="text-sm text-slate-700 dark:text-slate-300">Avatar Pulse</span>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">{localMetadata.avatarPulseName ?? 'Avatar Pulse'}</span>
                                 </div>
                                 <button onClick={() => handleUnequip('AVATAR_PULSE')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
                                     {unequippingType === 'AVATAR_PULSE' ? '...' : 'Unequip'}
+                                </button>
+                            </div>
+                        )}
+                        {localMetadata?.frameColor && (
+                            <div className="bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-600 p-3 rounded-lg flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: localMetadata.frameColor, backgroundColor: 'transparent' }}></div>
+                                    <span className="text-sm text-slate-700 dark:text-slate-300">{localMetadata.frameName ?? 'Profile Frame'}</span>
+                                </div>
+                                <button onClick={() => handleUnequip('FRAME')} disabled={!!unequippingType} className="px-3 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300 hover:bg-red-900/80 hover:text-red-200 transition-colors border border-slate-600">
+                                    {unequippingType === 'FRAME' ? '...' : 'Unequip'}
                                 </button>
                             </div>
                         )}
@@ -247,7 +267,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
                             </div>
                         )}
 
-                        {activeEffects.length === 0 && !localMetadata?.nameColor && !localMetadata?.title && !localMetadata?.bannerUrl && !localMetadata?.avatarPulseColor && (
+                        {activeEffects.length === 0 && !localMetadata?.nameColor && !localMetadata?.title && !localMetadata?.bannerUrl && !localMetadata?.avatarPulseColor && !localMetadata?.frameColor && (
                             <p className="text-slate-500 text-sm italic text-center py-4">No active items.</p>
                         )}
                     </div>

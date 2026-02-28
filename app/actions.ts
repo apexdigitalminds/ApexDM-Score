@@ -111,16 +111,41 @@ export async function verifyUser(routeCompanyId?: string) {
       }
     }
 
-    // Look up profile by whop_user_id only.
-    // DB has UNIQUE(whop_user_id), so each user has exactly one global profile.
-    // The profile's community_id gets updated when they access a different community.
+    // 🆕 MULTI-COMMUNITY FIX: Look up profile scoped to THIS community.
+    // Each user now has a separate profile per community (UNIQUE(whop_user_id, community_id)).
+    // If they have no profile in this community yet, we provision a fresh one.
     let existingProfile = null;
     let profileError = null;
 
+    // If we have no community context at all, we cannot identify which profile to load.
+    if (!targetCommunityId && !routeCompanyId) {
+      console.error("❌ Cannot verify user: no community context (no routeCompanyId, no targetCommunityId)");
+      return null;
+    }
+
+    // If the community row doesn't exist yet for this routeCompanyId, provision it first
+    if (routeCompanyId && !targetCommunityId) {
+      console.log(`⚠️ Company ${routeCompanyId} has no community row yet — provisioning now`);
+      await ensureWhopContext(routeCompanyId, whopUserId, roles);
+      const { data: newCommunity } = await supabaseAdmin
+        .from('communities')
+        .select('id')
+        .eq('whop_store_id', routeCompanyId)
+        .maybeSingle();
+      targetCommunityId = newCommunity?.id || null;
+      if (!targetCommunityId) {
+        console.error("❌ Could not create or find community after provisioning");
+        return null;
+      }
+      console.log(`✅ Community provisioned: ${targetCommunityId}`);
+    }
+
+    // Look up the profile scoped to this specific community
     const result = await supabaseAdmin
       .from('profiles')
       .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
       .eq('whop_user_id', whopUserId)
+      .eq('community_id', targetCommunityId!) // 🆕 Community-scoped lookup
       .maybeSingle();
 
     existingProfile = result.data;
@@ -133,58 +158,15 @@ export async function verifyUser(routeCompanyId?: string) {
 
     if (existingProfile) {
       const communityData = existingProfile.communities as any;
-
       console.log(`✅ User found in DB: ${existingProfile.username} (${existingProfile.id})`);
-      console.log(`   Profile community: ${communityData?.name} (${existingProfile.community_id})`);
-      console.log(`   Target community: ${targetCommunityId || 'N/A'}`);
-      console.log(`   Route company: ${routeCompanyId || 'N/A'}`);
+      console.log(`   Community: ${communityData?.name} (${existingProfile.community_id})`);
       console.log(`   Role: ${existingProfile.role}`);
-
-      let effectiveCommunityId = targetCommunityId || existingProfile.community_id;
-
-      // 🔑 FIX: If company exists but has no community row yet, create it now
-      if (routeCompanyId && !targetCommunityId) {
-        console.log(`⚠️ Company ${routeCompanyId} has no community — creating one now`);
-        const provisioned = await ensureWhopContext(routeCompanyId, whopUserId, roles);
-
-        if (provisioned) {
-          // Re-lookup the newly created community
-          const { data: newCommunity } = await supabaseAdmin
-            .from('communities')
-            .select('id')
-            .eq('whop_store_id', routeCompanyId)
-            .maybeSingle();
-
-          if (newCommunity) {
-            targetCommunityId = newCommunity.id;
-            effectiveCommunityId = newCommunity.id;
-            console.log(`✅ Community created: ${newCommunity.id}`);
-          }
-        } else {
-          console.warn(`⚠️ Could not create community for ${routeCompanyId} — using existing`);
-        }
-      }
-
-      // If target community is now known and different, switch the profile
-      if (targetCommunityId && existingProfile.community_id !== targetCommunityId) {
-        console.log(`🔄 Switching user to community: ${targetCommunityId}`);
-        const { error: switchError } = await supabaseAdmin
-          .from('profiles')
-          .update({ community_id: targetCommunityId })
-          .eq('id', existingProfile.id);
-
-        if (switchError) {
-          console.error("❌ Failed to switch community:", switchError);
-        } else {
-          console.log(`✅ Profile community updated to: ${targetCommunityId}`);
-        }
-      }
 
       return {
         userId: existingProfile.id,
         whopUserId,
         isAdmin: existingProfile.role === 'admin',
-        communityId: effectiveCommunityId,
+        communityId: existingProfile.community_id,
         role: existingProfile.role
       };
     }
@@ -348,11 +330,15 @@ export async function ensureWhopContext(
     console.log(`   This is a tier upgrade webhook, not a new community`);
     console.log(`   Looking up user's existing community to update tier...`);
 
-    // Find user's existing profile and community
+    // 🆕 Find the admin's profile for their own community.
+    // With multi-community profiles, filter by role=admin to find the right community.
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, community_id, role, communities(id, name, subscription_tier)')
       .eq('whop_user_id', whopUserId)
+      .eq('role', 'admin') // Seller webhook = community owner upgrading their plan
+      .order('created_at', { ascending: true }) // Oldest = their original community
+      .limit(1)
       .maybeSingle();
 
     if (profileError) {
@@ -1089,8 +1075,14 @@ export async function equipCosmeticAction(item: StoreItem) {
     currentMeta.titlePosition = item.metadata?.titlePosition || 'prefix';
   }
   if (item.itemType === 'BANNER') currentMeta.bannerUrl = item.metadata?.imageUrl;
-  if (item.itemType === 'FRAME') currentMeta.frameColor = item.metadata?.color;
-  if (item.itemType === 'AVATAR_PULSE') currentMeta.avatarPulseColor = item.metadata?.color;
+  if (item.itemType === 'FRAME') {
+    currentMeta.frameColor = item.metadata?.color;
+    currentMeta.frameName = item.name; // 🆕 Store display name
+  }
+  if (item.itemType === 'AVATAR_PULSE') {
+    currentMeta.avatarPulseColor = item.metadata?.color;
+    currentMeta.avatarPulseName = item.name; // 🆕 Store display name
+  }
 
   const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);
   if (error) return { success: false, message: error.message };
@@ -1107,8 +1099,8 @@ export async function unequipCosmeticAction(type: string) {
   if (type === 'NAME_COLOR') delete currentMeta.nameColor;
   if (type === 'TITLE') { delete currentMeta.title; delete currentMeta.titlePosition; }
   if (type === 'BANNER') delete currentMeta.bannerUrl;
-  if (type === 'FRAME') delete currentMeta.frameColor;
-  if (type === 'AVATAR_PULSE') delete currentMeta.avatarPulseColor;
+  if (type === 'FRAME') { delete currentMeta.frameColor; delete currentMeta.frameName; } // 🆕 Also clear name
+  if (type === 'AVATAR_PULSE') { delete currentMeta.avatarPulseColor; delete currentMeta.avatarPulseName; } // 🆕 Also clear name
 
   const { error } = await supabaseAdmin.from('profiles').update({ metadata: currentMeta }).eq('id', session.userId);
   if (error) return { success: false, message: error.message };
