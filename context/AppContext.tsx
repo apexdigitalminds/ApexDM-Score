@@ -350,7 +350,7 @@ export const AppProvider = ({
     };
 
     const claimQuestReward = async (id: number) => {
-        const res = await api.claimQuestReward(id);
+        const res = await api.claimQuestReward(id, selectedUser?.communityId ?? undefined);
         if (res.success) {
             if (selectedUser) await checkAutomatedBadges(selectedUser.id);
             await fetchUserQuestProgress(); await refreshSelectedUser(); await fetchAllUsers();
@@ -359,7 +359,7 @@ export const AppProvider = ({
     };
 
     const activateInventoryItem = async (id: string) => {
-        const res = await api.activateInventoryItem(id);
+        const res = await api.activateInventoryItem(id, selectedUser?.communityId ?? undefined);
         if (res.success) {
             if (selectedUser) await checkAutomatedBadges(selectedUser.id);
             await refreshSelectedUser(); await fetchActiveEffects();
@@ -368,7 +368,7 @@ export const AppProvider = ({
     };
 
     const handleBuyStoreItem = async (uid: string, iid: string) => {
-        const res = await api.buyStoreItem(uid, iid);
+        const res = await api.buyStoreItem(uid, iid, selectedUser?.communityId ?? undefined);
         if (res.success) { await refreshSelectedUser(); await fetchAllUsers(); await fetchStoreItems(); }
         return res;
     };

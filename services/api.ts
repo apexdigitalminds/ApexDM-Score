@@ -373,24 +373,24 @@ export const api = {
         return await updateUserProfile(updates, userId);
     },
 
-    buyStoreItem: async (userId: string, itemId: string) => {
-        return await buyStoreItemAction(itemId);
+    buyStoreItem: async (userId: string, itemId: string, communityId?: string) => {
+        return await buyStoreItemAction(itemId, communityId);
     },
 
-    activateInventoryItem: async (inventoryId: string) => {
-        return await activateInventoryItemAction(inventoryId);
+    activateInventoryItem: async (inventoryId: string, communityId?: string) => {
+        return await activateInventoryItemAction(inventoryId, communityId);
     },
 
-    equipCosmetic: async (userId: string, item: StoreItem) => {
-        return await equipCosmeticAction(item);
+    equipCosmetic: async (userId: string, item: StoreItem, communityId?: string) => {
+        return await equipCosmeticAction(item, communityId);
     },
 
-    unequipCosmetic: async (userId: string, type: any) => {
-        return await unequipCosmeticAction(type);
+    unequipCosmetic: async (userId: string, type: any, communityId?: string) => {
+        return await unequipCosmeticAction(type, communityId);
     },
 
-    claimQuestReward: async (progressId: number) => {
-        return await claimQuestRewardAction(progressId);
+    claimQuestReward: async (progressId: number, communityId?: string) => {
+        return await claimQuestRewardAction(progressId, communityId);
     },
 
     // ADMIN WRITE ACTIONS

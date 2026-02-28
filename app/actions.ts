@@ -22,7 +22,7 @@ import { StoreItem, ActionType, AnalyticsData, Profile, User, Badge, Quest } fro
  * @param routeCompanyId - Optional company_id from the route (e.g., from experienceId lookup)
  * @returns Session object with userId, role, etc. or null if auth fails
  */
-export async function verifyUser(routeCompanyId?: string) {
+export async function verifyUser(routeCompanyId?: string, directCommunityId?: string) {
   try {
     const rawHeaders = await headers();
 
@@ -150,17 +150,30 @@ export async function verifyUser(routeCompanyId?: string) {
       existingProfile = result.data;
       profileError = result.error;
     } else {
-      // No community context (server actions) — fall back to whop_user_id lookup.
-      // Safe: these actions only operate on the calling user's own profile row.
-      console.log(`ℹ️ No community context — using whop_user_id fallback lookup (server action)`);
-      const result = await supabaseAdmin
-        .from('profiles')
-        .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
-        .eq('whop_user_id', whopUserId)
-        .limit(1)
-        .maybeSingle();
-      existingProfile = result.data;
-      profileError = result.error;
+      // Server action fallback — no community context from URL.
+      // If directCommunityId (Supabase UUID) is passed, scope the lookup precisely.
+      // Otherwise limit(1) picks the primary profile.
+      if (directCommunityId) {
+        console.log(`ℹ️ Server action fallback — community-scoped lookup (${directCommunityId})`);
+        const result = await supabaseAdmin
+          .from('profiles')
+          .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+          .eq('whop_user_id', whopUserId)
+          .eq('community_id', directCommunityId)
+          .maybeSingle();
+        existingProfile = result.data;
+        profileError = result.error;
+      } else {
+        console.log(`ℹ️ No community context — using whop_user_id fallback lookup (server action)`);
+        const result = await supabaseAdmin
+          .from('profiles')
+          .select('id, role, community_id, whop_user_id, username, communities(id, whop_store_id, whop_company_id, name)')
+          .eq('whop_user_id', whopUserId)
+          .limit(1)
+          .maybeSingle();
+        existingProfile = result.data;
+        profileError = result.error;
+      }
     }
 
     if (profileError) {
@@ -1068,8 +1081,8 @@ export async function updateUserProfile(updates: any, targetId?: string) {
   return !error;
 }
 
-export async function equipCosmeticAction(item: StoreItem) {
-  const session = await verifyUser();
+export async function equipCosmeticAction(item: StoreItem, communityId?: string) {
+  const session = await verifyUser(undefined, communityId);
   if (!session || !session.userId) throw new Error("User not found");
 
   const { data: ownershipRows, error: ownershipError } = await supabaseAdmin
@@ -1108,8 +1121,8 @@ export async function equipCosmeticAction(item: StoreItem) {
   return { success: true, message: "Equipped successfully!" };
 }
 
-export async function unequipCosmeticAction(type: string) {
-  const session = await verifyUser();
+export async function unequipCosmeticAction(type: string, communityId?: string) {
+  const session = await verifyUser(undefined, communityId);
   if (!session || !session.userId) throw new Error("User not found");
 
   const { data: profile } = await supabaseAdmin.from('profiles').select('metadata').eq('id', session.userId).single();
@@ -1126,16 +1139,16 @@ export async function unequipCosmeticAction(type: string) {
   return { success: true, message: "Unequipped successfully!" };
 }
 
-export async function buyStoreItemAction(itemId: string) {
-  const session = await verifyUser();
+export async function buyStoreItemAction(itemId: string, communityId?: string) {
+  const session = await verifyUser(undefined, communityId);
   if (!session || !session.userId) throw new Error("User not found");
   const { data, error } = await supabaseAdmin.rpc('buy_store_item', { p_user_id: session.userId, p_item_id: itemId });
   if (error) return { success: false, message: error.message };
   return data;
 }
 
-export async function activateInventoryItemAction(inventoryId: string) {
-  const session = await verifyUser();
+export async function activateInventoryItemAction(inventoryId: string, communityId?: string) {
+  const session = await verifyUser(undefined, communityId);
   if (!session || !session.userId) return { success: false, message: "User not found" };
 
   // Get the inventory item with its store item details
@@ -1186,8 +1199,8 @@ export async function activateInventoryItemAction(inventoryId: string) {
   return data;
 }
 
-export async function claimQuestRewardAction(progressId: number) {
-  const session = await verifyUser();
+export async function claimQuestRewardAction(progressId: number, communityId?: string) {
+  const session = await verifyUser(undefined, communityId);
   if (!session || !session.userId) throw new Error("User not found");
 
   const { data: updatedProgress, error } = await supabaseAdmin

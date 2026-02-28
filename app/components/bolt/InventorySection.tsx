@@ -83,7 +83,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         setLocalMetadata(newMeta);
 
         try {
-            const result = await api.equipCosmetic(selectedUser.id, item.itemDetails);
+            const result = await api.equipCosmetic(selectedUser.id, item.itemDetails, selectedUser.communityId);
             if (result.success) {
                 showToast("Equipped!");
                 if (onRefresh) onRefresh();
@@ -114,7 +114,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({
         setLocalMetadata(newMeta);
 
         try {
-            const result = await api.unequipCosmetic(selectedUser.id, type);
+            const result = await api.unequipCosmetic(selectedUser.id, type, selectedUser.communityId);
             if (result.success) {
                 showToast("Unequipped.");
                 if (onRefresh) onRefresh();
