@@ -238,7 +238,67 @@ export async function performSync(
                             });
                         }
 
-                        console.log(`  📊 Forum ${forumExpId} results: ${postsFromUser} from user, ${postsFilteredByDate} filtered by date, ${postsAlreadyRewarded} already rewarded`);
+                        console.log(`  📊 Forum ${forumExpId} top-level: ${postsFromUser} from user, ${postsFilteredByDate} filtered by date, ${postsAlreadyRewarded} already rewarded`);
+
+                        // ---------------------------------------------------------
+                        // Fetch REPLIES for each top-level post
+                        // ---------------------------------------------------------
+                        let repliesFromUser = 0;
+                        let repliesFilteredByDate = 0;
+                        let repliesAlreadyRewarded = 0;
+
+                        for (const post of allPosts) {
+                            if (post.comment_count === 0) continue; // Skip posts with no comments
+
+                            try {
+                                const replies = await whopsdk.forumPosts.list({
+                                    experience_id: forumExpId,
+                                    parent_id: post.id,
+                                    first: MAX_ITEMS_PER_CHANNEL
+                                });
+
+                                for (const reply of replies?.data || []) {
+                                    if (reply.user?.id !== whopUserId) continue;
+                                    repliesFromUser++;
+
+                                    const replyDate = new Date(reply.created_at);
+                                    if (replyDate < profileCreatedAt) { repliesFilteredByDate++; continue; }
+                                    if (replyDate < sinceSyncDate) { repliesFilteredByDate++; continue; }
+
+                                    const { data: existing } = await supabaseAdmin
+                                        .from('rewarded_activities')
+                                        .select('id')
+                                        .eq('profile_id', profile.id)
+                                        .eq('activity_type', 'forum_reply')
+                                        .eq('external_id', reply.id)
+                                        .maybeSingle();
+
+                                    if (existing) {
+                                        repliesAlreadyRewarded++;
+                                        continue;
+                                    }
+
+                                    const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
+                                    if (result?.xpGained) {
+                                        totalXp += result.xpGained;
+                                        syncedCount++;
+                                        forumPostsRewarded++;
+                                    } else {
+                                        console.warn(`  ⚠️ recordActionServer returned no XP for forum reply ${reply.id}`);
+                                    }
+
+                                    await supabaseAdmin.from('rewarded_activities').insert({
+                                        profile_id: profile.id,
+                                        activity_type: 'forum_reply',
+                                        external_id: reply.id
+                                    });
+                                }
+                            } catch (replyError: any) {
+                                console.warn(`  ⚠️ Replies for post ${post.id} skipped:`, replyError.message);
+                            }
+                        }
+
+                        console.log(`  📊 Forum ${forumExpId} replies: ${repliesFromUser} from user, ${repliesFilteredByDate} filtered by date, ${repliesAlreadyRewarded} already rewarded`);
                     } catch (forumExpError: any) {
                         console.warn(`  ⚠️ Forum experience ${forumExpId} skipped:`, forumExpError.message);
                     }
