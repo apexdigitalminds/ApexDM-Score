@@ -322,6 +322,14 @@ export async function ensureWhopContext(
     return false;
   }
 
+  // 🛡️ GUARD: Reject UUID-format whopStoreId — these are Supabase IDs, not Whop biz_ IDs
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (UUID_REGEX.test(whopStoreId)) {
+    console.error(`❌ ensureWhopContext: Rejected UUID as whopStoreId: ${whopStoreId}`);
+    console.error(`   This looks like a Supabase UUID, not a Whop biz_ ID. Aborting to prevent bogus community creation.`);
+    return false;
+  }
+
   console.log(`🔧 ensureWhopContext START`);
   console.log(`   Store ID: ${whopStoreId}`);
   console.log(`   User ID: ${whopUserId}`);
@@ -362,7 +370,7 @@ export async function ensureWhopContext(
       .select('id, community_id, role, communities(id, name, subscription_tier)')
       .eq('whop_user_id', whopUserId)
       .eq('role', 'admin') // Seller webhook = community owner upgrading their plan
-      .order('created_at', { ascending: true }) // Oldest = their original community
+      .order('updated_at', { ascending: true }) // Oldest = their original community
       .limit(1)
       .maybeSingle();
 

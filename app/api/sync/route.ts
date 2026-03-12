@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
         }
 
+        console.log(`🔑 Sync request: whopUserId=${whopUserId}, experienceId=${experienceId}`);
+
         // Get the user's profile - handle multi-tenant properly
         let profile;
         let profileError;
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
                 message: "Profile not found. Please refresh the app."
             }, { status: 404 });
         }
+
+        console.log(`👤 Sync profile found: id=${profile.id}, community=${profile.community_id}, last_sync_at=${profile.last_sync_at || 'never'}`);
 
         // =====================================================================
         // 2. Check Cooldown

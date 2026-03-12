@@ -123,7 +123,6 @@ export default function AdminPage() {
         await action();
         setTimeout(async () => {
             await fetchAllUsers();
-            router.refresh();
         }, 50);
     };
 
@@ -383,7 +382,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-700 pb-1">
+            <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-1 overflow-x-auto scrollbar-hide">
                 <TabButton active={activeTab === 'users'} onClick={() => setActiveTab('users')} label="Users" icon={<UserGroupIcon className="w-5 h-5" />} />
                 <TabButton active={activeTab === 'engagement'} onClick={() => setActiveTab('engagement')} label="Engagement" icon={<TrophyIcon className="w-5 h-5" />} />
                 <TabButton active={activeTab === 'quests'} onClick={() => setActiveTab('quests')} label="Quests" icon={<ClockIcon className="w-5 h-5" />} locked={!isFeatureEnabled('quests')} />
@@ -657,7 +656,7 @@ export default function AdminPage() {
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🎯 Quests</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm">Create multi-step challenges that guide members through structured activities. Quests combine multiple XP actions into engaging journeys.</p>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[600px] flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Quests</h3>
                             {isFeatureEnabled('quests') ? (
@@ -721,7 +720,7 @@ export default function AdminPage() {
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🛒 XP Store</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm">Let members spend their hard-earned XP on rewards you define. Create store items like XP boosters, streak freezes, or cosmetic rewards.</p>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[800px] flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">XP Store Management</h3>
                             {isFeatureEnabled('store') ? (

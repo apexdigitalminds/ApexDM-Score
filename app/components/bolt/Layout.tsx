@@ -6,10 +6,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ChartBarIcon, UserGroupIcon, LogoIcon, ShoppingCartIcon, TargetIcon, ChartPieIcon, SparklesIcon, LockClosedIcon } from './icons';
 import { useApp } from '@/context/AppContext';
 import Avatar from './Avatar';
-import TrialBanner from './TrialBanner';
-import TrialStatusBanner from './TrialStatusBanner'; // 🆕 Trial countdown
-import TrialExpiredModal from './TrialExpiredModal'; // 🆕 Trial expiration lock
-import { FreeTierTopBanner, FreeTierGradientBanner } from './FreeTierBanner'; // 🆕 Free tier upgrade CTAs
+import TrialStatusBanner from './TrialStatusBanner';
+import TrialExpiredModal from './TrialExpiredModal';
+import { FreeTierTopBanner } from './FreeTierBanner';
 
 // ... (Keep existing MenuIcon / XMarkIcon definitions) ...
 // Local Icons for Menu
@@ -100,13 +99,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col font-sans">
-            {/* 🆕 Free tier upgrade banners - only show for Free users */}
+            {/* Free tier upgrade banner — single thin bar for Free admins */}
             <FreeTierTopBanner />
-            <FreeTierGradientBanner />
 
-            {/* Trial banners - only show for Trial users */}
-            <TrialStatusBanner /> {/* Show trial countdown */}
-            <TrialBanner /> {/* Purple gradient trial banner */}
+            {/* Trial countdown banner — single thin bar for Trial users */}
+            <TrialStatusBanner />
 
             {/* Trial expiration modal */}
             <TrialExpiredModal />
@@ -121,22 +118,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             <Link href={homeHref} className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
                                 {!isLoading && isWhiteLabelActive ? (
                                     <>
-                                        {/* 🆕 Show community logo if set, else default icon */}
+                                        {/* Show community logo if set, else default icon */}
                                         {community?.logoUrl ? (
                                             <img src={community.logoUrl} alt={community?.name} className="h-8 w-8 rounded-lg object-cover" />
-                                        ) : (
-                                            <LogoIcon className="h-8 w-8" />
-                                        )}
-                                        {/* 🆕 Show custom app name if set, otherwise community name */}
+                                        ) : null}
+                                        {/* Show custom app name if set, otherwise community name */}
                                         <span className="text-slate-900 dark:text-white hidden sm:block">{community?.customAppName || community?.name || 'My Community'}</span>
                                     </>
-                                ) : (
-                                    <>
-                                        <LogoIcon className="h-8 w-8" />
-                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text hidden sm:block">CommunityXP</span>
-                                        <span className="bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text sm:hidden">CXP</span>
-                                    </>
-                                )}
+                                ) : null}
                             </Link>
                         </div>
 

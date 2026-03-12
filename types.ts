@@ -237,6 +237,7 @@ export interface Community {
   faviconUrl?: string;          // Custom favicon URL (separate from logo)
   customFooterText?: string;    // Replace "Powered by ApexDM" 
   hideMemberCount?: boolean;    // Hide member count in sidebar
+  onboardingSeen?: boolean;     // Track if admin has seen onboarding modal
 }
 
 export interface AnalyticsData {

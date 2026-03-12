@@ -48,11 +48,11 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    name: 'Trial',
+    name: 'Elite Trial',
     priceMonthly: 'FREE',
     priceAnnually: 'FREE',
     annualTotal: '$0',
-    description: '14-Day Elite Trial — Experience all features free.',
+    description: '14-Day Elite Plan Trial — Experience all features free.',
     features: [
       'All Elite Features for 14 Days including:',
       'XP Store & Customisable Items',
@@ -302,8 +302,9 @@ const PricingCard: React.FC<{ plan: Plan; isAnnual: boolean; currentTier: string
 
 const PricingPage: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(false);
-  const { community } = useApp();
-  const dashboardPath = community?.id ? `/dashboard/${community.id}` : '/admin';
+  const { community, experienceId } = useApp();
+  const validExperienceId = experienceId && experienceId !== 'no_experience' && experienceId.startsWith('exp_') ? experienceId : null;
+  const dashboardPath = community?.id ? `/dashboard/${community.id}` : validExperienceId ? `/dashboard/${validExperienceId}` : '/admin';
 
   // 🆕 Check if user has already used their trial
   // If trialEndsAt exists and tier is NOT 'trial', they've already used it

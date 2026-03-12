@@ -81,23 +81,34 @@ export async function performSync(
         // =====================================================================
         // Discover Forum and Course Experiences
         // =====================================================================
-        let forumExperienceId = '';
+        let forumExperienceIds: string[] = [];
         let courseExperienceIds: string[] = [];
 
         try {
             const experiences = await whopsdk.experiences.list({ company_id: companyId });
             for (const exp of experiences?.data || []) {
                 const appName = (exp.app?.name || '').toLowerCase();
+                const expName = (exp.name || '').toLowerCase();
                 console.log(`  📦 Found experience: ${exp.name} (${exp.id}) - App: ${exp.app?.name}`);
 
-                if (appName.includes('forum')) {
-                    forumExperienceId = exp.id;
-                    console.log(`  ✅ Forum experience: ${exp.id}`);
+                const isForumLike = ['forum', 'discussion', 'discussions'].some(
+                    term => appName.includes(term) || expName.includes(term)
+                );
+                if (isForumLike) {
+                    forumExperienceIds.push(exp.id);
+                    console.log(`  ✅ Forum experience: ${exp.id} (matched: app="${exp.app?.name}", name="${exp.name}")`);
                 }
                 if (appName.includes('course')) {
                     courseExperienceIds.push(exp.id);
                     console.log(`  ✅ Course experience: ${exp.id}`);
                 }
+            }
+
+            if (forumExperienceIds.length === 0) {
+                console.warn(`  ⚠️ No forum experiences found for company ${companyId}. Forum sync will be skipped.`);
+                console.warn(`  ⚠️ Available experiences: ${(experiences?.data || []).map(e => `${e.name} (${e.app?.name})`).join(', ') || 'none'}`);
+            } else {
+                console.log(`  📋 Will sync ${forumExperienceIds.length} forum experience(s): ${forumExperienceIds.join(', ')}`);
             }
         } catch (expError: any) {
             console.warn('Experience discovery skipped:', expError.message);
@@ -164,44 +175,72 @@ export async function performSync(
         }
 
         // =====================================================================
-        // Sync Forum Posts
+        // Sync Forum Posts (iterate ALL forum experiences)
         // =====================================================================
         try {
-            if (forumExperienceId) {
-                const posts = await whopsdk.forumPosts.list({
-                    experience_id: forumExperienceId,
-                    first: MAX_ITEMS_PER_CHANNEL
-                });
-
+            if (forumExperienceIds.length > 0) {
                 let forumPostsRewarded = 0;
-                for (const post of posts?.data || []) {
-                    if (post.user?.id !== whopUserId) continue;
 
-                    const postDate = new Date(post.created_at);
-                    if (postDate < profileCreatedAt) continue;
-                    if (postDate < sinceSyncDate) continue;
+                for (const forumExpId of forumExperienceIds) {
+                    try {
+                        console.log(`  🔍 Fetching forum posts from experience: ${forumExpId}`);
+                        const posts = await whopsdk.forumPosts.list({
+                            experience_id: forumExpId,
+                            first: MAX_ITEMS_PER_CHANNEL
+                        });
 
-                    const { data: existing } = await supabaseAdmin
-                        .from('rewarded_activities')
-                        .select('id')
-                        .eq('profile_id', profile.id)
-                        .eq('activity_type', 'forum_post')
-                        .eq('external_id', post.id)
-                        .maybeSingle();
+                        const allPosts = posts?.data || [];
+                        console.log(`  📊 Forum ${forumExpId}: ${allPosts.length} total posts returned`);
 
-                    if (!existing) {
-                        const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
-                        if (result?.xpGained) {
-                            totalXp += result.xpGained;
-                            syncedCount++;
-                            forumPostsRewarded++;
+                        let postsFromUser = 0;
+                        let postsFilteredByDate = 0;
+                        let postsAlreadyRewarded = 0;
+
+                        for (const post of allPosts) {
+                            // Log first few posts for debugging user ID format
+                            if (postsFromUser === 0 && allPosts.indexOf(post) < 3) {
+                                console.log(`  🔍 Sample post: user.id="${post.user?.id}" vs whopUserId="${whopUserId}" | created="${post.created_at}"`);
+                            }
+
+                            if (post.user?.id !== whopUserId) continue;
+                            postsFromUser++;
+
+                            const postDate = new Date(post.created_at);
+                            if (postDate < profileCreatedAt) { postsFilteredByDate++; continue; }
+                            if (postDate < sinceSyncDate) { postsFilteredByDate++; continue; }
+
+                            const { data: existing } = await supabaseAdmin
+                                .from('rewarded_activities')
+                                .select('id')
+                                .eq('profile_id', profile.id)
+                                .eq('activity_type', 'forum_post')
+                                .eq('external_id', post.id)
+                                .maybeSingle();
+
+                            if (existing) {
+                                postsAlreadyRewarded++;
+                                continue;
+                            }
+
+                            const result = await recordActionServer(profile.id, 'post_forum_comment' as ActionType, 'sync');
+                            if (result?.xpGained) {
+                                totalXp += result.xpGained;
+                                syncedCount++;
+                                forumPostsRewarded++;
+                            } else {
+                                console.warn(`  ⚠️ recordActionServer returned no XP for forum post ${post.id}`);
+                            }
+
+                            await supabaseAdmin.from('rewarded_activities').insert({
+                                profile_id: profile.id,
+                                activity_type: 'forum_post',
+                                external_id: post.id
+                            });
                         }
 
-                        await supabaseAdmin.from('rewarded_activities').insert({
-                            profile_id: profile.id,
-                            activity_type: 'forum_post',
-                            external_id: post.id
-                        });
+                        console.log(`  📊 Forum ${forumExpId} results: ${postsFromUser} from user, ${postsFilteredByDate} filtered by date, ${postsAlreadyRewarded} already rewarded`);
+                    } catch (forumExpError: any) {
+                        console.warn(`  ⚠️ Forum experience ${forumExpId} skipped:`, forumExpError.message);
                     }
                 }
 

@@ -1,31 +1,43 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 
 interface OnboardingModalProps {
     onNavigateToSetup: () => void;
 }
 
 export default function OnboardingModal({ onNavigateToSetup }: OnboardingModalProps) {
+    const { community } = useApp();
     const [isVisible, setIsVisible] = useState(false);
 
+    // Community-scoped localStorage key prevents cross-community leakage
+    const storageKey = community?.id
+        ? `apexdm_onboarding_seen_${community.id}`
+        : 'apexdm_admin_onboarding_seen';
+
     useEffect(() => {
-        // Check if admin has seen onboarding before
-        const hasSeenOnboarding = localStorage.getItem('apexdm_admin_onboarding_seen');
-        if (!hasSeenOnboarding) {
+        if (!community) return; // Wait for community to load
+        const hasSeen = typeof window !== 'undefined' && (
+            localStorage.getItem(storageKey) === 'true' ||
+            localStorage.getItem('apexdm_admin_onboarding_seen') === 'true' // Legacy key fallback
+        );
+        if (!hasSeen) {
             setIsVisible(true);
         }
-    }, []);
-
-    const handleGetStarted = () => {
-        localStorage.setItem('apexdm_admin_onboarding_seen', 'true');
-        setIsVisible(false);
-        onNavigateToSetup();
-    };
+    }, [community, storageKey]);
 
     const handleDismiss = () => {
-        localStorage.setItem('apexdm_admin_onboarding_seen', 'true');
         setIsVisible(false);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(storageKey, 'true');
+            localStorage.setItem('apexdm_admin_onboarding_seen', 'true'); // Legacy compat
+        }
+    };
+
+    const handleGetStarted = () => {
+        handleDismiss();
+        onNavigateToSetup();
     };
 
     if (!isVisible) return null;
@@ -87,3 +99,5 @@ export default function OnboardingModal({ onNavigateToSetup }: OnboardingModalPr
         </div>
     );
 }
+
+
