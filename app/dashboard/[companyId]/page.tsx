@@ -36,12 +36,12 @@ export default async function DashboardPage({
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             Your session could not be verified. This usually happens after a period of inactivity.
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors"
+          <a
+            href={`/dashboard/${companyId}`}
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors"
           >
             Refresh Page
-          </button>
+          </a>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-6">
             If this persists, try reopening the app from your Whop dashboard.
           </p>

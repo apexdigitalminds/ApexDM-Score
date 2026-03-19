@@ -62,50 +62,100 @@ export async function verifyUser(routeCompanyId?: string, directCommunityId?: st
     let targetCommunityId: string | null = null;
 
     if (routeCompanyId) {
-      const { data: community } = await supabaseAdmin
-        .from('communities')
-        .select('id, name, logo_url')
-        .eq('whop_store_id', routeCompanyId)
-        .maybeSingle();
+      // Check if routeCompanyId is a UUID (Supabase community ID) or a biz_ (Whop store ID)
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUUID = UUID_REGEX.test(routeCompanyId);
 
-      targetCommunityId = community?.id || null;
-      console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
+      if (isUUID) {
+        // Route param is a Supabase UUID — look up by community `id` directly
+        const { data: community } = await supabaseAdmin
+          .from('communities')
+          .select('id, name, logo_url, whop_store_id')
+          .eq('id', routeCompanyId)
+          .maybeSingle();
 
-      // 🆕 Auto-repair: fix generic name and/or missing logo for existing communities
-      if (targetCommunityId && routeCompanyId) {
-        const storedName = community?.name || '';
-        const storedLogo = community?.logo_url || '';
+        targetCommunityId = community?.id || null;
+        console.log(`   Target community UUID (direct lookup): ${targetCommunityId || 'NOT FOUND'}`);
 
-        const nameIsGeneric =
-          !storedName ||
-          storedName.startsWith('Community ') ||
-          storedName === 'CommunityXP Community';
-        const logoIsMissing = !storedLogo;
+        // Auto-repair using whop_store_id if available
+        if (targetCommunityId && community?.whop_store_id) {
+          const storedName = community?.name || '';
+          const storedLogo = community?.logo_url || '';
+          const nameIsGeneric =
+            !storedName ||
+            storedName.startsWith('Community ') ||
+            storedName === 'CommunityXP Community';
+          const logoIsMissing = !storedLogo;
 
-        if (nameIsGeneric || logoIsMissing) {
-          console.log(`🔄 Auto-repair triggered — name generic: ${nameIsGeneric}, logo missing: ${logoIsMissing}`);
-          try {
-            const company = await whopsdk.companies.retrieve(routeCompanyId);
-            const repairData: any = {};
-
-            if (nameIsGeneric && company?.title) {
-              repairData.name = company.title;
-              console.log(`   Repairing name → "${company.title}"`);
+          if (nameIsGeneric || logoIsMissing) {
+            console.log(`🔄 Auto-repair triggered — name generic: ${nameIsGeneric}, logo missing: ${logoIsMissing}`);
+            try {
+              const company = await whopsdk.companies.retrieve(community.whop_store_id);
+              const repairData: any = {};
+              if (nameIsGeneric && company?.title) {
+                repairData.name = company.title;
+                console.log(`   Repairing name → "${company.title}"`);
+              }
+              if (logoIsMissing && company?.logo?.url) {
+                repairData.logo_url = company.logo.url;
+                console.log(`   Repairing logo_url`);
+              }
+              if (Object.keys(repairData).length > 0) {
+                await supabaseAdmin
+                  .from('communities')
+                  .update(repairData)
+                  .eq('id', targetCommunityId);
+                console.log(`✅ Auto-repair complete`);
+              }
+            } catch (e: any) {
+              console.warn(`⚠️ Could not auto-repair community: ${e.message}`);
             }
-            if (logoIsMissing && company?.logo?.url) {
-              repairData.logo_url = company.logo.url;
-              console.log(`   Repairing logo_url`);
-            }
+          }
+        }
+      } else {
+        // Route param is a biz_ Whop store ID — original lookup
+        const { data: community } = await supabaseAdmin
+          .from('communities')
+          .select('id, name, logo_url')
+          .eq('whop_store_id', routeCompanyId)
+          .maybeSingle();
 
-            if (Object.keys(repairData).length > 0) {
-              await supabaseAdmin
-                .from('communities')
-                .update(repairData)
-                .eq('id', targetCommunityId);
-              console.log(`✅ Auto-repair complete`);
+        targetCommunityId = community?.id || null;
+        console.log(`   Target community UUID: ${targetCommunityId || 'NOT FOUND (new community)'}`);
+
+        // Auto-repair for biz_ path
+        if (targetCommunityId && routeCompanyId) {
+          const storedName = community?.name || '';
+          const storedLogo = community?.logo_url || '';
+          const nameIsGeneric =
+            !storedName ||
+            storedName.startsWith('Community ') ||
+            storedName === 'CommunityXP Community';
+          const logoIsMissing = !storedLogo;
+
+          if (nameIsGeneric || logoIsMissing) {
+            console.log(`🔄 Auto-repair triggered — name generic: ${nameIsGeneric}, logo missing: ${logoIsMissing}`);
+            try {
+              const company = await whopsdk.companies.retrieve(routeCompanyId);
+              const repairData: any = {};
+              if (nameIsGeneric && company?.title) {
+                repairData.name = company.title;
+                console.log(`   Repairing name → "${company.title}"`);
+              }
+              if (logoIsMissing && company?.logo?.url) {
+                repairData.logo_url = company.logo.url;
+                console.log(`   Repairing logo_url`);
+              }
+              if (Object.keys(repairData).length > 0) {
+                await supabaseAdmin
+                  .from('communities')
+                  .update(repairData)
+                  .eq('id', targetCommunityId);
+                console.log(`✅ Auto-repair complete`);
+              }
+            } catch (e: any) {
+              console.warn(`⚠️ Could not auto-repair community: ${e.message}`);
             }
-          } catch (e: any) {
-            console.warn(`⚠️ Could not auto-repair community: ${e.message}`);
           }
         }
       }
@@ -123,8 +173,10 @@ export async function verifyUser(routeCompanyId?: string, directCommunityId?: st
     let profileError = null;
 
     if (targetCommunityId || routeCompanyId) {
-      // If the community row doesn't exist yet for this routeCompanyId, provision it first
-      if (routeCompanyId && !targetCommunityId) {
+      // If the community row doesn't exist yet for this routeCompanyId, provision it
+      // BUT only if it's a biz_ format (Whop ID), not a UUID
+      const UUID_REGEX_CHECK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (routeCompanyId && !targetCommunityId && !UUID_REGEX_CHECK.test(routeCompanyId)) {
         console.log(`⚠️ Company ${routeCompanyId} has no community row yet — provisioning now`);
         await ensureWhopContext(routeCompanyId, whopUserId, roles);
         const { data: newCommunity } = await supabaseAdmin
@@ -138,6 +190,9 @@ export async function verifyUser(routeCompanyId?: string, directCommunityId?: st
           return null;
         }
         console.log(`✅ Community provisioned: ${targetCommunityId}`);
+      } else if (routeCompanyId && !targetCommunityId && UUID_REGEX_CHECK.test(routeCompanyId)) {
+        console.error(`❌ Community UUID ${routeCompanyId} not found in database. Cannot provision from a UUID.`);
+        return null;
       }
 
       // Community-scoped lookup: UNIQUE(whop_user_id, community_id)
