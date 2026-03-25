@@ -22,7 +22,7 @@ const planIds: Record<string, { monthly: string; annual: string }> = {
     monthly: 'plan_hytzupiY3xjGm',
     annual: 'plan_RXAfXSbUVzWgl'
   },
-  'Trial': {
+  'Elite Trial': {
     monthly: 'plan_amn9G18ulcdQb',
     annual: 'plan_5uqY7T2CaPTi3'
   }

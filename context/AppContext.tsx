@@ -289,8 +289,17 @@ export const AppProvider = ({
     const handleAddBadge = async (badge: Partial<Badge>) => { if (!badge.name) return; const config = { name: badge.name, description: badge.description || '', icon: badge.icon || '', color: badge.color || '' }; await api.createBadge(badge.name, config); await fetchBadges(); };
 
     const handleUpdateBadge = async (badgeName: string, data: Partial<Badge> & { isActive?: boolean }) => {
-        await api.updateBadge(badgeName, data);
-        await fetchBadges();
+        // Optimistically update badgesConfig in-place to prevent useEffect revert race
+        setBadgesConfig(prev => ({
+            ...prev,
+            [badgeName]: { ...prev[badgeName], ...data }
+        }));
+        try {
+            await api.updateBadge(badgeName, data);
+        } catch (err) {
+            console.error('Badge update failed, re-fetching:', err);
+            await fetchBadges(); // Only re-fetch on failure to restore server truth
+        }
     };
 
     const handleDeleteBadge = async (badgeName: string) => { const result = await api.deleteBadge(badgeName, true); await fetchBadges(); return { success: result.success, message: result.success ? "Badge deleted" : "Failed to delete badge" }; };
