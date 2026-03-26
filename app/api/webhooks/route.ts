@@ -47,6 +47,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     // 🎯 Events that should award XP automatically
     const xpAwardEvents: Record<string, ActionType> = {
       "invoice_paid": "subscription_renewed",
+      "invoice.paid": "subscription_renewed",
       "course_lesson_interaction_completed": "lesson_completed"
     };
 

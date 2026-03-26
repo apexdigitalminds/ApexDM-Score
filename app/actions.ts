@@ -1512,11 +1512,19 @@ export async function adminUpdateBadgeAction(currentName: string, config: any) {
     updates.name = config.name;
   }
 
-  const { error } = await supabaseAdmin
+  console.log(`🏷️ adminUpdateBadgeAction: badge="${currentName}", community="${communityId}", updates=`, JSON.stringify(updates));
+
+  const { error, count } = await supabaseAdmin
     .from('badges')
     .update(updates)
     .eq('name', currentName)
     .eq('community_id', communityId);
+
+  if (error) {
+    console.error(`❌ Badge update failed:`, error);
+  } else {
+    console.log(`✅ Badge update success for "${currentName}"`);
+  }
 
   return !error;
 }
