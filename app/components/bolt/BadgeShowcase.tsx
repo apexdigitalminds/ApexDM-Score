@@ -9,15 +9,17 @@ import { iconMap, iconMapKeys } from './icons'; // 🟢 Added to handle Icon/Emo
 const BadgeShowcase: React.FC = () => {
     const { badgesConfig } = useApp();
 
-    const allBadges: Badge[] = Object.entries(badgesConfig).map(([name, config], index) => ({
-        id: `showcase_${index}`,
-        name,
-        description: (config as BadgeConfig).description,
-        icon: (config as BadgeConfig).icon,
-        color: (config as BadgeConfig).color,
-        communityId: '',
-        isActive: true
-    }));
+    const allBadges: Badge[] = Object.entries(badgesConfig)
+        .filter(([, config]) => (config as BadgeConfig).isActive !== false && !(config as BadgeConfig).isArchived)
+        .map(([name, config], index) => ({
+            id: `showcase_${index}`,
+            name,
+            description: (config as BadgeConfig).description,
+            icon: (config as BadgeConfig).icon,
+            color: (config as BadgeConfig).color,
+            communityId: '',
+            isActive: (config as BadgeConfig).isActive !== false
+        }));
 
     return (
         <div className="space-y-8">
