@@ -283,7 +283,7 @@ export const api = {
         const communityId = await getCommunityId();
         const { data, error } = await supabase.from('badges').select('*').eq('community_id', communityId);
         if (error || !data) return {};
-        return data.reduce((acc, b) => ({ ...acc, [b.name]: { name: b.name, description: b.description, icon: b.icon, color: b.color, isArchived: b.is_archived, isActive: b.isActive } }), {} as any);
+        return data.reduce((acc, b) => ({ ...acc, [b.name]: { name: b.name, description: b.description, icon: b.icon, color: b.color, isArchived: b.is_archived, isActive: b.is_active, xpReward: b.xp_reward, triggerType: b.trigger_type, triggerValue: b.trigger_value, triggerAction: b.trigger_action } }), {} as any);
     },
 
     getCommunityInfo: async (): Promise<Community | null> => {
