@@ -125,9 +125,9 @@ export default function WhiteLabelSettings() {
                         className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
                     />
                     <p className="text-slate-500 text-xs mt-1">Replace &quot;CommunityXP&quot; with your custom name (e.g. &quot;Daily Score&quot;)</p>
-                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mt-2">
-                        <p className="text-purple-300 dark:text-purple-400 text-xs">
-                            <strong>💡 Sidebar Tip:</strong> To also rename the app in your Whop sidebar, right-click (or long-press on mobile) on &quot;CommunityXP&quot; in the left menu and select <strong>Rename</strong>.
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2">
+                        <p className="text-blue-700 dark:text-blue-300 text-xs">
+                            <strong>💡 Sidebar Tip:</strong> To also rename the app in your Whop sidebar, right-click (or long-press on mobile) on &quot;CommunityXP&quot; in the left menu and select <strong>&quot;Change visibility&quot;</strong> to update the App Name.
                         </p>
                     </div>
                 </div>
