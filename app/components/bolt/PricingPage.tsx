@@ -58,7 +58,7 @@ const plans: Plan[] = [
       'XP Store & Customisable Items',
       'Customisable Quests and Challenges',
       'Advanced Analytics Dashboard',
-      'White-label Branding',
+      'Custom Branding',
     ],
     isTrial: true,
   },
@@ -102,7 +102,7 @@ const plans: Plan[] = [
       'XP Store & Customisable Items',
       'XP Boosters, Consumable, and Cosmetic Items',
       '5 Pre-Built Items',
-      'White-label Branding',
+      'Custom Branding',
     ],
   },
 ];

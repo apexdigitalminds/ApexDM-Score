@@ -538,7 +538,7 @@ export default function AdminPage() {
                         <p className="text-slate-500 dark:text-slate-400 text-sm">Configure how members earn recognition in your community. Set up XP reward actions to incentivize participation and create achievement badges for milestones.</p>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col border border-slate-200 dark:border-slate-700">
+                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage XP Reward Actions</h3>
                                 <div className="flex items-center gap-2">
@@ -547,11 +547,10 @@ export default function AdminPage() {
                                 </div>
                             </div>
                             <form onSubmit={handleRewardSubmit} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
-                                <div className="flex gap-2 mb-2">
-                                    {/* 🟢 FIXED: Removed disabled={!!editRewardAction} to allow editing */}
-                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action Type (e.g. daily_login)" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 flex-1 text-sm" />
-                                    <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Display Name (e.g. Daily Login)" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 flex-1 text-sm" />
-                                    <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 w-20 text-sm" />
+                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_5rem] gap-2 mb-2">
+                                    <input type="text" value={newActionName} onChange={e => setNewActionName(e.target.value)} placeholder="Action Type (e.g. daily_login)" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
+                                    <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} placeholder="Display Name" className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
+                                    <input type="number" value={newActionXp} onChange={e => setNewActionXp(parseInt(e.target.value))} placeholder="XP" required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
                                 </div>
                                 <div className="flex gap-2">
                                     <button type="submit" className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-bold w-full text-sm">{editRewardAction ? 'Update' : 'Add'}</button>
@@ -562,9 +561,9 @@ export default function AdminPage() {
                                 {filteredRewards.map(([key, value]) => {
                                     const r = value as Reward;
                                     return (
-                                        <div key={key} className={`flex justify-between items-center p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
-                                            <div><p className={`font-bold text-sm ${r.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{r.displayName || key}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-slate-500">{key}</span><span className="text-yellow-500 dark:text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
-                                            <div className="flex gap-2 items-center">
+                                        <div key={key} className={`flex flex-wrap justify-between items-center gap-2 p-3 rounded border ${r.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
+                                            <div className="min-w-0 flex-1"><p className={`font-bold text-sm truncate ${r.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{r.displayName || key}</p><div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs mt-0.5"><span className="text-slate-500 truncate max-w-[120px]">{key}</span><span className="text-yellow-500 dark:text-yellow-400 font-bold">{r.xpGained} XP</span>{!r.isArchived && <span className={r.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{r.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                            <div className="flex gap-2 items-center flex-shrink-0">
                                                 {!r.isArchived && (
                                                     <ToggleSwitch checked={r.isActive} onChange={(val) => handleToggleRewardActive(key, val)} />
                                                 )}
@@ -577,7 +576,7 @@ export default function AdminPage() {
                         </div>
 
                         {/* BADGES */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg h-[750px] flex flex-col border border-slate-200 dark:border-slate-700">
+                        <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Badges</h3>
                                 <div className="flex items-center gap-2">
@@ -901,18 +900,18 @@ export default function AdminPage() {
 
                                 <div className="flex-grow overflow-y-auto pr-2 space-y-2">
                                     {filteredStore.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center p-3 rounded border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
+                                        <div key={item.id} className="flex flex-wrap justify-between items-center gap-2 p-3 rounded border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <div className="w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center flex-shrink-0">
                                                         <RenderIconPreview iconName={item.icon} color={item.metadata?.color || '#a855f7'} />
                                                     </div>
                                                     <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600`}>{item.itemType}</span>
-                                                    <p className="font-bold text-sm text-slate-900 dark:text-white">{item.name}</p>
+                                                    <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{item.name}</p>
                                                 </div>
                                                 <p className="text-xs text-slate-400">{item.cost} XP</p>
                                             </div>
-                                            <div className="flex gap-2 items-center">
+                                            <div className="flex gap-2 items-center flex-shrink-0">
                                                 {!item.isArchived && <ToggleSwitch checked={item.isActive} onChange={(val) => handleToggleStoreItem(item.id, val)} />}
                                                 {item.isArchived ? <button onClick={() => handleRestoreItemClick(item)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditItemClick(item)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold">Edit</button><button onClick={() => handleDeleteItemClick(item)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
@@ -935,7 +934,7 @@ export default function AdminPage() {
                         {/* Tab Description Banner */}
                         <div className="bg-gradient-to-r from-white dark:from-slate-800 to-slate-50 dark:to-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">⚙️ Settings</h2>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm">Configure advanced options including webhooks and white-label branding. Connect external systems via webhooks to automatically award XP.</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">Configure advanced options including webhooks and custom branding. Connect external systems via webhooks to automatically award XP.</p>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">

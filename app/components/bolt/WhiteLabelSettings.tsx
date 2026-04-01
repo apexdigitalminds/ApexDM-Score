@@ -77,13 +77,13 @@ export default function WhiteLabelSettings() {
             <div className="bg-white/80 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-300 dark:border-slate-700">
                 <div className="flex items-center gap-3 mb-4">
                     <span className="text-2xl">🎨</span>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">White-Label Branding</h3>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Branding</h3>
                     <span className="bg-purple-100 text-purple-600 dark:bg-purple-600/20 dark:text-purple-400 text-xs px-2 py-1 rounded-full font-semibold">
                         Elite Only
                     </span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
-                    Customize your community's branding with a custom logo, colors, and remove CommunityXP references.
+                    Customize your in-app branding with a custom name, logo, and footer text.
                 </p>
                 <a
                     href="/pricing"
@@ -99,14 +99,14 @@ export default function WhiteLabelSettings() {
         <div className="bg-white/80 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-6">
                 <span className="text-2xl">🎨</span>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">White-Label Branding</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Custom Branding</h3>
             </div>
 
             {/* Enable Toggle */}
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
                 <div>
-                    <p className="text-slate-900 dark:text-white font-medium">Enable White-Label Mode</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Replace CommunityXP branding with your own</p>
+                    <p className="text-slate-900 dark:text-white font-medium">Enable Custom Branding</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Replace CommunityXP references with your own name and logo</p>
                 </div>
                 <ToggleSwitch checked={whiteLabelEnabled} onChange={setWhiteLabelEnabled} />
             </div>
@@ -140,18 +140,7 @@ export default function WhiteLabelSettings() {
                     <p className="text-slate-500 text-xs mt-1">Used in sidebar header and as default favicon</p>
                 </div>
 
-                {/* Favicon URL */}
-                <div>
-                    <label className="block text-slate-800 dark:text-white text-sm font-medium mb-2">Custom Favicon URL <span className="text-slate-500 font-normal">(optional)</span></label>
-                    <input
-                        type="url"
-                        value={faviconUrl}
-                        onChange={(e) => setFaviconUrl(e.target.value)}
-                        placeholder="https://example.com/favicon.ico"
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
-                    />
-                    <p className="text-slate-500 text-xs mt-1">If empty, logo URL will be used as favicon</p>
-                </div>
+
 
                 {/* Custom Footer Text */}
                 <div>
