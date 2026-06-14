@@ -357,26 +357,26 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-6 pb-20 overflow-hidden">
             <ConfirmationModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={closeModal} isDestructive={modalConfig.isDestructive} />
             {/* 🆕 First-visit onboarding popup */}
             <OnboardingModal onNavigateToSetup={() => setActiveTab('subscription')} />
-            {notification && <div className="fixed top-20 right-8 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-bounce">{notification}</div>}
+            {notification && <div className="fixed top-20 right-4 sm:right-8 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-bounce max-w-[calc(100vw-2rem)]">{notification}</div>}
             {isLogModalOpen && targetUser && <ActionLogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} username={targetUser.username} actions={logActions} />}
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 dark:border-slate-700 pb-8">
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-5 min-w-0">
                     {community?.logoUrl ? (
-                        <img src={community.logoUrl} alt={community.name} className="w-16 h-16 rounded-xl shadow-lg object-cover border border-slate-200 dark:border-slate-600" />
+                        <img src={community.logoUrl} alt={community.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl shadow-lg object-cover border border-slate-200 dark:border-slate-600 flex-shrink-0" />
                     ) : (
-                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg border border-white/10">
-                            <LogoIcon className="w-8 h-8 text-white" />
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg border border-white/10 flex-shrink-0">
+                            <LogoIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                         </div>
                     )}
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">{community?.name || "Admin Dashboard"}</h1>
-                        <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-300 shadow-sm">
-                            <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600">|</span><span className="text-slate-700 dark:text-slate-200 font-semibold">{allUsers.length} Users</span><span className="text-slate-600">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2 truncate">{community?.name || "Admin Dashboard"}</h1>
+                        <div className="inline-flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-300 shadow-sm">
+                            <span className="flex items-center gap-1.5 text-green-400"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>Active</span><span className="text-slate-600 hidden sm:inline">|</span><span className="text-slate-700 dark:text-slate-200 font-semibold">{allUsers.length} Users</span><span className="text-slate-600 hidden sm:inline">|</span><span className={`uppercase tracking-wider font-bold ${(community?.tier?.toLowerCase() === 'elite') ? 'text-purple-400' : (community?.tier?.toLowerCase() === 'pro') ? 'text-orange-400' : 'text-blue-400'}`}>{community?.tier || "Free"} Plan</span>
                         </div>
                     </div>
                 </div>
@@ -415,13 +415,13 @@ export default function AdminPage() {
                                     <div className="space-y-4">
                                         <div className="p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
                                             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase">Manual Awards</label>
-                                            <div className="flex gap-2 mb-3 items-end">
-                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
-                                                <button onClick={handleAwardXp} disabled={!targetUser} className="bg-green-600 text-white px-2 rounded hover:bg-green-700 text-sm font-bold h-[38px] w-32">+XP</button>
+                                            <div className="flex flex-col sm:flex-row gap-2 mb-3 items-stretch sm:items-end">
+                                                <div className="flex-1 min-w-0"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Action</label><select value={actionType} onChange={e => setActionType(e.target.value as ActionType)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(rewardsConfig).map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}</select></div>
+                                                <button onClick={handleAwardXp} disabled={!targetUser} className="bg-green-600 text-white px-3 rounded hover:bg-green-700 text-sm font-bold h-[38px] flex-shrink-0">+XP</button>
                                             </div>
-                                            <div className="flex gap-2 items-end">
-                                                <div className="flex-1"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
-                                                <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-2 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] w-32">Award Badge</button>
+                                            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                                                <div className="flex-1 min-w-0"><label className="text-[10px] text-slate-500 uppercase mb-1 block">Badge</label><select value={badgeToAward} onChange={e => setBadgeToAward(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded p-2 text-sm border border-slate-300 dark:border-slate-600">{Object.keys(badgesConfig).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                                                <button onClick={handleAwardBadgeClick} disabled={!targetUser} className="bg-yellow-600 text-white px-3 rounded hover:bg-yellow-700 text-sm font-bold h-[38px] flex-shrink-0">Award Badge</button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-2 text-center">
@@ -625,14 +625,14 @@ export default function AdminPage() {
                                     const isActive = b.isActive !== undefined ? b.isActive : true;
 
                                     return (
-                                        <div key={name} className={`flex justify-between items-center p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600">
+                                        <div key={name} className={`flex flex-wrap justify-between items-center gap-2 p-3 rounded border ${b.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 flex-shrink-0">
                                                     {isPreset && BadgeIcon ? <BadgeIcon className="w-6 h-6" style={{ color: b.color }} /> : <span className="text-xl select-none">{b.icon}</span>}
                                                 </div>
-                                                <div><p className={`font-bold text-sm ${b.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{b.description}</p><div className="flex gap-2 text-xs mt-0.5">{b.xpReward > 0 && <span className="text-yellow-500 dark:text-yellow-400 font-bold">{b.xpReward} XP</span>}{!b.isArchived && <span className={isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
+                                                <div className="min-w-0"><p className={`font-bold text-sm truncate ${b.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{name}</p><p className="text-xs text-slate-500 dark:text-slate-400 truncate">{b.description}</p><div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs mt-0.5">{b.xpReward > 0 && <span className="text-yellow-500 dark:text-yellow-400 font-bold">{b.xpReward} XP</span>}{!b.isArchived && <span className={isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{isActive ? "Active" : "Draft"}</span>}</div></div>
                                             </div>
-                                            <div className="flex gap-2 items-center">
+                                            <div className="flex gap-2 items-center flex-shrink-0">
                                                 {!b.isArchived && (
                                                     <ToggleSwitch checked={isActive} onChange={(val) => handleToggleBadgeActive(name, val)} />
                                                 )}
@@ -655,7 +655,7 @@ export default function AdminPage() {
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🎯 Quests</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm">Create multi-step challenges that guide members through structured activities. Quests combine multiple XP actions into engaging journeys.</p>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Quests</h3>
                             {isFeatureEnabled('quests') ? (
@@ -697,9 +697,9 @@ export default function AdminPage() {
                                 </form>
                                 <div className="flex-grow overflow-y-auto space-y-2 pr-2">
                                     {filteredQuests.map(q => (
-                                        <div key={q.id} className={`flex justify-between items-center p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
-                                            <div><p className={`font-bold text-sm ${q.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{q.title}</p><div className="flex gap-2 text-xs mt-0.5"><span className="text-yellow-500 dark:text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
-                                            <div className="flex gap-2 items-center">
+                                        <div key={q.id} className={`flex flex-wrap justify-between items-center gap-2 p-3 rounded border ${q.isArchived ? 'bg-red-900/10 border-red-900/30' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'} transition-colors`}>
+                                            <div className="min-w-0 flex-1"><p className={`font-bold text-sm truncate ${q.isArchived ? 'text-red-300' : 'text-slate-900 dark:text-white'}`}>{q.title}</p><div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs mt-0.5"><span className="text-yellow-500 dark:text-yellow-400 font-bold">{q.xpReward} XP</span>{!q.isArchived && <span className={q.isActive ? "text-green-500 dark:text-green-400" : "text-slate-500"}>{q.isActive ? "Active" : "Draft"}</span>}</div></div>
+                                            <div className="flex gap-2 items-center flex-shrink-0">
                                                 {!q.isArchived && <ToggleSwitch checked={q.isActive} onChange={(val) => handleToggleQuestClick(q)} />}
                                                 {q.isArchived ? <button onClick={() => handleRestoreQuestClick(q)} className="text-green-400 text-xs font-bold">Restore</button> : <><button onClick={() => handleEditQuestClick(q)} className="text-slate-500 dark:text-slate-400 text-xs font-bold">Edit</button><button onClick={() => handleDeleteQuestClick(q)} className="text-red-500 hover:text-red-400 text-xs font-bold">Delete</button></>}
                                             </div>
@@ -719,7 +719,7 @@ export default function AdminPage() {
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">🛒 XP Store</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm">Let members spend their hard-earned XP on rewards you define. Create store items like XP boosters, streak freezes, or cosmetic rewards.</p>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">XP Store Management</h3>
                             {isFeatureEnabled('store') ? (
@@ -733,7 +733,7 @@ export default function AdminPage() {
                         {isFeatureEnabled('store') ? (
                             <>
                                 <form onSubmit={handleItemSubmit} className="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                         <div>
                                             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Name</label>
                                             <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" />
@@ -749,7 +749,7 @@ export default function AdminPage() {
                                         <textarea value={itemDescription} onChange={e => setItemDescription(e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full" rows={2} />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                         <div>
                                             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Type</label>
                                             <select value={itemType} onChange={e => setItemType(e.target.value as ItemType)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded p-2 text-sm w-full">

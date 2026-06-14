@@ -111,10 +111,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <header className="bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
 
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center justify-between h-16 gap-2">
 
                         {/* LEFT: Branding with Logic */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0 flex-shrink">
                             <Link href={homeHref} className="flex items-center gap-3 text-2xl font-extrabold tracking-tight">
                                 {!isLoading && isWhiteLabelActive ? (
                                     <>
@@ -123,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             <img src={community.logoUrl} alt={community?.name} className="h-8 w-8 rounded-lg object-cover" />
                                         ) : null}
                                         {/* Show custom app name if set, otherwise community name */}
-                                        <span className="text-slate-900 dark:text-white hidden sm:block">{community?.customAppName || community?.name || 'My Community'}</span>
+                                        <span className="text-slate-900 dark:text-white hidden sm:block truncate max-w-[180px]">{community?.customAppName || community?.name || 'My Community'}</span>
                                     </>
                                 ) : null}
                             </Link>
@@ -150,7 +150,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 <>
                                     <Link
                                         href={`/profile/${selectedUser.id}`}
-                                        className={`hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
+                                        className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors min-w-0 max-w-[200px] ${pathname === `/profile/${selectedUser.id}` ? activeClass : inactiveClass}`}
                                     >
                                         <div
                                             className="relative rounded-full transition-all duration-300 p-0.5"
@@ -167,7 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             />
                                         </div>
                                         <span
-                                            className={`font-semibold text-sm max-w-[100px] truncate ${!selectedUser.metadata?.nameColor ? 'text-slate-900 dark:text-white' : ''}`}
+                                            className={`font-semibold text-sm truncate ${!selectedUser.metadata?.nameColor ? 'text-slate-900 dark:text-white' : ''}`}
                                             style={selectedUser.metadata?.nameColor
                                                 ? { color: selectedUser.metadata.nameColor }
                                                 : undefined}

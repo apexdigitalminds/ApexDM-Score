@@ -21,7 +21,7 @@ const ActionLogModal: React.FC<ActionLogModalProps> = ({ isOpen, onClose, userna
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Full Action Log for {username}</h2>
+          <h2 className="text-lg sm:text-2xl font-bold truncate">Full Action Log for {username}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">&times;</button>
         </div>
         <div className="flex-grow overflow-y-auto pr-2">

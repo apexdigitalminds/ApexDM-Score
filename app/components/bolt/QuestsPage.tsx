@@ -80,7 +80,7 @@ const QuestCard: React.FC<QuestCardProps> = ({ quest, progress, onClaim, isClaim
                 </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-700/50 mt-auto p-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-700/50 mt-auto p-4 sm:p-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 text-yellow-400">
                         <TrophyIcon className="w-5 h-5" />
@@ -161,7 +161,7 @@ const QuestsPage: React.FC = () => {
     return (
         <div className="space-y-8">
             {notification && (
-                <div className={`fixed top-20 right-8 text-white px-4 py-2 rounded-lg shadow-lg z-20 border ${notification.type === 'success' ? 'bg-green-600 border-green-500' : 'bg-red-600 border-red-500'}`}>
+                <div className={`fixed top-20 right-4 sm:right-8 text-white px-4 py-2 rounded-lg shadow-lg z-20 border max-w-[calc(100vw-2rem)] ${notification.type === 'success' ? 'bg-green-600 border-green-500' : 'bg-red-600 border-red-500'}`}>
                     {notification.message}
                 </div>
             )}

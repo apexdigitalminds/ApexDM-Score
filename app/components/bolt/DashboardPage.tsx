@@ -248,7 +248,7 @@ const DashboardPage: React.FC = () => {
             {/* Header Row */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
                     <p className="text-slate-600 dark:text-slate-400">Your hub for stats and inventory.</p>
                 </div>
 
@@ -281,7 +281,7 @@ const DashboardPage: React.FC = () => {
 
             {xpGained && <XpNotification amount={xpGained} />}
             {notification && (
-                <div className="fixed top-20 right-8 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-pulse">
+                <div className="fixed top-20 right-4 sm:right-8 bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg shadow-lg z-50 border border-slate-200 dark:border-slate-600 animate-pulse max-w-[calc(100vw-2rem)]">
                     {notification}
                 </div>
             )}

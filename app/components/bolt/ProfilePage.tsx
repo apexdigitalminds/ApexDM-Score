@@ -99,7 +99,7 @@ const ProfilePage: React.FC = () => {
                     </div>
 
                     <div className="text-center sm:text-left">
-                        <h1 className="text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start" style={nameColor ? { color: nameColor } : undefined}>
+                        <h1 className="text-2xl sm:text-3xl font-bold flex flex-wrap items-center gap-2 justify-center sm:justify-start" style={nameColor ? { color: nameColor } : undefined}>
                             {title && titlePos === 'prefix' && (
                                 <span className="text-xl opacity-70 font-normal text-slate-500 dark:text-slate-300">[{title}]</span>
                             )}

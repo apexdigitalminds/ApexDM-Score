@@ -38,7 +38,7 @@ const UserRow: React.FC<{
       className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isCurrent ? 'bg-purple-100 dark:bg-purple-500/20 ring-2 ring-purple-500' : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'
         }`}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         <div className="w-8 flex justify-center">{rankDisplay}</div>
 
         <div
@@ -48,7 +48,7 @@ const UserRow: React.FC<{
           <Avatar src={user.avatarUrl} alt={user.username} className="w-8 h-8 rounded-full" />
         </div>
 
-        <div className="flex items-center gap-1 text-sm">
+        <div className="flex items-center gap-1 text-sm min-w-0">
           {/* Prefix - Always Gray */}
           {title && titlePos === 'prefix' && <span className="text-slate-500 dark:text-slate-400 font-normal">[{title}]</span>}
 

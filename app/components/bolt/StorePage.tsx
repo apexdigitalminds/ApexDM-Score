@@ -88,7 +88,7 @@ const StorePage: React.FC = () => {
     return (
         <div className="space-y-6">
             {notification && (
-                <div className={`fixed top-20 right-8 text-white px-4 py-2 rounded-lg shadow-lg z-20 border ${notification.type === 'success' ? 'bg-green-600 border-green-500' : 'bg-red-600 border-red-500'}`}>
+                <div className={`fixed top-20 right-4 sm:right-8 text-white px-4 py-2 rounded-lg shadow-lg z-20 border max-w-[calc(100vw-2rem)] ${notification.type === 'success' ? 'bg-green-600 border-green-500' : 'bg-red-600 border-red-500'}`}>
                     {notification.message}
                 </div>
             )}

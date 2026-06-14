@@ -67,8 +67,8 @@ const SETUP_STEPS: SetupStep[] = [
     },
     {
         id: 'white-label',
-        title: 'Configure White-Label Branding',
-        description: 'Make this app your own. Customize colors, logo, and branding to match your community.',
+        title: 'Configure Custom Branding',
+        description: 'Make this app your own. Customize the app name, logo, and branding to match your community.',
         tab: 'settings',
         requiredTier: 'elite',
         icon: '🎨'
